@@ -1,0 +1,10 @@
+{
+  "name": "ens-marketplace",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "lint": "pnpm --filter demo lint",
+    "build": "pnpm --filter demo build"
+  }
+}

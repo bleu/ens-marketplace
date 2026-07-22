@@ -1,0 +1,16 @@
+# Node / pnpm
+node_modules/
+.pnpm-store/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+
+# Env
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
