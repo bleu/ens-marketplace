@@ -34,16 +34,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/demo/pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
-        working-directory: apps/demo
       - name: Lint
-        run: pnpm lint
-        working-directory: apps/demo
+        run: pnpm --filter demo lint
       - name: Typecheck + build
-        run: pnpm build
-        working-directory: apps/demo
+        run: pnpm --filter demo build
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
 
