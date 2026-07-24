@@ -56,6 +56,47 @@ export function useEnsV1Listings(): EnsV1ListingsResult {
   return { listings, isLoading, isError, notConfigured, unresolvedCount, refetch: refresh };
 }
 
+export interface GrailsListingsResult {
+  listings: EnsV1Listing[];
+  isLoading: boolean;
+  isError: boolean;
+  unresolvedCount: number;
+  refetch: () => void;
+}
+
+/// Real active Grails-native listings (api.grails.app, no API key required for reads —
+/// see app/api/ensv1/grails-listings) — a second, complementary Explore-grid source
+/// alongside OpenSea's, not a replacement for it.
+export function useGrailsListings(): GrailsListingsResult {
+  const [listings, setListings] = useState<EnsV1Listing[]>([]);
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const res = await fetch("/api/ensv1/grails-listings");
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const json = await res.json();
+      setListings(json.listings ?? []);
+      setUnresolvedCount(json.unresolvedCount ?? 0);
+    } catch (err) {
+      console.error("useGrailsListings: failed to fetch listings", err);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { listings, isLoading, isError, unresolvedCount, refetch: refresh };
+}
+
 export interface EnsV1ListingForNameResult {
   listing: EnsV1Listing | null;
   isLoading: boolean;
@@ -63,11 +104,13 @@ export interface EnsV1ListingForNameResult {
   notConfigured: boolean;
 }
 
-/// Looks for a specific name's active OpenSea listing — used on the ENSv1 detail page
-/// when reached via search (as opposed to clicking a row already carrying its listing
-/// data from the Explore grid). Walks a bounded number of pages server-side (see
-/// app/api/ensv1/listings) since OpenSea's collection-listings API has no per-token
-/// filter; a name that isn't found may still be listed beyond that bound.
+/// Looks for a specific name's active listing across both sources — used on the ENSv1
+/// detail page when reached via search (as opposed to clicking a row that already
+/// carries its listing data from the Explore grid). Grails is checked via a cheap exact
+/// query; OpenSea has no per-token filter so it walks a bounded number of pages server-
+/// side (see app/api/ensv1/listings). If a name happens to be listed on both, Grails wins
+/// — simplification for a PoC rather than showing two simultaneous "buy" options for the
+/// same name; a name not found on either may still be listed beyond OpenSea's bound.
 export function useEnsV1ListingForName(name: string | null): EnsV1ListingForNameResult {
   const [listing, setListing] = useState<EnsV1Listing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,25 +126,42 @@ export function useEnsV1ListingForName(name: string | null): EnsV1ListingForName
     setIsLoading(true);
     setIsError(false);
     setNotConfigured(false);
-    fetch(`/api/ensv1/listings?name=${encodeURIComponent(name)}`)
-      .then(async (res) => {
-        if (cancelled) return;
-        if (res.status === 501) {
-          setNotConfigured(true);
-          return;
-        }
+
+    Promise.allSettled([
+      fetch(`/api/ensv1/grails-listings?name=${encodeURIComponent(name)}`).then((res) => {
         if (!res.ok) throw new Error(`status ${res.status}`);
-        const json = await res.json();
-        setListing(json.listing ?? null);
-      })
-      .catch((err) => {
+        return res.json();
+      }),
+      fetch(`/api/ensv1/listings?name=${encodeURIComponent(name)}`).then(async (res) => {
+        if (res.status === 501) return { notConfigured: true };
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        return res.json();
+      }),
+    ])
+      .then(([grailsResult, openseaResult]) => {
         if (cancelled) return;
-        console.error("useEnsV1ListingForName: lookup failed", err);
-        setIsError(true);
+        const grails = grailsResult.status === "fulfilled" ? grailsResult.value.listing : null;
+        const opensea = openseaResult.status === "fulfilled" ? openseaResult.value : null;
+        if (grails) {
+          setListing(grails);
+        } else if (opensea?.notConfigured) {
+          setNotConfigured(true);
+        } else if (opensea?.listing) {
+          setListing(opensea.listing);
+        } else {
+          setListing(null);
+        }
+        // Only surface an error if BOTH sources failed — one working source is enough
+        // to answer "is this listed," so a single transient failure shouldn't block it.
+        if (grailsResult.status === "rejected" && openseaResult.status === "rejected") {
+          console.error("useEnsV1ListingForName: both lookups failed", grailsResult.reason, openseaResult.reason);
+          setIsError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+
     return () => {
       cancelled = true;
     };

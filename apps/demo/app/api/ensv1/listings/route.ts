@@ -67,7 +67,7 @@ async function resolveListingNames(listings: OpenSeaListing[]): Promise<{ resolv
       unresolvedCount++;
       continue;
     }
-    resolved.push({ name, price: listing.price.current, listing });
+    resolved.push({ name, price: listing.price.current, listing, source: "opensea" });
   }
   return { resolved, unresolvedCount };
 }

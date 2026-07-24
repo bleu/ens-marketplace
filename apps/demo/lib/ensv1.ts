@@ -37,12 +37,33 @@ export function labelhash(label: string): `0x${string}` {
   return keccak256(toBytes(normalize(label)));
 }
 
+/// Seaport 1.6 mainnet deployment — shared by every marketplace built on the protocol
+/// (OpenSea, Grails, ...); verified against Grails' own contracts.ts. Grails' listings
+/// don't include this as an explicit field the way OpenSea's response does, so it's
+/// used as the fulfillment target when normalizing a Grails listing (see app/api/ensv1/
+/// grails-listings) rather than trusting a per-listing field that doesn't exist there.
+export const SEAPORT_CONTRACT_ADDRESS = "0x0000000000000068F116a894984e2DB1123eB395" as const;
+const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+export function currencySymbolFor(address: string): string {
+  const lower = address.toLowerCase();
+  if (lower === "0x0000000000000000000000000000000000000000") return "ETH";
+  if (lower === WETH_ADDRESS) return "WETH";
+  return `${address.slice(0, 6)}…`;
+}
+
 export function ensAppUrl(name: string): string {
   return `https://app.ens.domains/${name}`;
 }
 
 export function openseaAssetUrl(contract: `0x${string}`, identifier: string): string {
   return `https://opensea.io/assets/ethereum/${contract}/${identifier}`;
+}
+
+/// grails.app's own per-name route is a top-level dynamic segment (src/app/[name] in
+/// their frontend repo), confirmed by reading their source rather than guessed.
+export function grailsUrl(name: string): string {
+  return `https://grails.app/${name}`;
 }
 
 export interface EnsV1Domain {
@@ -184,4 +205,5 @@ export interface EnsV1Listing {
   name: string;
   price: { value: string; decimals: number; currency: string };
   listing: OpenSeaListing;
+  source: "opensea" | "grails";
 }

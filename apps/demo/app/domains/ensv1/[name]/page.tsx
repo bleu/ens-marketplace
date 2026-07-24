@@ -8,7 +8,7 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useEnsV1Domain, useEnsV1ListingForName } from "@/lib/ensv1-client";
-import { ensAppUrl, namehash, openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
+import { ensAppUrl, grailsUrl, namehash, openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { fulfillOpenSeaListing, useEthersSigner } from "@/lib/seaport";
 import { gradientFor } from "@/components/NameCard";
 import { shortAddr } from "@/lib/format";
@@ -140,8 +140,10 @@ export default function EnsV1DomainDetailPage() {
           )}
           {!notConfigured && !listing && !listingLoading && (
             <p className="mt-4 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              Not currently listed for sale (checked a bounded window of OpenSea&apos;s active
-              listings — a very recent listing might not show up yet).
+              Not currently listed for sale on Grails or OpenSea (Grails is checked
+              exactly; OpenSea has no per-name lookup, so a bounded window of its active
+              listings is scanned instead — a very recent OpenSea listing might not show
+              up yet).
             </p>
           )}
 
@@ -154,7 +156,7 @@ export default function EnsV1DomainDetailPage() {
             >
               View on ENS App
             </a>
-            {listing && (
+            {listing?.source === "opensea" && (
               <a
                 href={openseaAssetUrl(
                   listing.listing.protocol_data.parameters.offer[0].token as `0x${string}`,
@@ -165,6 +167,16 @@ export default function EnsV1DomainDetailPage() {
                 className="btn-outline flex h-11 flex-1 items-center justify-center rounded-[var(--radius-2)] border font-sans text-sm font-medium"
               >
                 View on OpenSea
+              </a>
+            )}
+            {listing?.source === "grails" && (
+              <a
+                href={grailsUrl(domain.name)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-outline flex h-11 flex-1 items-center justify-center rounded-[var(--radius-2)] border font-sans text-sm font-medium"
+              >
+                View on Grails
               </a>
             )}
           </div>
@@ -294,7 +306,8 @@ function BuyBox({
         </p>
         <p className="mt-1 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           This spends real ETH on real Ethereum mainnet, buying directly from the
-          seller&apos;s real OpenSea listing. This cannot be undone.
+          seller&apos;s real {listing.source === "grails" ? "Grails" : "OpenSea"} listing.
+          This cannot be undone.
         </p>
         <p className="mt-2 font-mono text-lg" style={{ color: "var(--fg)" }}>
           {price} {listing.price.currency}

@@ -7,7 +7,7 @@ import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
-import { useEnsV1Listings } from "@/lib/ensv1-client";
+import { useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import type { EnsV1Listing } from "@/lib/ensv1";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -30,7 +30,9 @@ export default function DomainsPage() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
-  const ensv1 = useEnsV1Listings();
+  const opensea = useEnsV1Listings();
+  const grails = useGrailsListings();
+  const ensv1Listings = [...grails.listings, ...opensea.listings];
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
@@ -68,10 +70,10 @@ export default function DomainsPage() {
         ) : (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Real listings — OpenSea
+              Real listings — OpenSea + Grails
             </span>
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              {ensv1.listings.length} listed
+              {ensv1Listings.length} listed
             </span>
           </>
         )}
@@ -180,12 +182,16 @@ export default function DomainsPage() {
         <section className="px-8 pb-20">
           {networkMode === "ensv1" ? (
             <EnsV1Table
-              listings={ensv1.listings}
-              isLoading={ensv1.isLoading}
-              isError={ensv1.isError}
-              notConfigured={ensv1.notConfigured}
-              unresolvedCount={ensv1.unresolvedCount}
-              retry={ensv1.refetch}
+              listings={ensv1Listings}
+              isLoading={ensv1Listings.length === 0 && (opensea.isLoading || grails.isLoading)}
+              bothErrored={opensea.isError && grails.isError}
+              openseaError={opensea.isError}
+              openseaNotConfigured={opensea.notConfigured}
+              unresolvedCount={opensea.unresolvedCount}
+              grailsUnresolvedCount={grails.unresolvedCount}
+              grailsError={grails.isError}
+              retryOpensea={opensea.refetch}
+              retryGrails={grails.refetch}
             />
           ) : (
             <>
@@ -288,36 +294,34 @@ export default function DomainsPage() {
 function EnsV1Table({
   listings,
   isLoading,
-  isError,
-  notConfigured,
+  bothErrored,
+  openseaError,
+  openseaNotConfigured,
   unresolvedCount,
-  retry,
+  grailsUnresolvedCount,
+  grailsError,
+  retryOpensea,
+  retryGrails,
 }: {
   listings: EnsV1Listing[];
   isLoading: boolean;
-  isError: boolean;
-  notConfigured: boolean;
+  bothErrored: boolean;
+  openseaError: boolean;
+  openseaNotConfigured: boolean;
   unresolvedCount: number;
-  retry: () => void;
+  grailsUnresolvedCount: number;
+  grailsError: boolean;
+  retryOpensea: () => void;
+  retryGrails: () => void;
 }) {
-  if (notConfigured) {
-    return (
-      <div className="rounded-[var(--radius-3)] border p-6 font-mono text-sm" style={{ borderColor: "var(--line)", color: "var(--fg-muted)" }}>
-        Real ENSv1 listings aren&apos;t configured yet — set{" "}
-        <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code> in{" "}
-        <code style={{ color: "var(--fg)" }}>apps/demo/.env.local</code> and restart the dev server.
-      </div>
-    );
-  }
-
   return (
     <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[860px]">
+      <div className="min-w-[900px]">
         <div
-          className="grid grid-cols-[minmax(260px,2.2fr)_180px_220px_110px] items-center border-b pr-4 pb-3.5"
+          className="grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
         >
-          {["Name", "Price", "Seller", ""].map((h, i) => (
+          {["Name", "Price", "Seller", "Source", ""].map((h, i) => (
             <span
               key={h}
               className={
@@ -332,13 +336,16 @@ function EnsV1Table({
           ))}
         </div>
 
-        {isError && (
+        {bothErrored && (
           <div className="flex items-center gap-3 py-8">
             <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-              Couldn&apos;t load real listings — the OpenSea request failed.
+              Couldn&apos;t load real listings — both OpenSea and Grails requests failed.
             </p>
             <button
-              onClick={retry}
+              onClick={() => {
+                retryOpensea();
+                retryGrails();
+              }}
               className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
               style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
             >
@@ -346,12 +353,12 @@ function EnsV1Table({
             </button>
           </div>
         )}
-        {!isError && isLoading && listings.length === 0 && (
+        {!bothErrored && isLoading && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            Loading real listings from OpenSea…
+            Loading real listings from OpenSea and Grails…
           </p>
         )}
-        {!isError && !isLoading && listings.length === 0 && (
+        {!bothErrored && !isLoading && listings.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
             No real ENS listings resolved on this page.
           </p>
@@ -361,10 +368,33 @@ function EnsV1Table({
           <EnsV1Row key={l.listing.order_hash} listing={l} />
         ))}
 
+        {openseaNotConfigured && (
+          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+            OpenSea listings aren&apos;t configured — set <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code>{" "}
+            in <code style={{ color: "var(--fg)" }}>apps/demo/.env.local</code> to include them too. Grails listings
+            above don&apos;t need a key.
+          </p>
+        )}
+        {!openseaNotConfigured && openseaError && !bothErrored && (
+          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--accent)" }}>
+            OpenSea listings failed to load this time — Grails listings above are unaffected.
+          </p>
+        )}
+        {grailsError && !bothErrored && (
+          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--accent)" }}>
+            Grails listings failed to load this time — OpenSea listings above are unaffected.
+          </p>
+        )}
         {unresolvedCount > 0 && (
           <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            {unresolvedCount} other active listing{unresolvedCount === 1 ? "" : "s"} on this page couldn&apos;t be
-            matched to a name via the subgraph and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
+            {unresolvedCount} other active OpenSea listing{unresolvedCount === 1 ? "" : "s"} on this page couldn&apos;t
+            be matched to a name via the subgraph and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
+          </p>
+        )}
+        {grailsUnresolvedCount > 0 && (
+          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+            {grailsUnresolvedCount} other active Grails listing{grailsUnresolvedCount === 1 ? "" : "s"} on this page
+            didn&apos;t include fulfillable order data and {grailsUnresolvedCount === 1 ? "isn't" : "aren't"} shown.
           </p>
         )}
       </div>
@@ -379,7 +409,7 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
   return (
     <Link
       href={`/domains/ensv1/${encodeURIComponent(listing.name)}`}
-      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_180px_220px_110px] items-center border-b pr-4 py-3.5"
+      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
       <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
@@ -404,6 +434,18 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
           <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
             {shortAddr(seller)}
           </span>
+        </span>
+      </div>
+      <div>
+        <span
+          className="rounded-[5px] border px-2 py-[3px] font-mono text-[10px] tracking-[0.04em] uppercase"
+          style={
+            listing.source === "grails"
+              ? { color: "var(--color-lima-500)", borderColor: "rgba(120,234,150,0.4)" }
+              : { color: "var(--brand)", borderColor: "rgba(32,197,217,0.4)" }
+          }
+        >
+          {listing.source === "grails" ? "Grails" : "OpenSea"}
         </span>
       </div>
       <div className="justify-self-end">
