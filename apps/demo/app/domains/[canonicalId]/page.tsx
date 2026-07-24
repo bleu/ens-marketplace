@@ -186,7 +186,11 @@ export default function DomainDetailPage() {
         Back to explore
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)]">
+      {/* items-stretch (the grid default) rather than items-start: makes the right
+          column's grid cell match the left column's height instead of shrinking to
+          its own content, so the right column's flex-1 tab panels below have
+          somewhere to grow into and don't leave a bare void under a short tab body. */}
+      <div className="grid grid-cols-1 gap-9 lg:grid-cols-[420px_1fr]">
         {/* left card */}
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
@@ -269,19 +273,22 @@ export default function DomainDetailPage() {
           </div>
         </div>
 
-        {/* right column — sized to its own content and capped to 560px, top-aligned
-            with the left column (see grid className above). This used to be
-            vertically centered against the left column instead, but the tab bar sits
-            at the very top of this column, so re-centering it every time a shorter or
-            taller tab body was selected made the tab row (and everything below it)
-            jump up/down by however much the content height changed between tabs —
-            jarring on every click. Top-aligning trades a shorter permanent gap under
-            the left column for a fixed, stable position for the tabs. */}
+        {/* right column — fills the remaining grid track (rather than capping at a
+            fixed max-width) so the two-column block spans the same width as the
+            header/nav above it instead of leaving a dead strip on the right at wide
+            viewports.
+            Top-aligned with the left column (see grid className above): this used to
+            be vertically centered against the left column instead, but the tab bar
+            sits at the very top of this column, so re-centering it every time a
+            shorter or taller tab body was selected made the tab row (and everything
+            below it) jump up/down by however much the content height changed between
+            tabs — jarring on every click. Top-aligning trades a shorter permanent gap
+            under the left column for a fixed, stable position for the tabs. */}
         <div className="flex flex-col">
           <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
 
           {tab === "market" && (
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-1 flex-col gap-5">
               {writeError && (
                 <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
                   {writeError.message.split("\n")[0]}
@@ -353,12 +360,12 @@ export default function DomainDetailPage() {
                 </p>
               )}
 
-              <ComingSoonPanel title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
+              <ComingSoonPanel title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." grow />
             </div>
           )}
 
           {tab === "activity" && (
-            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {activity.length === 0 && (
                 <p className="p-6 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
                   No activity yet.
@@ -388,11 +395,12 @@ export default function DomainDetailPage() {
             <ComingSoonPanel
               title="Estimated value"
               description="Valuation modeling from comparable sales isn't live yet — no real pricing data source exists for this PoC."
+              grow
             />
           )}
 
           {tab === "details" && (
-            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
                 { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },

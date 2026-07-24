@@ -194,7 +194,13 @@ export default function SubnameDetailPage() {
         Back to subnames
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)]">
+      {/* items-stretch (the grid default) rather than items-start, and a 1fr right
+          track rather than a fixed max-width: makes the right column's grid cell
+          span the same width as the header/nav above (no dead strip on wide
+          viewports) and match the left column's height, so the trailing details
+          box below can flex-1 into any leftover space instead of leaving a bare
+          void under a short card stack. */}
+      <div className="grid grid-cols-1 gap-9 lg:grid-cols-[420px_1fr]">
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             <div className="flex aspect-square flex-col justify-between p-7" style={{ background: gradientFor(canonicalId) }}>
@@ -224,12 +230,13 @@ export default function SubnameDetailPage() {
           </div>
         </div>
 
-        {/* Sized to its own content, capped to 560px, and top-aligned with the left
-            column (see grid className above). This used to be vertically centered
-            instead, which left a permanent, inconsistent-looking gap above the first
-            card whose size shifted with every conditionally-rendered block (rent
-            button vs. leased banner vs. seller controls), reading as broken rather
-            than deliberate. */}
+        {/* Fills the remaining grid track's width and height (see grid className
+            above) and top-aligned with the left column. This used to be vertically
+            centered instead, which left a permanent, inconsistent-looking gap above
+            the first card whose size shifted with every conditionally-rendered block
+            (rent button vs. leased banner vs. seller controls), reading as broken
+            rather than deliberate. The trailing details box below is flex-1 so it
+            absorbs any leftover height instead of leaving a bare void beneath it. */}
         <div className="flex flex-col gap-5">
           {writeError && (
             <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
@@ -373,7 +380,7 @@ export default function SubnameDetailPage() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+          <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
               { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
               { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },

@@ -47,6 +47,7 @@ export function TopNav() {
       if (isZeroAddress(owner as `0x${string}`)) {
         setNotFound(true);
       } else {
+        setMobileOpen(false);
         router.push(`/domains/${id.toString()}`);
       }
     } catch (err) {
