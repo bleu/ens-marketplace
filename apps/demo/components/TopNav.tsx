@@ -180,7 +180,16 @@ export function TopNav() {
     <header
       className="sticky top-0 z-40 border-b px-4 lg:px-8"
       style={{
-        background: "rgba(10,13,24,0.82)",
+        // Was rgba(10,13,24,0.82) + blur(14px) — translucent enough that a
+        // vividly colored hero/preview image scrolled underneath (e.g. the
+        // salmon subname-preview card, or a name-detail hero) bled through
+        // as a blurred color glow behind the mobile nav menu items, and made
+        // content passing under the header (e.g. the Buy-now CTA on
+        // /domains/[canonicalId] at certain scroll positions) look like it
+        // was being sliced mid-glyph rather than cleanly covered. Near-opaque
+        // keeps the frosted-glass look without letting page content bleed
+        // through it.
+        background: "rgba(10,13,24,0.97)",
         backdropFilter: "blur(14px)",
         borderColor: "var(--line)",
       }}

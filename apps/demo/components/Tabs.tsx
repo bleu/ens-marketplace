@@ -22,7 +22,12 @@ export function Tabs({
     // pinned via sticky positioning so its underline stays on-screen at the
     // scroll container's left edge instead of disappearing once scrolled
     // past, which otherwise left no visible active-state cue at all.
-    <ScrollHint outerClassName="mb-6 min-w-0 flex-1" className="border-b border-[var(--line)]">
+    // `no-scrollbar` hides the native scrollbar track/thumb here specifically —
+    // with the chevron already signaling overflow, a plain gray scrollbar sitting
+    // directly beneath the short aqua active-tab underline read as a second,
+    // duplicated (and broken-looking) underline. Scrolling still works via
+    // touch/trackpad/arrow keys, just without the visible track.
+    <ScrollHint outerClassName="mb-6 min-w-0 flex-1" className="no-scrollbar border-b border-[var(--line)]">
       <div className="flex min-w-0 gap-2">
         {items.map((t) => (
           <button

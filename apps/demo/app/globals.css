@@ -140,6 +140,18 @@ a:hover {
   background: transparent;
 }
 
+/* Used where a scrollable strip already has its own overflow affordance
+   (e.g. the tab strip's fade+chevron from ScrollHint, with the active tab's
+   aqua underline directly above the track) so the plain gray native
+   scrollbar doesn't sit stacked right under it and read as a second,
+   broken-looking underline/progress bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Hover feedback for primary interactive controls ──
    These elements set their resting color/border/background via inline
    `style` (so per-instance state like "active tab" or "selected row" can be

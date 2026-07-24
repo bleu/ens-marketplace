@@ -128,13 +128,15 @@ export default function ListDomainPage() {
           )}
           <div className="mb-9 grid grid-cols-2 gap-3">
             {owned.map((w) => (
-              <div
+              <button
                 key={w.canonicalId.toString()}
+                type="button"
                 onClick={() => {
                   setSelectedId(w.canonicalId);
                   setRegisterName("");
                 }}
-                className="flex cursor-pointer items-center gap-3 rounded-[10px] border p-3"
+                aria-pressed={selectedId === w.canonicalId}
+                className="input-field flex w-full cursor-pointer items-center gap-3 rounded-[10px] border p-3 text-left"
                 style={{
                   borderColor: selectedId === w.canonicalId ? "var(--brand)" : "var(--line)",
                   background: selectedId === w.canonicalId ? "rgba(32,197,217,0.08)" : "rgba(242,244,241,0.02)",
@@ -149,7 +151,7 @@ export default function ListDomainPage() {
                     Namechain L2
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -302,7 +304,12 @@ export default function ListDomainPage() {
           <button
             onClick={listForSale}
             disabled={busy || !canonicalId || !isPositiveNumber(price) || (isConnected && !isOwnedByMe)}
-            className="btn-cta mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
+            // opacity-40 faded both the aqua background and the dark label text
+            // toward the page's own near-black background at the same rate, so
+            // the two nearly disappeared into each other — the disabled label
+            // was close to illegible. opacity-70 keeps enough of the aqua fill
+            // that the dark text still reads clearly against it.
+            className="btn-cta mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-70"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >
             {step === "approving" ? "Approving…" : step === "listing" ? "Listing…" : "List name"}
