@@ -7,7 +7,7 @@ import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteCont
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
-import { isZeroAddress, shortAddr } from "@/lib/format";
+import { isPositiveNumber, isZeroAddress, shortAddr } from "@/lib/format";
 import { useOwnedNames } from "@/lib/events";
 import { NameCard, gradientFor } from "@/components/NameCard";
 import { ComingSoon } from "@/components/ComingSoon";
@@ -45,12 +45,15 @@ export default function ListDomainPage() {
       refetchOwner();
       setStep("idle");
     } else if (step === "approving") {
-      if (!canonicalId) return;
+      if (!canonicalId || !isPositiveNumber(price)) {
+        setStep("idle");
+        return;
+      }
       writeContract({
         address: ORDER_MANAGER_ADDRESS,
         abi: orderManagerAbi,
         functionName: "list",
-        args: [canonicalId, parseEther(price || "0")],
+        args: [canonicalId, parseEther(price)],
       });
       setStep("listing");
     } else if (step === "listing") {
@@ -249,7 +252,11 @@ export default function ListDomainPage() {
                 placeholder="0.00"
                 disabled={busy}
                 className="input-field h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none disabled:opacity-50"
-                style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                style={{
+                  borderColor: price && !isPositiveNumber(price) ? "var(--color-sinal-danger)" : "var(--line)",
+                  background: "rgba(242,244,241,0.04)",
+                  color: "var(--fg)",
+                }}
               />
             </div>
             <div>
@@ -292,7 +299,7 @@ export default function ListDomainPage() {
           </div>
           <button
             onClick={listForSale}
-            disabled={busy || !canonicalId || !price || (isConnected && !isOwnedByMe)}
+            disabled={busy || !canonicalId || !isPositiveNumber(price) || (isConnected && !isOwnedByMe)}
             className="btn-cta mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >

@@ -10,6 +10,7 @@ import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
+import { ScrollHint } from "@/components/ScrollHint";
 import { shortAddr } from "@/lib/format";
 
 type Order = readonly [`0x${string}`, bigint, `0x${string}`, `0x${string}`, `0x${string}`, number];
@@ -162,7 +163,7 @@ export default function DomainsPage() {
               that blow out the whole page's width (pushing the sidebar and
               top nav off-screen too), the horizontal scroll is contained to
               just this table via its own overflow-x-auto wrapper. */}
-          <div className="overflow-x-auto">
+          <ScrollHint>
             <div className="min-w-[1058px]">
               <div
                 className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 pb-3.5"
@@ -198,16 +199,34 @@ export default function DomainsPage() {
                 <ExploreRow key={id.toString()} id={id} order={order!} name={name} />
               ))}
             </div>
-          </div>
+          </ScrollHint>
         </section>
       </div>
     </main>
   );
 }
 
+/// Maps the on-chain OrderStatus (None/Active/Suspended/Filled/Cancelled) to a badge —
+/// the Names tab shows every row with an order regardless of status (unlike the
+/// Listings tab, which filters to Active/Suspended), so a sold or cancelled order
+/// must read as such here rather than falling back to a buyable-looking "Active".
+function statusBadge(status: number): { label: string; variant: "active" | "suspended" | "neutral" } {
+  switch (status) {
+    case OrderStatus.Suspended:
+      return { label: "Suspended", variant: "suspended" };
+    case OrderStatus.Filled:
+      return { label: "Sold", variant: "neutral" };
+    case OrderStatus.Cancelled:
+      return { label: "Cancelled", variant: "neutral" };
+    default:
+      return { label: "Active", variant: "active" };
+  }
+}
+
 function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: string }) {
   const [seller, price, , , , status] = order;
   const lastSale = useLastSale(id);
+  const badge = statusBadge(status);
 
   return (
     <Link
@@ -234,9 +253,7 @@ function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: stri
           {formatEther(price)} ETH
         </div>
         <div className="mt-0.5">
-          <StatusBadge variant={status === OrderStatus.Suspended ? "suspended" : "active"}>
-            {status === OrderStatus.Suspended ? "Suspended" : "Active"}
-          </StatusBadge>
+          <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
         </div>
       </div>
       <div>

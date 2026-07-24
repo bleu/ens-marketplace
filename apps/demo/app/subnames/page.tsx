@@ -8,6 +8,7 @@ import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, leaseVaultAbi, registryAbi } fro
 import { isZeroAddress } from "@/lib/format";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ScrollHint } from "@/components/ScrollHint";
 
 function statusOf(activeUntil: bigint, tenant: string): { label: string; variant: "active" | "suspended" | "neutral" } {
   const now = BigInt(Math.floor(Date.now() / 1000));
@@ -63,7 +64,7 @@ export default function SubnamesPage() {
           certain viewport without truncating illegibly. Contain the overflow
           to this table via its own scroll wrapper (same pattern as the
           /domains listing table) instead of letting it blow out the page. */}
-      <div className="overflow-x-auto">
+      <ScrollHint>
         <div className="min-w-[620px]">
           <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
             {["Name", "Price / term", "Status"].map((h, i) => (
@@ -121,7 +122,7 @@ export default function SubnamesPage() {
             );
           })}
         </div>
-      </div>
+      </ScrollHint>
     </main>
   );
 }
