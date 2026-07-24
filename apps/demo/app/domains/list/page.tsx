@@ -152,7 +152,7 @@ export default function ListDomainPage() {
             {registerName && owner !== undefined && isUnregistered && (
               <button
                 onClick={register}
-                disabled={busy || !address}
+                disabled={busy}
                 className="mt-3 h-10 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
                 style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
               >
@@ -270,7 +270,7 @@ export default function ListDomainPage() {
           </div>
           <button
             onClick={listForSale}
-            disabled={busy || !canonicalId || !isOwnedByMe || !price}
+            disabled={busy || !canonicalId || !price || (isConnected && !isOwnedByMe)}
             className="mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >

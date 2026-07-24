@@ -194,7 +194,7 @@ function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: stri
   return (
     <Link
       href={`/domains/${id.toString()}`}
-      className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 py-3.5"
+      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
       <div className="flex min-w-0 items-center gap-3.5">
@@ -238,10 +238,7 @@ function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: stri
         </div>
       </ComingSoon>
       <div className="justify-self-end">
-        <span
-          className="h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium"
-          style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
-        >
+        <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
           Select
         </span>
       </div>

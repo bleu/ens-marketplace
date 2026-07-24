@@ -60,7 +60,7 @@ export default function SubnamesPage() {
       </div>
 
       <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
-        {["Name", "Price / term", ""].map((h) => (
+        {["Name", "Price / term", "Status"].map((h) => (
           <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
             {h}
           </span>

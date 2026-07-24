@@ -142,11 +142,11 @@ export default function SubnameDetailPage() {
           </div>
         </div>
 
-        {/* Stretched to the left media column's height (often much taller,
-            especially when this side is just one action bar) so the trailing
-            details card below fills the space itself instead of leaving bare
-            page background beneath it. */}
-        <div className="flex flex-col gap-5 self-stretch">
+        {/* Sized to its own content rather than stretched to match the left
+            media column's height — forcing that match left the trailing
+            details card (just a Canonical ID / Registry / Lease vault /
+            Tenant list) with a large blank void inside its own border. */}
+        <div className="flex flex-col gap-5">
           {writeError && (
             <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
               {writeError.message.split("\n")[0]}
@@ -258,10 +258,7 @@ export default function SubnameDetailPage() {
             </div>
           )}
 
-          <div
-            className="flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border"
-            style={{ borderColor: "var(--line)" }}
-          >
+          <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
               { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
               { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },

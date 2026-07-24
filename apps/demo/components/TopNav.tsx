@@ -101,15 +101,13 @@ export function TopNav() {
       <nav className="flex items-center gap-6 font-sans text-sm font-medium">
         <Link
           href="/domains"
-          className="cursor-pointer border-b-2 pb-1"
-          style={{ color: isExplore ? "var(--fg)" : "var(--fg-muted)", borderColor: isExplore ? "var(--brand)" : "transparent" }}
+          className={`nav-link cursor-pointer border-b-2 pb-1 ${isExplore ? "nav-link-active" : ""}`}
         >
           Explore
         </Link>
         <Link
           href="/subnames"
-          className="cursor-pointer border-b-2 pb-1"
-          style={{ color: isSubnames ? "var(--fg)" : "var(--fg-muted)", borderColor: isSubnames ? "var(--brand)" : "transparent" }}
+          className={`nav-link cursor-pointer border-b-2 pb-1 ${isSubnames ? "nav-link-active" : ""}`}
         >
           Subnames
         </Link>
@@ -124,8 +122,7 @@ export function TopNav() {
       <div className="ml-auto flex items-center gap-4">
         <Link
           href="/domains/list"
-          className="flex h-[42px] items-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
-          style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          className="btn-outline flex h-[42px] items-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
         >
           List a name
         </Link>
@@ -139,7 +136,7 @@ export function TopNav() {
                   <button
                     type="button"
                     onClick={openConnectModal}
-                    className="flex h-[42px] items-center gap-2 rounded-[var(--radius-2)] px-5 font-sans text-sm font-semibold"
+                    className="btn-cta flex h-[42px] items-center gap-2 rounded-[var(--radius-2)] px-5 font-sans text-sm font-semibold"
                     style={{ background: "var(--brand-cta)", color: "var(--brand-ink)", boxShadow: "0 0 32px rgba(32,167,217,0.35)" }}
                   >
                     <div
@@ -175,7 +172,7 @@ export function TopNav() {
                     <button
                       type="button"
                       onClick={openAccountModal}
-                      className="h-[42px] rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium"
+                      className="btn-cta h-[42px] rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium"
                       style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
                     >
                       {account.displayName}

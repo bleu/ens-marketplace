@@ -190,14 +190,16 @@ export default function DomainDetailPage() {
           </div>
         </div>
 
-        {/* right column — stretched to the left media column's height (which is
-            often much taller) so short tab content fills the space itself
-            instead of leaving bare page background beneath it. */}
-        <div className="flex flex-col self-stretch">
+        {/* right column — sized to its own content. It used to be stretched to
+            match the (often much taller) left media column's height, but that
+            left sparse tabs — a single activity row, a five-row details card —
+            with a large blank void inside the bordered card itself, which read
+            as more broken than a short card followed by page background. */}
+        <div className="flex flex-col">
           <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
 
           {tab === "market" && (
-            <div className="flex flex-1 flex-col gap-5">
+            <div className="flex flex-col gap-5">
               {writeError && (
                 <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
                   {writeError.message.split("\n")[0]}
@@ -263,17 +265,12 @@ export default function DomainDetailPage() {
                 </p>
               )}
 
-              <ComingSoonPanel grow title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
+              <ComingSoonPanel title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
             </div>
           )}
 
           {tab === "activity" && (
-            <div
-              className={`flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border ${
-                activity.length === 0 ? "items-center justify-center" : ""
-              }`}
-              style={{ borderColor: "var(--line)" }}
-            >
+            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {activity.length === 0 && (
                 <p className="p-6 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
                   No activity yet.
@@ -301,14 +298,13 @@ export default function DomainDetailPage() {
 
           {tab === "valuation" && (
             <ComingSoonPanel
-              grow
               title="Estimated value"
               description="Valuation modeling from comparable sales isn't live yet — no real pricing data source exists for this PoC."
             />
           )}
 
           {tab === "details" && (
-            <div className="flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
                 { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
