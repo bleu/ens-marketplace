@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { REGISTRY_ADDRESS, registryAbi } from "@/lib/contracts";
 import { nameToCanonicalId, subnameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress, shortAddr } from "@/lib/format";
 
 export default function RegisterSubnamePage() {
   const router = useRouter();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [parentName, setParentName] = useState("");
   const [label, setLabel] = useState("");
 
@@ -33,7 +35,7 @@ export default function RegisterSubnamePage() {
     query: { enabled: subnameId !== undefined },
   });
 
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
   const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
@@ -46,6 +48,10 @@ export default function RegisterSubnamePage() {
   const alreadyExists = subnameOwner !== undefined && !isZeroAddress(subnameOwner as `0x${string}`);
 
   const register = () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
     if (parentId === undefined || !address) return;
     writeContract({
       address: REGISTRY_ADDRESS,
@@ -101,6 +107,11 @@ export default function RegisterSubnamePage() {
             </button>
           )}
         </div>
+      )}
+      {writeError && (
+        <p className="mt-3 font-mono text-xs" style={{ color: "var(--accent)" }}>
+          {writeError.message.split("\n")[0]}
+        </p>
       )}
     </main>
   );

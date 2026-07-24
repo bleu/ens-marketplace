@@ -8,3 +8,16 @@ export function shortAddr(address: Address | undefined): string {
 export function isZeroAddress(address: Address | undefined): boolean {
   return !address || address === "0x0000000000000000000000000000000000000000";
 }
+
+/// Formats a duration in seconds using whichever unit (minutes/hours/days) keeps the
+/// number readable, instead of always dividing into days — a short demo lease term
+/// (e.g. 300s) would otherwise round down to a meaningless "0.00 days".
+export function formatDuration(seconds: number): string {
+  const trim = (n: number) => n.toFixed(2).replace(/\.?0+$/, "");
+  const unit = (n: number, label: string) => `${trim(n)} ${label}${n === 1 ? "" : "s"}`;
+
+  if (seconds < 60) return unit(seconds, "second");
+  if (seconds < 3600) return unit(seconds / 60, "minute");
+  if (seconds < 86400) return unit(seconds / 3600, "hour");
+  return unit(seconds / 86400, "day");
+}

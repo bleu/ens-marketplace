@@ -1,12 +1,14 @@
 /// Deterministic gradient avatar for a name, keyed off its canonicalId so the same
 /// name always renders the same tile (not random) without needing any real artwork.
+/// All stops reference design tokens from globals.css so the marketplace grid never
+/// shows a hue outside the aqua/salmao/lima/profundo brand system.
 const GRADIENTS = [
-  "linear-gradient(135deg,#5b8cff,#4bd0ff)",
-  "linear-gradient(135deg,#20c5d9,#1d87af)",
-  "linear-gradient(135deg,#78ea96,#20a7d9)",
-  "linear-gradient(135deg,#ff8668,#ce695e)",
-  "linear-gradient(135deg,#6b4bff,#b04bff)",
-  "linear-gradient(135deg,#ffb84b,#ff6b6b)",
+  "linear-gradient(135deg,var(--color-aqua-300),var(--color-aqua-600))",
+  "linear-gradient(135deg,var(--color-aqua-500),var(--color-aqua-700))",
+  "linear-gradient(135deg,var(--color-lima-500),var(--color-aqua-600))",
+  "linear-gradient(135deg,var(--color-salmao-500),var(--color-salmao-700))",
+  "linear-gradient(135deg,var(--color-lima-300),var(--color-lima-500))",
+  "linear-gradient(135deg,var(--color-profundo-300),var(--color-profundo-700))",
 ];
 
 export function gradientFor(id: bigint): string {

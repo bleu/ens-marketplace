@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, SUBNAME_ADMIN_ROLE, leaseVaultAbi, registryAbi } from "@/lib/contracts";
-import { isZeroAddress, shortAddr } from "@/lib/format";
+import { formatDuration, isZeroAddress, shortAddr } from "@/lib/format";
 import { gradientFor } from "@/components/NameCard";
 
 export default function SubnameDetailPage() {
   const params = useParams<{ canonicalId: string }>();
   const canonicalId = BigInt(params.canonicalId);
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [resolver, setResolver] = useState("");
   const [announcePrice, setAnnouncePrice] = useState("");
   const [announceDays, setAnnounceDays] = useState("");
@@ -41,7 +43,7 @@ export default function SubnameDetailPage() {
     query: { enabled: !!address, refetchInterval: 3000 },
   });
 
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
 
   const listing = data?.[0]?.result as readonly [string, bigint, bigint, boolean] | undefined;
@@ -62,30 +64,44 @@ export default function SubnameDetailPage() {
   const isTenant = address?.toLowerCase() === tenant.toLowerCase();
   const busy = isPending || isConfirming;
 
-  const rent = () =>
-    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "rent", args: [canonicalId], value: pricePerTerm });
-  const reclaim = () => writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "reclaim", args: [canonicalId] });
-  const setLeasedResolver = () =>
+  const withWallet = (fn: () => void) => () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
+    fn();
+  };
+
+  const rent = withWallet(() =>
+    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "rent", args: [canonicalId], value: pricePerTerm })
+  );
+  const reclaim = withWallet(() =>
+    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "reclaim", args: [canonicalId] })
+  );
+  const setLeasedResolver = withWallet(() =>
     writeContract({
       address: LEASE_VAULT_ADDRESS,
       abi: leaseVaultAbi,
       functionName: "setLeasedResolver",
       args: [canonicalId, resolver as `0x${string}`],
-    });
-  const authorizeVault = () =>
+    })
+  );
+  const authorizeVault = withWallet(() =>
     writeContract({
       address: REGISTRY_ADDRESS,
       abi: registryAbi,
       functionName: "setRole",
       args: [canonicalId, SUBNAME_ADMIN_ROLE, LEASE_VAULT_ADDRESS, true],
-    });
-  const announce = () =>
+    })
+  );
+  const announce = withWallet(() =>
     writeContract({
       address: LEASE_VAULT_ADDRESS,
       abi: leaseVaultAbi,
       functionName: "announceForRent",
       args: [canonicalId, parseEther(announcePrice || "0"), BigInt(Number(announceDays || "0") * 86400)],
-    });
+    })
+  );
 
   return (
     <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
@@ -120,13 +136,19 @@ export default function SubnameDetailPage() {
                 Term length
               </span>
               <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }}>
-                {(Number(termSeconds) / 86400).toFixed(2)} days
+                {formatDuration(Number(termSeconds))}
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-5">
+          {writeError && (
+            <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
+              {writeError.message.split("\n")[0]}
+            </p>
+          )}
+
           {isLeased && (
             <div className="rounded-[var(--radius-3)] border p-5" style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}>
               <p className="font-mono text-sm" style={{ color: "var(--brand)" }}>
@@ -222,7 +244,7 @@ export default function SubnameDetailPage() {
                 />
                 <button
                   onClick={announce}
-                  disabled={busy}
+                  disabled={busy || !announcePrice || !announceDays}
                   className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
                   style={{ background: "var(--fg)", color: "var(--bg)" }}
                 >

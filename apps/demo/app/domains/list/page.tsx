@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress, shortAddr } from "@/lib/format";
@@ -15,7 +16,8 @@ type Step = "idle" | "registering" | "approving" | "listing";
 
 export default function ListDomainPage() {
   const router = useRouter();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const owned = useOwnedNames(address);
 
   const [selectedId, setSelectedId] = useState<bigint | undefined>();
@@ -34,7 +36,7 @@ export default function ListDomainPage() {
     query: { enabled: canonicalId !== undefined },
   });
 
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
   const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
@@ -63,12 +65,20 @@ export default function ListDomainPage() {
   const isUnregistered = isZeroAddress(owner as `0x${string}` | undefined);
 
   const register = () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
     if (!address || !registerName) return;
     setStep("registering");
     writeContract({ address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "register", args: [registerName, address] });
   };
 
   const listForSale = () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
     if (!canonicalId) return;
     setStep("approving");
     writeContract({
@@ -268,6 +278,11 @@ export default function ListDomainPage() {
           <div className="mt-3 text-center font-mono text-[11px] leading-[1.5]" style={{ color: "var(--fg-dim)" }}>
             Signed with your wallet. No expiry tracking in this PoC.
           </div>
+          {writeError && (
+            <p className="mt-3 text-center font-mono text-[11px]" style={{ color: "var(--accent)" }}>
+              {writeError.message.split("\n")[0]}
+            </p>
+          )}
         </div>
       </div>
     </main>

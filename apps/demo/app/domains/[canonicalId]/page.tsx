@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { computeStateHash } from "@/lib/statehash";
 import { shortAddr } from "@/lib/format";
@@ -23,7 +24,8 @@ const DETAIL_TABS: TabItem[] = [
 export default function DomainDetailPage() {
   const params = useParams<{ canonicalId: string }>();
   const canonicalId = BigInt(params.canonicalId);
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [relistPrice, setRelistPrice] = useState("");
   const [tab, setTab] = useState("market");
 
@@ -37,7 +39,7 @@ export default function DomainDetailPage() {
     query: { refetchInterval: 3000 },
   });
 
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
 
   const order = data?.[0]?.result;
@@ -61,18 +63,29 @@ export default function DomainDetailPage() {
   const isSeller = address?.toLowerCase() === seller.toLowerCase();
   const busy = isPending || isConfirming;
 
-  const buy = () =>
-    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price });
-  const cancel = () =>
-    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] });
-  const relist = () =>
+  const withWallet = (fn: () => void) => () => {
+    if (!isConnected) {
+      openConnectModal?.();
+      return;
+    }
+    fn();
+  };
+
+  const buy = withWallet(() =>
+    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price })
+  );
+  const cancel = withWallet(() =>
+    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] })
+  );
+  const relist = withWallet(() =>
     writeContract({
       address: ORDER_MANAGER_ADDRESS,
       abi: orderManagerAbi,
       functionName: "relist",
       args: [canonicalId, parseEther(relistPrice || "0")],
-    });
-  const acceptDiffAndBuy = () => {
+    })
+  );
+  const acceptDiffAndBuy = withWallet(() => {
     if (!diff) return;
     const [, , liveOwner, liveResolver] = diff as readonly [string, string, string, string, boolean];
     const expectedHash = computeStateHash(liveOwner as `0x${string}`, liveResolver as `0x${string}`);
@@ -83,7 +96,7 @@ export default function DomainDetailPage() {
       args: [canonicalId, expectedHash],
       value: price,
     });
-  };
+  });
 
   return (
     <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
@@ -183,6 +196,12 @@ export default function DomainDetailPage() {
 
           {tab === "market" && (
             <div className="flex flex-col gap-5">
+              {writeError && (
+                <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
+                  {writeError.message.split("\n")[0]}
+                </p>
+              )}
+
               {status === OrderStatus.Suspended && diff && (
                 <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}>
                   <p className="font-sans text-sm font-medium" style={{ color: "var(--accent)" }}>
@@ -218,7 +237,7 @@ export default function DomainDetailPage() {
                     />
                     <button
                       onClick={relist}
-                      disabled={busy}
+                      disabled={busy || !relistPrice}
                       className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
                       style={{ background: "var(--fg)", color: "var(--bg)" }}
                     >

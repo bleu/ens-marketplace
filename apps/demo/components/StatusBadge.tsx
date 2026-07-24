@@ -15,7 +15,7 @@ export function StatusBadge({
   const v = VARIANTS[variant];
   return (
     <span
-      className="rounded-[5px] px-[7px] py-[2px] font-mono text-[9px] tracking-[var(--tracking-wide)] uppercase"
+      className="inline-block rounded-[5px] px-[7px] py-[2px] font-mono text-[9px] leading-[1.4] tracking-[var(--tracking-wide)] uppercase"
       style={{ color: v.fg, background: v.bg }}
     >
       {children}
