@@ -9,7 +9,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
-import { shortAddr, shortId } from "@/lib/format";
+import { isPositiveNumber, shortAddr, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
 import { gradientFor } from "@/components/NameCard";
 import { Tabs, type TabItem } from "@/components/Tabs";
@@ -133,14 +133,15 @@ export default function DomainDetailPage() {
   const cancel = withWallet(() =>
     writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] })
   );
-  const relist = withWallet(() =>
+  const relist = withWallet(() => {
+    if (!isPositiveNumber(relistPrice)) return;
     writeContract({
       address: ORDER_MANAGER_ADDRESS,
       abi: orderManagerAbi,
       functionName: "relist",
-      args: [canonicalId, parseEther(relistPrice || "0")],
-    })
-  );
+      args: [canonicalId, parseEther(relistPrice)],
+    });
+  });
   const acceptDiffAndBuy = withWallet(() => {
     if (!diff) return;
     const [, , liveOwner, liveResolver] = diff as readonly [string, string, string, string, boolean];
@@ -292,12 +293,17 @@ export default function DomainDetailPage() {
                       value={relistPrice}
                       onChange={(e) => setRelistPrice(e.target.value)}
                       placeholder="New price (ETH)"
+                      inputMode="decimal"
                       className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
-                      style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                      style={{
+                        borderColor: relistPrice && !isPositiveNumber(relistPrice) ? "var(--color-sinal-danger)" : "var(--line)",
+                        background: "rgba(242,244,241,0.04)",
+                        color: "var(--fg)",
+                      }}
                     />
                     <button
                       onClick={relist}
-                      disabled={busy || !relistPrice}
+                      disabled={busy || !isPositiveNumber(relistPrice)}
                       className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
                       style={{ background: "var(--fg)", color: "var(--bg)" }}
                     >

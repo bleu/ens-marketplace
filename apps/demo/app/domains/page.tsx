@@ -47,7 +47,7 @@ export default function DomainsPage() {
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-8" style={{ borderColor: "var(--line)" }}>
         <Tabs items={TABS} active={tab} onChange={setTab} />
-        <span className="ml-auto font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+        <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
           {rows.length} names
         </span>
       </div>

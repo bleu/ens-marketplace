@@ -59,50 +59,58 @@ export default function SubnamesPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
-        {["Name", "Price / term", "Status"].map((h) => (
-          <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
-            {h}
-          </span>
-        ))}
-      </div>
-
-      {isLoading && rows.length === 0 && (
-        <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-          Loading…
-        </p>
-      )}
-      {!isLoading && rows.length === 0 && (
-        <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-          No subnames announced for rent yet.
-        </p>
-      )}
-
-      {rows.map(({ id, listing, activeUntil, tenant, name }) => {
-        const [, pricePerTerm] = listing!;
-        const status = statusOf(activeUntil!, tenant!);
-        return (
-          <Link
-            key={id.toString()}
-            href={`/subnames/${id.toString()}`}
-            className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
-            style={{ borderColor: "var(--line)" }}
-          >
-            <div className="flex items-center gap-3.5">
-              <NameCard canonicalId={id} />
-              <span className="font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
-                {name ?? id.toString()}
+      {/* Fixed-width Price/term and Status columns can't compress past a
+          certain viewport without truncating illegibly. Contain the overflow
+          to this table via its own scroll wrapper (same pattern as the
+          /domains listing table) instead of letting it blow out the page. */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[620px]">
+          <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
+            {["Name", "Price / term", "Status"].map((h) => (
+              <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                {h}
               </span>
-            </div>
-            <div className="font-mono text-[15px]" style={{ color: "var(--fg)" }}>
-              {formatEther(pricePerTerm)} ETH
-            </div>
-            <div className="justify-self-start">
-              <StatusBadge variant={status.variant}>{status.label}</StatusBadge>
-            </div>
-          </Link>
-        );
-      })}
+            ))}
+          </div>
+
+          {isLoading && rows.length === 0 && (
+            <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+              Loading…
+            </p>
+          )}
+          {!isLoading && rows.length === 0 && (
+            <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+              No subnames announced for rent yet.
+            </p>
+          )}
+
+          {rows.map(({ id, listing, activeUntil, tenant, name }) => {
+            const [, pricePerTerm] = listing!;
+            const status = statusOf(activeUntil!, tenant!);
+            return (
+              <Link
+                key={id.toString()}
+                href={`/subnames/${id.toString()}`}
+                className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
+                style={{ borderColor: "var(--line)" }}
+              >
+                <div className="flex items-center gap-3.5">
+                  <NameCard canonicalId={id} />
+                  <span className="font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
+                    {name ?? id.toString()}
+                  </span>
+                </div>
+                <div className="font-mono text-[15px]" style={{ color: "var(--fg)" }}>
+                  {formatEther(pricePerTerm)} ETH
+                </div>
+                <div className="justify-self-start">
+                  <StatusBadge variant={status.variant}>{status.label}</StatusBadge>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </main>
   );
 }

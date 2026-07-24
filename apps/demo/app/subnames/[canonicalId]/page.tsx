@@ -7,7 +7,7 @@ import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, SUBNAME_ADMIN_ROLE, leaseVaultAbi, registryAbi } from "@/lib/contracts";
-import { formatDuration, isZeroAddress, shortAddr, shortId } from "@/lib/format";
+import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortAddr, shortId } from "@/lib/format";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
 
@@ -150,14 +150,15 @@ export default function SubnameDetailPage() {
       args: [canonicalId, SUBNAME_ADMIN_ROLE, LEASE_VAULT_ADDRESS, true],
     })
   );
-  const announce = withWallet(() =>
+  const announce = withWallet(() => {
+    if (!isPositiveNumber(announcePrice) || !isPositiveInteger(announceDays)) return;
     writeContract({
       address: LEASE_VAULT_ADDRESS,
       abi: leaseVaultAbi,
       functionName: "announceForRent",
-      args: [canonicalId, parseEther(announcePrice || "0"), BigInt(Number(announceDays || "0") * 86400)],
-    })
-  );
+      args: [canonicalId, parseEther(announcePrice), BigInt(Number(announceDays) * 86400)],
+    });
+  });
 
   return (
     <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
@@ -292,19 +293,29 @@ export default function SubnameDetailPage() {
                   value={announcePrice}
                   onChange={(e) => setAnnouncePrice(e.target.value)}
                   placeholder="Price (ETH)"
+                  inputMode="decimal"
                   className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
-                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  style={{
+                    borderColor: announcePrice && !isPositiveNumber(announcePrice) ? "var(--color-sinal-danger)" : "var(--line)",
+                    background: "rgba(242,244,241,0.04)",
+                    color: "var(--fg)",
+                  }}
                 />
                 <input
                   value={announceDays}
                   onChange={(e) => setAnnounceDays(e.target.value)}
                   placeholder="Term (days)"
+                  inputMode="numeric"
                   className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
-                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  style={{
+                    borderColor: announceDays && !isPositiveInteger(announceDays) ? "var(--color-sinal-danger)" : "var(--line)",
+                    background: "rgba(242,244,241,0.04)",
+                    color: "var(--fg)",
+                  }}
                 />
                 <button
                   onClick={announce}
-                  disabled={busy || !announcePrice || !announceDays}
+                  disabled={busy || !isPositiveNumber(announcePrice) || !isPositiveInteger(announceDays)}
                   className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
                   style={{ background: "var(--fg)", color: "var(--bg)" }}
                 >

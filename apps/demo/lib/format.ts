@@ -16,6 +16,21 @@ export function shortId(id: string, keep = 6): string {
   return `${id.slice(0, keep)}…${id.slice(-4)}`;
 }
 
+/// Validates free-text numeric inputs (ETH price fields, day-count fields) before
+/// they're handed to viem's parseEther / BigInt() — those throw synchronously on
+/// malformed input (e.g. "abc", "1.2.3", ""), which would otherwise surface as an
+/// uncaught exception instead of the app's normal writeError UI.
+export function isPositiveNumber(value: string): boolean {
+  return /^\d+(\.\d+)?$/.test(value.trim()) && Number(value) > 0;
+}
+
+/// Same as isPositiveNumber but whole numbers only — for fields (e.g. lease term
+/// in days) that get multiplied out and passed to BigInt(), which throws on any
+/// non-integer result rather than truncating it.
+export function isPositiveInteger(value: string): boolean {
+  return /^\d+$/.test(value.trim()) && Number(value) > 0;
+}
+
 /// Formats a duration in seconds using whichever unit (minutes/hours/days) keeps the
 /// number readable, instead of always dividing into days — a short demo lease term
 /// (e.g. 300s) would otherwise round down to a meaningless "0.00 days".

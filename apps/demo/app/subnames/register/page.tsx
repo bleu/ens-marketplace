@@ -165,7 +165,7 @@ export default function RegisterSubnamePage() {
           </div>
           <button
             onClick={register}
-            disabled={busy || !parentId || !label || parentNotOwnedByMe || (isConnected && alreadyExists)}
+            disabled={busy || !parentId || !label || (isConnected && (parentNotOwnedByMe || alreadyExists))}
             className="mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >
