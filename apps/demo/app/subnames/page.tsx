@@ -18,7 +18,7 @@ function statusOf(activeUntil: bigint, tenant: string): { label: string; variant
     const mins = Math.ceil(Number(activeUntil - now) / 60);
     return { label: `Rented (${mins}m left)`, variant: "neutral" };
   }
-  return { label: "Lease expired — reclaim available", variant: "suspended" };
+  return { label: "Reclaimable", variant: "suspended" };
 }
 
 export default function SubnamesPage() {

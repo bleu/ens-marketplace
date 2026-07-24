@@ -37,7 +37,7 @@ export default function ListDomainPage() {
   });
 
   const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
-  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isSuccess, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
     if (!isSuccess || step === "idle") return;
@@ -60,7 +60,7 @@ export default function ListDomainPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess]);
 
-  const busy = isPending || step === "approving" || step === "listing";
+  const busy = isPending || isConfirming || step !== "idle";
   const isOwnedByMe = owner && address && (owner as string).toLowerCase() === address.toLowerCase();
   const isUnregistered = isZeroAddress(owner as `0x${string}` | undefined);
 
@@ -225,7 +225,8 @@ export default function ListDomainPage() {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
-                className="h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none"
+                disabled={busy}
+                className="h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
               />
             </div>

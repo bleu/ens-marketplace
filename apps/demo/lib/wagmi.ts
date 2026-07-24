@@ -10,7 +10,10 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
 // has broken dynamic imports for Coinbase's x402 payment-protocol extensions, unrelated
 // surface area we don't use in an ENS marketplace demo). RainbowKitProvider/ConnectButton
 // still work fine against plain wagmi connectors.
-const connectors = [injected(), walletConnect({ projectId }), safe()];
+// Only wire up the WalletConnect/Reown connector when a real project id is configured —
+// initializing it with an empty id makes @reown/appkit try (and fail, HTTP 403) to fetch
+// remote project config on every page load for a connector that can't work anyway.
+const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] : []), safe()];
 
 /// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain
 /// since the PoC currently runs against a local mock registry (see docs/local-demo.md),

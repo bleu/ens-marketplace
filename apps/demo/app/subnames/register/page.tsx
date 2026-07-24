@@ -36,7 +36,8 @@ export default function RegisterSubnamePage() {
   });
 
   const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
-  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isSuccess, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
+  const busy = isPending || isConfirming;
 
   useEffect(() => {
     if (isSuccess && subnameId !== undefined) {
@@ -99,11 +100,11 @@ export default function RegisterSubnamePage() {
           {isOwnerOfParent && label && !alreadyExists && (
             <button
               onClick={register}
-              disabled={isPending}
+              disabled={busy}
               className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-semibold disabled:opacity-50"
               style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
             >
-              {isPending ? "Registering…" : `Register ${label}.${parentName}`}
+              {busy ? "Registering…" : `Register ${label}.${parentName}`}
             </button>
           )}
         </div>

@@ -9,6 +9,13 @@ export function isZeroAddress(address: Address | undefined): boolean {
   return !address || address === "0x0000000000000000000000000000000000000000";
 }
 
+/// Truncates a long numeric/string id (e.g. an ERC-721 token id) the same way
+/// shortAddr truncates addresses, so long identifiers read consistently across the page.
+export function shortId(id: string, keep = 6): string {
+  if (id.length <= keep * 2 + 1) return id;
+  return `${id.slice(0, keep)}…${id.slice(-4)}`;
+}
+
 /// Formats a duration in seconds using whichever unit (minutes/hours/days) keeps the
 /// number readable, instead of always dividing into days — a short demo lease term
 /// (e.g. 300s) would otherwise round down to a meaningless "0.00 days".

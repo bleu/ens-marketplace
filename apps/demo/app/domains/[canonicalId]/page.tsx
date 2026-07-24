@@ -8,7 +8,7 @@ import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteCon
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { computeStateHash } from "@/lib/statehash";
-import { shortAddr } from "@/lib/format";
+import { shortAddr, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
 import { gradientFor } from "@/components/NameCard";
 import { Tabs, type TabItem } from "@/components/Tabs";
@@ -304,7 +304,7 @@ export default function DomainDetailPage() {
               {[
                 { k: "Token standard", v: "ERC-721-style" },
                 { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
-                { k: "Canonical ID", v: canonicalId.toString() },
+                { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
                 { k: "Resolver", v: resolver ? shortAddr(resolver as `0x${string}`) : "—" },
                 { k: "Subnames", v: `${subnameCount} issued` },
                 { k: "Category", v: "—" },
@@ -313,7 +313,7 @@ export default function DomainDetailPage() {
                   <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
                     {d.k}
                   </span>
-                  <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }}>
+                  <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }} title={d.full}>
                     {d.v}
                   </span>
                 </div>
@@ -328,6 +328,8 @@ export default function DomainDetailPage() {
 
 function DiffTable({ diff }: { diff: readonly [string, string, string, string, boolean] }) {
   const [pinnedOwner, pinnedResolver, liveOwner, liveResolver] = diff;
+  const ownerChanged = pinnedOwner.toLowerCase() !== liveOwner.toLowerCase();
+  const resolverChanged = pinnedResolver.toLowerCase() !== liveResolver.toLowerCase();
   return (
     <table className="mt-3 w-full font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
       <thead>
@@ -338,17 +340,32 @@ function DiffTable({ diff }: { diff: readonly [string, string, string, string, b
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td className="pr-2 pt-1.5">Owner</td>
-          <td className="pr-2 pt-1.5">{shortAddr(pinnedOwner as `0x${string}`)}</td>
-          <td className="pt-1.5">{shortAddr(liveOwner as `0x${string}`)}</td>
-        </tr>
-        <tr>
-          <td className="pr-2 pt-1.5">Resolver</td>
-          <td className="pr-2 pt-1.5">{shortAddr(pinnedResolver as `0x${string}`)}</td>
-          <td className="pt-1.5">{shortAddr(liveResolver as `0x${string}`)}</td>
-        </tr>
+        <DiffRow label="Owner" before={pinnedOwner} after={liveOwner} changed={ownerChanged} />
+        <DiffRow label="Resolver" before={pinnedResolver} after={liveResolver} changed={resolverChanged} />
       </tbody>
     </table>
+  );
+}
+
+function DiffRow({ label, before, after, changed }: { label: string; before: string; after: string; changed: boolean }) {
+  return (
+    <tr style={changed ? { background: "rgba(255,134,104,0.1)" } : undefined}>
+      <td className="pr-2 py-1.5 align-middle">
+        <span className="flex items-center gap-1.5">
+          {changed && (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth={3} aria-hidden>
+              <path d="m5 12 5 5 9-9" />
+            </svg>
+          )}
+          {label}
+        </span>
+      </td>
+      <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-dim)", textDecoration: "line-through" } : undefined}>
+        {shortAddr(before as `0x${string}`)}
+      </td>
+      <td className="py-1.5" style={changed ? { color: "var(--accent)", fontWeight: 600 } : undefined}>
+        {shortAddr(after as `0x${string}`)}
+      </td>
+    </tr>
   );
 }

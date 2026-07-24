@@ -158,7 +158,7 @@ export default function SubnameDetailPage() {
             </div>
           )}
 
-          {isAvailable && !callerHasRole && (
+          {isAvailable && !isExpiredUnreclaimed && !callerHasRole && (
             <button
               onClick={rent}
               disabled={busy}
