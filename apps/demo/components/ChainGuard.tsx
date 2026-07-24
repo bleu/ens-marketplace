@@ -14,8 +14,11 @@ export function ChainGuard() {
   if (!isConnected || chainId === foundry.id) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
-      <span>
+    <div
+      className="flex items-center gap-3 rounded-[var(--radius-2)] border px-4 py-3 text-sm"
+      style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}
+    >
+      <span style={{ color: "var(--accent)" }}>
         Wrong network — this demo runs on the local Anvil chain (id {foundry.id}). See
         docs/local-demo.md to start it.
       </span>
@@ -23,7 +26,8 @@ export function ChainGuard() {
         type="button"
         onClick={() => switchChain({ chainId: foundry.id })}
         disabled={isPending}
-        className="shrink-0 rounded-md bg-amber-500/20 px-3 py-1 font-medium hover:bg-amber-500/30 disabled:opacity-50"
+        className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
+        style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
       >
         {isPending ? "Switching…" : "Switch network"}
       </button>

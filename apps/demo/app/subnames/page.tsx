@@ -66,8 +66,16 @@ export default function SubnamesPage() {
       <div className="overflow-x-auto">
         <div className="min-w-[620px]">
           <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
-            {["Name", "Price / term", "Status"].map((h) => (
-              <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+            {["Name", "Price / term", "Status"].map((h, i) => (
+              <span
+                key={h}
+                className={
+                  i === 0
+                    ? "sticky left-4 z-10 self-stretch font-mono text-[11px] tracking-[0.04em] uppercase"
+                    : "font-mono text-[11px] tracking-[0.04em] uppercase"
+                }
+                style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
+              >
                 {h}
               </span>
             ))}
@@ -94,7 +102,10 @@ export default function SubnamesPage() {
                 className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
                 style={{ borderColor: "var(--line)" }}
               >
-                <div className="flex items-center gap-3.5">
+                <div
+                  className="sticky left-4 z-10 flex items-center gap-3.5 self-stretch"
+                  style={{ background: "var(--bg)" }}
+                >
                   <NameCard canonicalId={id} />
                   <span className="font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
                     {name ?? id.toString()}

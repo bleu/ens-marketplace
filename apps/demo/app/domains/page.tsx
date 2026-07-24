@@ -168,8 +168,16 @@ export default function DomainsPage() {
                 className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 pb-3.5"
                 style={{ borderColor: "var(--line-strong)" }}
               >
-                {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h) => (
-                  <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h, i) => (
+                  <span
+                    key={h}
+                    className={
+                      i === 0
+                        ? "sticky left-4 z-10 self-stretch font-mono text-[11px] tracking-[0.04em] uppercase"
+                        : "font-mono text-[11px] tracking-[0.04em] uppercase"
+                    }
+                    style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
+                  >
                     {h}
                   </span>
                 ))}
@@ -207,7 +215,10 @@ function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: stri
       className="explore-row grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
-      <div className="flex min-w-0 items-center gap-3.5">
+      <div
+        className="sticky left-4 z-10 flex min-w-0 items-center gap-3.5 self-stretch"
+        style={{ background: "var(--bg)" }}
+      >
         <NameCard canonicalId={id} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
