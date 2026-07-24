@@ -17,11 +17,24 @@ export function ScrollHint({
   children,
   className = "",
   outerClassName = "",
+  arrowAlign = "center",
 }: {
   children: React.ReactNode;
   className?: string;
   /** Applied to the outer positioning wrapper (e.g. so this can size/shrink correctly as a flex item). */
   outerClassName?: string;
+  /**
+   * Vertical placement of the fade+chevron affordance.
+   * - "center" (default): spans and centers across the full scrollable height. Correct
+   *   for single-row strips like the top tab bar, where that height *is* one row.
+   * - "top": pins a single-row-tall band to the top instead. Multi-row tables are much
+   *   taller than one row, so centering across the whole thing (as "center" does) lands
+   *   the chevron at an arbitrary point that can coincide with a row boundary — reading
+   *   as a misplaced/duplicated per-row control rather than a "more columns" hint. "top"
+   *   anchors it beside the column headers instead, which stays sensible regardless of
+   *   how many rows are in the table.
+   */
+  arrowAlign?: "center" | "top";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -46,6 +59,8 @@ export function ScrollHint({
     };
   }, []);
 
+  const edgePosition = arrowAlign === "top" ? "absolute top-0 h-11" : "absolute inset-y-0";
+
   return (
     <div className={`relative ${outerClassName}`}>
       <div ref={ref} className={`overflow-x-auto ${className}`}>
@@ -54,14 +69,14 @@ export function ScrollHint({
       {canScrollLeft && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-10"
+          className={`pointer-events-none ${edgePosition} left-0 w-10`}
           style={{ background: "linear-gradient(90deg, var(--bg), transparent)" }}
         />
       )}
       {canScrollRight && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end"
+          className={`pointer-events-none ${edgePosition} right-0 flex w-10 items-center justify-end`}
           style={{ background: "linear-gradient(270deg, var(--bg), transparent)" }}
         >
           <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="mr-1">

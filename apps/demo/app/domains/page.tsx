@@ -169,10 +169,10 @@ export default function DomainsPage() {
               that blow out the whole page's width (pushing the sidebar and
               top nav off-screen too), the horizontal scroll is contained to
               just this table via its own overflow-x-auto wrapper. */}
-          <ScrollHint>
+          <ScrollHint className="no-scrollbar" arrowAlign="top">
             <div className="min-w-[1058px]">
               <div
-                className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 pb-3.5"
+                className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b pr-4 pb-3.5"
                 style={{ borderColor: "var(--line-strong)" }}
               >
                 {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h, i) => (
@@ -180,7 +180,7 @@ export default function DomainsPage() {
                     key={h}
                     className={
                       i === 0
-                        ? "sticky left-4 z-10 self-stretch font-mono text-[11px] tracking-[0.04em] uppercase"
+                        ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
                         : "font-mono text-[11px] tracking-[0.04em] uppercase"
                     }
                     style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
@@ -251,11 +251,11 @@ function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: stri
   return (
     <Link
       href={`/domains/${id.toString()}`}
-      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 py-3.5"
+      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b pr-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
       <div
-        className="sticky left-4 z-10 flex min-w-0 items-center gap-3.5 self-stretch"
+        className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4"
         style={{ background: "var(--bg)" }}
       >
         <NameCard canonicalId={id} />

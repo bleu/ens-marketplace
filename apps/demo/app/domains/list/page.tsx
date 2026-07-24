@@ -75,7 +75,10 @@ export default function ListDomainPage() {
   const busy = isPending || isConfirming || step !== "idle";
   const isOwnedByMe = owner && address && (owner as string).toLowerCase() === address.toLowerCase();
   const isUnregistered = isZeroAddress(owner as `0x${string}` | undefined);
-  const isNameUnavailable = Boolean(registerName && owner !== undefined && !isUnregistered && !isOwnedByMe);
+  // Gated on `isConnected` — without a connected address there's no "me" to compare
+  // the owner against, so asserting "not available" before that's even knowable would
+  // be misleading (mirrors the equivalent check on /subnames/register).
+  const isNameUnavailable = Boolean(isConnected && registerName && owner !== undefined && !isUnregistered && !isOwnedByMe);
 
   const register = () => {
     if (!isConnected) {
@@ -190,6 +193,11 @@ export default function ListDomainPage() {
             {isNameUnavailable && (
               <p className="mt-3 font-mono text-xs" style={{ color: "var(--color-sinal-danger)" }}>
                 Owned by {shortAddr(owner as `0x${string}`)} — not available.
+              </p>
+            )}
+            {!isConnected && registerName && owner !== undefined && !isUnregistered && (
+              <p className="mt-3 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                Connect your wallet to check ownership of this name.
               </p>
             )}
           </div>

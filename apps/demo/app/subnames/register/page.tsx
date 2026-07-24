@@ -56,6 +56,10 @@ export default function RegisterSubnamePage() {
   const parentNotOwnedByMe =
     isConnected && parentOwner !== undefined && !isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent;
   const isBlocked = parentNotOwnedByMe || Boolean(isOwnerOfParent && label && alreadyExists);
+  // Whether ownership of the parent is even knowable yet — before a wallet is
+  // connected there's no "you" to check admin-role grant against, so the preview
+  // must show a neutral "unknown" state instead of asserting granted/blocked.
+  const adminRoleUnknown = !isConnected && parentOwner !== undefined && !isZeroAddress(parentOwner as `0x${string}`);
 
   const register = () => {
     if (!isConnected) {
@@ -172,13 +176,17 @@ export default function RegisterSubnamePage() {
           </div>
           <div className="mt-2.5 flex justify-between font-mono text-xs">
             <span style={{ color: "var(--fg-dim)" }}>Admin role</span>
-            <span style={{ color: isBlocked ? "var(--fg-dim)" : "var(--fg)" }}>
-              {isBlocked ? "Not granted — blocked" : "Granted to your address"}
+            <span style={{ color: isBlocked || adminRoleUnknown ? "var(--fg-dim)" : "var(--fg)" }}>
+              {adminRoleUnknown ? "Connect wallet to check" : isBlocked ? "Not granted — blocked" : "Granted to your address"}
             </span>
           </div>
           <button
             onClick={register}
-            disabled={busy || !parentId || !label || isBlocked}
+            // Only lets a connected-but-blocked state disable the CTA — while
+            // disconnected, `isBlocked` can't be trusted (see `adminRoleUnknown`
+            // above) and the button must stay clickable so `register()`'s own
+            // `isConnected` check can open the wallet-connect modal.
+            disabled={busy || !parentId || !label || (isConnected && isBlocked)}
             className="mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >

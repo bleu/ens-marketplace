@@ -70,15 +70,15 @@ export default function SubnamesPage() {
           certain viewport without truncating illegibly. Contain the overflow
           to this table via its own scroll wrapper (same pattern as the
           /domains listing table) instead of letting it blow out the page. */}
-      <ScrollHint>
+      <ScrollHint className="no-scrollbar" arrowAlign="top">
         <div className="min-w-[620px]">
-          <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
+          <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b pr-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
             {["Name", "Price / term", "Status"].map((h, i) => (
               <span
                 key={h}
                 className={
                   i === 0
-                    ? "sticky left-4 z-10 self-stretch font-mono text-[11px] tracking-[0.04em] uppercase"
+                    ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
                     : "font-mono text-[11px] tracking-[0.04em] uppercase"
                 }
                 style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
@@ -120,11 +120,11 @@ export default function SubnamesPage() {
               <Link
                 key={id.toString()}
                 href={`/subnames/${id.toString()}`}
-                className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
+                className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b pr-4 py-3.5"
                 style={{ borderColor: "var(--line)" }}
               >
                 <div
-                  className="sticky left-4 z-10 flex items-center gap-3.5 self-stretch"
+                  className="sticky left-0 z-10 flex items-center gap-3.5 self-stretch pl-4"
                   style={{ background: "var(--bg)" }}
                 >
                   <NameCard canonicalId={id} />
