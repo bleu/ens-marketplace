@@ -25,15 +25,21 @@ const TABS: TabItem[] = [
 
 export default function DomainsPage() {
   const [tab, setTab] = useState("names");
-  const ids = useKnownDomainIds();
+  const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
 
-  const { data, isLoading } = useReadContracts({
+  const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [id] } as const,
       { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
     ]),
     query: { enabled: ids.length > 0, refetchInterval: 3000 },
   });
+
+  const isError = idsError || readsError;
+  const retry = () => {
+    refetchIds();
+    refetchReads();
+  };
 
   const rows = ids
     .map((id, i) => ({
@@ -184,12 +190,26 @@ export default function DomainsPage() {
                 ))}
               </div>
 
-              {isLoading && rows.length === 0 && (
+              {isError && (
+                <div className="flex items-center gap-3 py-8">
+                  <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
+                    Couldn&apos;t load names — the on-chain read failed.
+                  </p>
+                  <button
+                    onClick={retry}
+                    className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
+                    style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {!isError && isLoading && rows.length === 0 && (
                 <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
                   Loading…
                 </p>
               )}
-              {!isLoading && rows.length === 0 && (
+              {!isError && !isLoading && rows.length === 0 && (
                 <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
                   No names to show in this tab yet.
                 </p>

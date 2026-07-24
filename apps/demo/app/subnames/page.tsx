@@ -23,9 +23,9 @@ function statusOf(activeUntil: bigint, tenant: string): { label: string; variant
 }
 
 export default function SubnamesPage() {
-  const ids = useKnownSubnameIds();
+  const { ids, isError: idsError, refetch: refetchIds } = useKnownSubnameIds();
 
-  const { data, isLoading } = useReadContracts({
+  const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
       { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "listings", args: [id] } as const,
       { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [id] } as const,
@@ -34,6 +34,12 @@ export default function SubnamesPage() {
     ]),
     query: { enabled: ids.length > 0, refetchInterval: 3000 },
   });
+
+  const isError = idsError || readsError;
+  const retry = () => {
+    refetchIds();
+    refetchReads();
+  };
 
   const rows = ids
     .map((id, i) => ({
@@ -82,12 +88,26 @@ export default function SubnamesPage() {
             ))}
           </div>
 
-          {isLoading && rows.length === 0 && (
+          {isError && (
+            <div className="flex items-center gap-3 py-8">
+              <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
+                Couldn&apos;t load subnames — the on-chain read failed.
+              </p>
+              <button
+                onClick={retry}
+                className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
+                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!isError && isLoading && rows.length === 0 && (
             <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
               Loading…
             </p>
           )}
-          {!isLoading && rows.length === 0 && (
+          {!isError && !isLoading && rows.length === 0 && (
             <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
               No subnames announced for rent yet.
             </p>

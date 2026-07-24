@@ -17,20 +17,37 @@ import {
 /// hooks read its *current* state fresh via multicall (`useReadContracts`), rather than
 /// reconstructing state by replaying event payloads — simpler and less bug-prone for a
 /// local demo than a full client-side event reducer.
-export function useKnownDomainIds(): bigint[] {
+export interface KnownIds {
+  ids: bigint[];
+  /** True when the historical event scan itself failed (RPC error, wrong chain, node
+   * restart, etc.) — callers must not conflate this with "scan succeeded and found
+   * nothing", which renders as a genuinely empty registry. */
+  isError: boolean;
+  /** Re-runs the event scan — lets callers offer a retry affordance on failure. */
+  refetch: () => void;
+}
+
+export function useKnownDomainIds(): KnownIds {
   const client = usePublicClient();
   const [ids, setIds] = useState<bigint[]>([]);
+  const [isError, setIsError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!client) return;
-    const logs = await client.getContractEvents({
-      address: ORDER_MANAGER_ADDRESS,
-      abi: orderManagerAbi,
-      eventName: "Listed",
-      fromBlock: 0n,
-      toBlock: "latest",
-    });
-    setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
+    try {
+      const logs = await client.getContractEvents({
+        address: ORDER_MANAGER_ADDRESS,
+        abi: orderManagerAbi,
+        eventName: "Listed",
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+      setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
+      setIsError(false);
+    } catch (err) {
+      console.error("useKnownDomainIds: failed to scan Listed events", err);
+      setIsError(true);
+    }
   }, [client]);
 
   useEffect(() => {
@@ -44,23 +61,30 @@ export function useKnownDomainIds(): bigint[] {
     onLogs: refresh,
   });
 
-  return ids;
+  return { ids, isError, refetch: refresh };
 }
 
-export function useKnownSubnameIds(): bigint[] {
+export function useKnownSubnameIds(): KnownIds {
   const client = usePublicClient();
   const [ids, setIds] = useState<bigint[]>([]);
+  const [isError, setIsError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!client) return;
-    const logs = await client.getContractEvents({
-      address: LEASE_VAULT_ADDRESS,
-      abi: leaseVaultAbi,
-      eventName: "Announced",
-      fromBlock: 0n,
-      toBlock: "latest",
-    });
-    setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
+    try {
+      const logs = await client.getContractEvents({
+        address: LEASE_VAULT_ADDRESS,
+        abi: leaseVaultAbi,
+        eventName: "Announced",
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+      setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
+      setIsError(false);
+    } catch (err) {
+      console.error("useKnownSubnameIds: failed to scan Announced events", err);
+      setIsError(true);
+    }
   }, [client]);
 
   useEffect(() => {
@@ -74,7 +98,7 @@ export function useKnownSubnameIds(): bigint[] {
     onLogs: refresh,
   });
 
-  return ids;
+  return { ids, isError, refetch: refresh };
 }
 
 export interface LastSale {
@@ -90,32 +114,36 @@ export function useLastSale(canonicalId: bigint): LastSale | null {
 
   const refresh = useCallback(async () => {
     if (!client) return;
-    const [filled, refilled] = await Promise.all([
-      client.getContractEvents({
-        address: ORDER_MANAGER_ADDRESS,
-        abi: orderManagerAbi,
-        eventName: "Filled",
-        args: { canonicalId },
-        fromBlock: 0n,
-        toBlock: "latest",
-      }),
-      client.getContractEvents({
-        address: ORDER_MANAGER_ADDRESS,
-        abi: orderManagerAbi,
-        eventName: "Refilled",
-        args: { canonicalId },
-        fromBlock: 0n,
-        toBlock: "latest",
-      }),
-    ]);
-    const all = [...filled, ...refilled].sort((a, b) => Number(a.blockNumber! - b.blockNumber!));
-    if (all.length === 0) {
-      setSale(null);
-      return;
+    try {
+      const [filled, refilled] = await Promise.all([
+        client.getContractEvents({
+          address: ORDER_MANAGER_ADDRESS,
+          abi: orderManagerAbi,
+          eventName: "Filled",
+          args: { canonicalId },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        client.getContractEvents({
+          address: ORDER_MANAGER_ADDRESS,
+          abi: orderManagerAbi,
+          eventName: "Refilled",
+          args: { canonicalId },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+      ]);
+      const all = [...filled, ...refilled].sort((a, b) => Number(a.blockNumber! - b.blockNumber!));
+      if (all.length === 0) {
+        setSale(null);
+        return;
+      }
+      const last = all[all.length - 1];
+      const block = await client.getBlock({ blockNumber: last.blockNumber! });
+      setSale({ price: last.args.price as bigint, at: Number(block.timestamp) });
+    } catch (err) {
+      console.error("useLastSale: failed to scan Filled/Refilled events", err);
     }
-    const last = all[all.length - 1];
-    const block = await client.getBlock({ blockNumber: last.blockNumber! });
-    setSale({ price: last.args.price as bigint, at: Number(block.timestamp) });
   }, [client, canonicalId]);
 
   useEffect(() => {
@@ -165,28 +193,32 @@ export function useNameActivity(canonicalId: bigint): ActivityItem[] {
 
   const refresh = useCallback(async () => {
     if (!client) return;
-    const eventNames = ["Listed", "Relisted", "Filled", "OrderSuspended", "Cancelled", "Refilled"] as const;
-    const logsByEvent = await Promise.all(
-      eventNames.map((eventName) =>
-        client.getContractEvents({
-          address: ORDER_MANAGER_ADDRESS,
-          abi: orderManagerAbi,
-          eventName,
-          args: { canonicalId },
-          fromBlock: 0n,
-          toBlock: "latest",
+    try {
+      const eventNames = ["Listed", "Relisted", "Filled", "OrderSuspended", "Cancelled", "Refilled"] as const;
+      const logsByEvent = await Promise.all(
+        eventNames.map((eventName) =>
+          client.getContractEvents({
+            address: ORDER_MANAGER_ADDRESS,
+            abi: orderManagerAbi,
+            eventName,
+            args: { canonicalId },
+            fromBlock: 0n,
+            toBlock: "latest",
+          }),
+        ),
+      );
+      const flat = logsByEvent.flat();
+      const withTimestamps = await Promise.all(
+        flat.map(async (log) => {
+          const block = await client.getBlock({ blockNumber: log.blockNumber! });
+          return formatActivity(log, Number(block.timestamp));
         }),
-      ),
-    );
-    const flat = logsByEvent.flat();
-    const withTimestamps = await Promise.all(
-      flat.map(async (log) => {
-        const block = await client.getBlock({ blockNumber: log.blockNumber! });
-        return formatActivity(log, Number(block.timestamp));
-      }),
-    );
-    withTimestamps.sort((a, b) => b.at - a.at);
-    setItems(withTimestamps);
+      );
+      withTimestamps.sort((a, b) => b.at - a.at);
+      setItems(withTimestamps);
+    } catch (err) {
+      console.error("useNameActivity: failed to scan activity events", err);
+    }
   }, [client, canonicalId]);
 
   useEffect(() => {
@@ -211,15 +243,19 @@ export function useSubnameCount(parentId: bigint): number {
 
   const refresh = useCallback(async () => {
     if (!client) return;
-    const logs = await client.getContractEvents({
-      address: REGISTRY_ADDRESS,
-      abi: registryAbi,
-      eventName: "SubnameRegistered",
-      args: { parentId },
-      fromBlock: 0n,
-      toBlock: "latest",
-    });
-    setCount(logs.length);
+    try {
+      const logs = await client.getContractEvents({
+        address: REGISTRY_ADDRESS,
+        abi: registryAbi,
+        eventName: "SubnameRegistered",
+        args: { parentId },
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+      setCount(logs.length);
+    } catch (err) {
+      console.error("useSubnameCount: failed to scan SubnameRegistered events", err);
+    }
   }, [client, parentId]);
 
   useEffect(() => {
@@ -248,47 +284,51 @@ export function useOwnedNames(owner: `0x${string}` | undefined): OwnedName[] {
       setNames([]);
       return;
     }
-    const [registered, ownerChanged] = await Promise.all([
-      client.getContractEvents({
-        address: REGISTRY_ADDRESS,
-        abi: registryAbi,
-        eventName: "Registered",
-        fromBlock: 0n,
-        toBlock: "latest",
-      }),
-      client.getContractEvents({
-        address: REGISTRY_ADDRESS,
-        abi: registryAbi,
-        eventName: "OwnerChanged",
-        fromBlock: 0n,
-        toBlock: "latest",
-      }),
-    ]);
-    const all = [...registered, ...ownerChanged].sort((a, b) => {
-      const blockDiff = Number(a.blockNumber! - b.blockNumber!);
-      return blockDiff !== 0 ? blockDiff : a.logIndex! - b.logIndex!;
-    });
+    try {
+      const [registered, ownerChanged] = await Promise.all([
+        client.getContractEvents({
+          address: REGISTRY_ADDRESS,
+          abi: registryAbi,
+          eventName: "Registered",
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        client.getContractEvents({
+          address: REGISTRY_ADDRESS,
+          abi: registryAbi,
+          eventName: "OwnerChanged",
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+      ]);
+      const all = [...registered, ...ownerChanged].sort((a, b) => {
+        const blockDiff = Number(a.blockNumber! - b.blockNumber!);
+        return blockDiff !== 0 ? blockDiff : a.logIndex! - b.logIndex!;
+      });
 
-    const ownerOf = new Map<string, string>();
-    const nameOf = new Map<string, string>();
-    for (const log of all) {
-      const args = log.args as Record<string, unknown>;
-      const key = (args.canonicalId as bigint).toString();
-      if (log.eventName === "Registered") {
-        nameOf.set(key, args.name as string);
-        ownerOf.set(key, args.owner as string);
-      } else if (log.eventName === "OwnerChanged") {
-        ownerOf.set(key, args.newOwner as string);
+      const ownerOf = new Map<string, string>();
+      const nameOf = new Map<string, string>();
+      for (const log of all) {
+        const args = log.args as Record<string, unknown>;
+        const key = (args.canonicalId as bigint).toString();
+        if (log.eventName === "Registered") {
+          nameOf.set(key, args.name as string);
+          ownerOf.set(key, args.owner as string);
+        } else if (log.eventName === "OwnerChanged") {
+          ownerOf.set(key, args.newOwner as string);
+        }
       }
-    }
 
-    const mine: OwnedName[] = [];
-    for (const [key, o] of ownerOf) {
-      if (o.toLowerCase() === owner.toLowerCase()) {
-        mine.push({ canonicalId: BigInt(key), name: nameOf.get(key) ?? key });
+      const mine: OwnedName[] = [];
+      for (const [key, o] of ownerOf) {
+        if (o.toLowerCase() === owner.toLowerCase()) {
+          mine.push({ canonicalId: BigInt(key), name: nameOf.get(key) ?? key });
+        }
       }
+      setNames(mine);
+    } catch (err) {
+      console.error("useOwnedNames: failed to scan Registered/OwnerChanged events", err);
     }
-    setNames(mine);
   }, [client, owner]);
 
   useEffect(() => {

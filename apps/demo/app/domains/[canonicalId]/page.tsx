@@ -35,7 +35,7 @@ export default function DomainDetailPage() {
   const [relistPrice, setRelistPrice] = useState("");
   const [tab, setTab] = useState("market");
 
-  const { data } = useReadContracts({
+  const { data, isError: readsError, refetch } = useReadContracts({
     contracts: [
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [canonicalId] },
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "diff", args: [canonicalId] },
@@ -72,6 +72,28 @@ export default function DomainDetailPage() {
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
             &quot;{params.canonicalId}&quot; is not a valid domain id.
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (readsError) {
+    return (
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+        <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
+          <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
+            Couldn&apos;t load this name.
+          </p>
+          <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            The on-chain read failed — check your connection and try again.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="mt-5 h-10 rounded-[var(--radius-2)] border px-5 font-mono text-sm"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Retry
+          </button>
         </div>
       </main>
     );
@@ -164,7 +186,7 @@ export default function DomainDetailPage() {
         Back to explore
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)] lg:items-center">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)]">
         {/* left card */}
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
@@ -247,14 +269,14 @@ export default function DomainDetailPage() {
           </div>
         </div>
 
-        {/* right column — sized to its own content, capped to 560px, and
-            vertically centered against the left column (see grid className
-            above) rather than top-aligned. Sparse tabs (a single activity
-            row, a five-row details card) are much shorter than the left
-            media column, so top-aligning them left a large accidental-looking
-            void filling the rest of the viewport below a full-width card;
-            capping the width and centering both reads as a deliberate,
-            content-sized layout instead. */}
+        {/* right column — sized to its own content and capped to 560px, top-aligned
+            with the left column (see grid className above). This used to be
+            vertically centered against the left column instead, but the tab bar sits
+            at the very top of this column, so re-centering it every time a shorter or
+            taller tab body was selected made the tab row (and everything below it)
+            jump up/down by however much the content height changed between tabs —
+            jarring on every click. Top-aligning trades a shorter permanent gap under
+            the left column for a fixed, stable position for the tabs. */}
         <div className="flex flex-col">
           <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
 

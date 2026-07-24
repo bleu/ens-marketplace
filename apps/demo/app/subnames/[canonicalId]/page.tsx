@@ -25,7 +25,7 @@ export default function SubnameDetailPage() {
   const [announcePrice, setAnnouncePrice] = useState("");
   const [announceDays, setAnnounceDays] = useState("");
 
-  const { data } = useReadContracts({
+  const { data, isError: readsError, refetch } = useReadContracts({
     contracts: [
       { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "listings", args: [canonicalId] },
       { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [canonicalId] },
@@ -74,6 +74,28 @@ export default function SubnameDetailPage() {
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
             &quot;{params.canonicalId}&quot; is not a valid subname id.
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (readsError) {
+    return (
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+        <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
+          <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
+            Couldn&apos;t load this subname.
+          </p>
+          <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            The on-chain read failed — check your connection and try again.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="mt-5 h-10 rounded-[var(--radius-2)] border px-5 font-mono text-sm"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Retry
+          </button>
         </div>
       </main>
     );
@@ -159,6 +181,9 @@ export default function SubnameDetailPage() {
       args: [canonicalId, parseEther(announcePrice), BigInt(Number(announceDays) * 86400)],
     });
   });
+  const withdraw = withWallet(() =>
+    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "withdraw", args: [canonicalId] })
+  );
 
   return (
     <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
@@ -169,7 +194,7 @@ export default function SubnameDetailPage() {
         Back to subnames
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)] lg:items-center">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)]">
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             <div className="flex aspect-square flex-col justify-between p-7" style={{ background: gradientFor(canonicalId) }}>
@@ -199,12 +224,12 @@ export default function SubnameDetailPage() {
           </div>
         </div>
 
-        {/* Sized to its own content, capped to 560px, and vertically centered
-            against the left column (see grid className above) rather than
-            top-aligned — the trailing details card (just a Canonical ID /
-            Registry / Lease vault / Tenant list) is much shorter than the
-            left media column, so top-aligning a full-width version of it left
-            a large accidental-looking void filling the rest of the viewport. */}
+        {/* Sized to its own content, capped to 560px, and top-aligned with the left
+            column (see grid className above). This used to be vertically centered
+            instead, which left a permanent, inconsistent-looking gap above the first
+            card whose size shifted with every conditionally-rendered block (rent
+            button vs. leased banner vs. seller controls), reading as broken rather
+            than deliberate. */}
         <div className="flex flex-col gap-5">
           {writeError && (
             <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
@@ -285,10 +310,28 @@ export default function SubnameDetailPage() {
             </div>
           )}
 
+          {callerHasRole && !isLeased && vaultPreauthorized && active && (
+            <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-sm" style={{ color: "var(--fg-muted)" }}>
+                  Currently announced for rent at {formatEther(pricePerTerm)} ETH / {formatDuration(Number(termSeconds))}.
+                </p>
+                <button
+                  onClick={withdraw}
+                  disabled={busy}
+                  className="h-11 shrink-0 rounded-[var(--radius-2)] border px-4 font-sans text-sm disabled:opacity-50"
+                  style={{ borderColor: "var(--color-salmao-700)", color: "var(--color-salmao-500)" }}
+                >
+                  {busy ? "Confirming…" : "Withdraw listing"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {callerHasRole && !isLeased && vaultPreauthorized && (
             <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
               <p className="mb-3 font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
-                Announce for rent
+                {active ? "Update listing" : "Announce for rent"}
               </p>
               <div className="flex gap-2">
                 <input
