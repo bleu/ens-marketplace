@@ -15,6 +15,12 @@ export function ComingSoon({
       className={`pointer-events-none select-none opacity-40 ${className}`}
       title={label}
       aria-disabled="true"
+      // `inert` (not just aria-disabled on the wrapper) is what actually makes
+      // nested native controls (e.g. a plain <button>) unfocusable and excluded
+      // from the accessibility tree — aria-disabled on a div doesn't propagate
+      // to children, and pointer-events-none only blocks mouse input, not
+      // keyboard tabbing. This is what makes the control "genuinely inert".
+      inert
     >
       {children}
     </div>
@@ -23,10 +29,25 @@ export function ComingSoon({
 
 /// Full content-panel replacement for a tab/section that has no real data source
 /// (Offers, Valuation, ...) — a labeled placeholder box, not fake numbers.
-export function ComingSoonPanel({ title, description }: { title: string; description: string }) {
+///
+/// Accepts `grow` so callers whose sibling column runs much taller (e.g. a detail
+/// page's sticky media column) can let this panel fill the leftover height itself
+/// — reads as a deliberately-sized card rather than a short box floating above a
+/// few hundred px of bare page background.
+export function ComingSoonPanel({
+  title,
+  description,
+  grow = false,
+}: {
+  title: string;
+  description: string;
+  grow?: boolean;
+}) {
   return (
     <div
-      className="rounded-[var(--radius-3)] border border-[var(--line)] p-8 text-center"
+      className={`rounded-[var(--radius-3)] border border-[var(--line)] p-8 text-center ${
+        grow ? "flex flex-1 flex-col items-center justify-center" : ""
+      }`}
       style={{ background: "rgba(242,244,241,0.02)" }}
     >
       <div

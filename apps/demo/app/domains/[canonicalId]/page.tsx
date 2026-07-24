@@ -190,12 +190,14 @@ export default function DomainDetailPage() {
           </div>
         </div>
 
-        {/* right column */}
-        <div>
+        {/* right column — stretched to the left media column's height (which is
+            often much taller) so short tab content fills the space itself
+            instead of leaving bare page background beneath it. */}
+        <div className="flex flex-col self-stretch">
           <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
 
           {tab === "market" && (
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-1 flex-col gap-5">
               {writeError && (
                 <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
                   {writeError.message.split("\n")[0]}
@@ -261,12 +263,17 @@ export default function DomainDetailPage() {
                 </p>
               )}
 
-              <ComingSoonPanel title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
+              <ComingSoonPanel grow title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
             </div>
           )}
 
           {tab === "activity" && (
-            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div
+              className={`flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border ${
+                activity.length === 0 ? "items-center justify-center" : ""
+              }`}
+              style={{ borderColor: "var(--line)" }}
+            >
               {activity.length === 0 && (
                 <p className="p-6 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
                   No activity yet.
@@ -294,13 +301,14 @@ export default function DomainDetailPage() {
 
           {tab === "valuation" && (
             <ComingSoonPanel
+              grow
               title="Estimated value"
               description="Valuation modeling from comparable sales isn't live yet — no real pricing data source exists for this PoC."
             />
           )}
 
           {tab === "details" && (
-            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div className="flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
                 { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
@@ -353,8 +361,22 @@ function DiffRow({ label, before, after, changed }: { label: string; before: str
       <td className="pr-2 py-1.5 align-middle">
         <span className="flex items-center gap-1.5">
           {changed && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth={3} aria-hidden>
-              <path d="m5 12 5 5 9-9" />
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              {/* Warning triangle, not a checkmark — this row flags a risky
+                  state change, not a confirmed/good value. */}
+              <path d="M12 3 22 20 2 20Z" />
+              <path d="M12 9v5" />
+              <path d="M12 17.5h.01" />
             </svg>
           )}
           {label}

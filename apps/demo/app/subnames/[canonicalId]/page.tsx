@@ -7,7 +7,7 @@ import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, SUBNAME_ADMIN_ROLE, leaseVaultAbi, registryAbi } from "@/lib/contracts";
-import { formatDuration, isZeroAddress, shortAddr } from "@/lib/format";
+import { formatDuration, isZeroAddress, shortAddr, shortId } from "@/lib/format";
 import { gradientFor } from "@/components/NameCard";
 
 export default function SubnameDetailPage() {
@@ -142,7 +142,11 @@ export default function SubnameDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-5">
+        {/* Stretched to the left media column's height (often much taller,
+            especially when this side is just one action bar) so the trailing
+            details card below fills the space itself instead of leaving bare
+            page background beneath it. */}
+        <div className="flex flex-col gap-5 self-stretch">
           {writeError && (
             <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
               {writeError.message.split("\n")[0]}
@@ -253,6 +257,27 @@ export default function SubnameDetailPage() {
               </div>
             </div>
           )}
+
+          <div
+            className="flex flex-1 flex-col overflow-hidden rounded-[var(--radius-3)] border"
+            style={{ borderColor: "var(--line)" }}
+          >
+            {[
+              { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
+              { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
+              { k: "Lease vault", v: shortAddr(LEASE_VAULT_ADDRESS) },
+              { k: "Tenant", v: isZeroAddress(tenant as `0x${string}`) ? "None" : shortAddr(tenant as `0x${string}`) },
+            ].map((d) => (
+              <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
+                <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                  {d.k}
+                </span>
+                <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }} title={d.full}>
+                  {d.v}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </main>
