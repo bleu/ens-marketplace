@@ -5,6 +5,7 @@ import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "@/lib/wagmi";
+import { NetworkModeProvider } from "@/lib/network-mode";
 
 const queryClient = new QueryClient();
 
@@ -58,7 +59,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider locale="en" theme={rainbowKitTheme}>
-          {children}
+          <NetworkModeProvider>{children}</NetworkModeProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

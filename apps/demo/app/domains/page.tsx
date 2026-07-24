@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { formatEther } from "viem";
+import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
+import { useNetworkMode } from "@/lib/network-mode";
+import { useEnsV1Listings } from "@/lib/ensv1-client";
+import type { EnsV1Listing } from "@/lib/ensv1";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
@@ -25,14 +28,16 @@ const TABS: TabItem[] = [
 
 export default function DomainsPage() {
   const [tab, setTab] = useState("names");
+  const [networkMode, setNetworkMode] = useNetworkMode();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+  const ensv1 = useEnsV1Listings();
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [id] } as const,
       { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
     ]),
-    query: { enabled: ids.length > 0, refetchInterval: 3000 },
+    query: { enabled: ids.length > 0 && networkMode === "ensv2", refetchInterval: 3000 },
   });
 
   const isError = idsError || readsError;
@@ -53,10 +58,23 @@ export default function DomainsPage() {
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-8" style={{ borderColor: "var(--line)" }}>
-        <Tabs items={TABS} active={tab} onChange={setTab} />
-        <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-          {rows.length} names
-        </span>
+        {networkMode === "ensv2" ? (
+          <>
+            <Tabs items={TABS} active={tab} onChange={setTab} />
+            <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              {rows.length} names
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
+              Real listings — OpenSea
+            </span>
+            <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              {ensv1.listings.length} listed
+            </span>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 items-start lg:grid-cols-[280px_1fr]">
@@ -72,36 +90,64 @@ export default function DomainsPage() {
             className="mb-6 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
             style={{ color: "var(--color-profundo-300)" }}
           >
-            Chain · ENSv2
+            Chain
           </div>
           <div className="flex flex-col gap-2">
-            <div
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5"
-              style={{ borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }}
+            <button
+              type="button"
+              onClick={() => setNetworkMode("ensv2")}
+              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+              style={
+                networkMode === "ensv2"
+                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                  : { borderColor: "var(--line)" }
+              }
             >
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ background: "var(--brand)" }} />
-                <span className="font-sans text-[13px] font-medium" style={{ color: "var(--fg)" }}>
-                  Namechain (local)
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                />
+                <span
+                  className="font-sans text-[13px] font-medium"
+                  style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
+                >
+                  Namechain (local, ENSv2)
                 </span>
               </div>
               <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
                 {ids.length}
               </span>
-            </div>
-            <ComingSoon>
-              <div className="flex items-center justify-between rounded-lg border px-3 py-2.5" style={{ borderColor: "var(--line)" }}>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--color-profundo-300)" }} />
-                  <span className="font-sans text-[13px] font-medium" style={{ color: "var(--fg-muted)" }}>
-                    Mainnet (L1)
-                  </span>
-                </div>
-                <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                  0
+            </button>
+            <button
+              type="button"
+              onClick={() => setNetworkMode("ensv1")}
+              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+              style={
+                networkMode === "ensv1"
+                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                  : { borderColor: "var(--line)" }
+              }
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                />
+                <span
+                  className="font-sans text-[13px] font-medium"
+                  style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
+                >
+                  Mainnet (L1, ENSv1)
                 </span>
               </div>
-            </ComingSoon>
+            </button>
+            {networkMode === "ensv1" && (
+              <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                Real ENS names on Ethereum mainnet, read-only. Listings below are real
+                active OpenSea orders — buying executes a real on-chain purchase.
+              </p>
+            )}
           </div>
 
           <div
@@ -132,6 +178,17 @@ export default function DomainsPage() {
 
         {/* table */}
         <section className="px-8 pb-20">
+          {networkMode === "ensv1" ? (
+            <EnsV1Table
+              listings={ensv1.listings}
+              isLoading={ensv1.isLoading}
+              isError={ensv1.isError}
+              notConfigured={ensv1.notConfigured}
+              unresolvedCount={ensv1.unresolvedCount}
+              retry={ensv1.refetch}
+            />
+          ) : (
+            <>
           <ComingSoon className="my-6">
             <div
               className="flex items-center gap-5 rounded-[var(--radius-3)] border p-5"
@@ -220,9 +277,141 @@ export default function DomainsPage() {
               ))}
             </div>
           </ScrollHint>
+            </>
+          )}
         </section>
       </div>
     </main>
+  );
+}
+
+function EnsV1Table({
+  listings,
+  isLoading,
+  isError,
+  notConfigured,
+  unresolvedCount,
+  retry,
+}: {
+  listings: EnsV1Listing[];
+  isLoading: boolean;
+  isError: boolean;
+  notConfigured: boolean;
+  unresolvedCount: number;
+  retry: () => void;
+}) {
+  if (notConfigured) {
+    return (
+      <div className="rounded-[var(--radius-3)] border p-6 font-mono text-sm" style={{ borderColor: "var(--line)", color: "var(--fg-muted)" }}>
+        Real ENSv1 listings aren&apos;t configured yet — set{" "}
+        <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code> in{" "}
+        <code style={{ color: "var(--fg)" }}>apps/demo/.env.local</code> and restart the dev server.
+      </div>
+    );
+  }
+
+  return (
+    <ScrollHint className="no-scrollbar" arrowAlign="top">
+      <div className="min-w-[860px]">
+        <div
+          className="grid grid-cols-[minmax(260px,2.2fr)_180px_220px_110px] items-center border-b pr-4 pb-3.5"
+          style={{ borderColor: "var(--line-strong)" }}
+        >
+          {["Name", "Price", "Seller", ""].map((h, i) => (
+            <span
+              key={h}
+              className={
+                i === 0
+                  ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
+                  : "font-mono text-[11px] tracking-[0.04em] uppercase"
+              }
+              style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
+            >
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {isError && (
+          <div className="flex items-center gap-3 py-8">
+            <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
+              Couldn&apos;t load real listings — the OpenSea request failed.
+            </p>
+            <button
+              onClick={retry}
+              className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
+              style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!isError && isLoading && listings.length === 0 && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            Loading real listings from OpenSea…
+          </p>
+        )}
+        {!isError && !isLoading && listings.length === 0 && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            No real ENS listings resolved on this page.
+          </p>
+        )}
+
+        {listings.map((l) => (
+          <EnsV1Row key={l.listing.order_hash} listing={l} />
+        ))}
+
+        {unresolvedCount > 0 && (
+          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+            {unresolvedCount} other active listing{unresolvedCount === 1 ? "" : "s"} on this page couldn&apos;t be
+            matched to a name via the subgraph and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
+          </p>
+        )}
+      </div>
+    </ScrollHint>
+  );
+}
+
+function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
+  const seller = listing.listing.protocol_data.parameters.offerer as `0x${string}`;
+  const price = formatUnits(BigInt(listing.price.value), listing.price.decimals);
+
+  return (
+    <Link
+      href={`/domains/ensv1/${encodeURIComponent(listing.name)}`}
+      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_180px_220px_110px] items-center border-b pr-4 py-3.5"
+      style={{ borderColor: "var(--line)" }}
+    >
+      <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
+              {listing.name}
+            </span>
+            <StatusBadge variant="chain">L1</StatusBadge>
+          </div>
+        </div>
+      </div>
+      <div className="font-mono text-[15px] font-medium" style={{ color: "var(--fg)" }}>
+        {price} {listing.price.currency}
+      </div>
+      <div>
+        <span
+          className="inline-flex items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
+          style={{ background: "rgba(242,244,241,0.05)" }}
+        >
+          <span className="h-5 w-5 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
+          <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+            {shortAddr(seller)}
+          </span>
+        </span>
+      </div>
+      <div className="justify-self-end">
+        <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
+          Select
+        </span>
+      </div>
+    </Link>
   );
 }
 

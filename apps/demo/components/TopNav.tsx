@@ -8,11 +8,13 @@ import { usePublicClient } from "wagmi";
 import { REGISTRY_ADDRESS, registryAbi } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress } from "@/lib/format";
+import { useNetworkMode } from "@/lib/network-mode";
 
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const publicClient = usePublicClient();
+  const [networkMode] = useNetworkMode();
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [searchError, setSearchError] = useState(false);
@@ -32,10 +34,37 @@ export function TopNav() {
     // hydration — a window that's easily wide enough to hit by hand in dev.
     // Reading straight from the DOM at submit time sidesteps that entirely.
     const query = String(new FormData(e.currentTarget).get("q") ?? "").trim();
-    if (!query || !publicClient) return;
+    if (!query) return;
     setSearching(true);
     setNotFound(false);
     setSearchError(false);
+
+    if (networkMode === "ensv1") {
+      // Real mainnet lookup via the ENS subgraph proxy (see app/api/ensv1/search) —
+      // no on-chain read needed, and no local canonicalId scheme applies to real names.
+      try {
+        const res = await fetch(`/api/ensv1/search?name=${encodeURIComponent(query)}`);
+        if (res.status === 404) {
+          setNotFound(true);
+        } else if (!res.ok) {
+          throw new Error(`status ${res.status}`);
+        } else {
+          setMobileOpen(false);
+          router.push(`/domains/ensv1/${encodeURIComponent(query)}`);
+        }
+      } catch (err) {
+        console.error("ENSv1 name search failed:", err);
+        setSearchError(true);
+      } finally {
+        setSearching(false);
+      }
+      return;
+    }
+
+    if (!publicClient) {
+      setSearching(false);
+      return;
+    }
     try {
       const id = nameToCanonicalId(query);
       const owner = await publicClient.readContract({
@@ -75,7 +104,7 @@ export function TopNav() {
           setNotFound(false);
           setSearchError(false);
         }}
-        placeholder="Search names…"
+        placeholder={networkMode === "ensv1" ? "Search real ENS names…" : "Search names…"}
         aria-label="Search names"
         className="flex-1 bg-transparent font-mono text-[13px] tracking-[var(--tracking-tight)] outline-none"
         style={{ color: "var(--fg)" }}
