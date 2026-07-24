@@ -164,7 +164,7 @@ export default function DomainDetailPage() {
         Back to explore
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_1fr]">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)] lg:items-center">
         {/* left card */}
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
@@ -247,11 +247,14 @@ export default function DomainDetailPage() {
           </div>
         </div>
 
-        {/* right column — sized to its own content. It used to be stretched to
-            match the (often much taller) left media column's height, but that
-            left sparse tabs — a single activity row, a five-row details card —
-            with a large blank void inside the bordered card itself, which read
-            as more broken than a short card followed by page background. */}
+        {/* right column — sized to its own content, capped to 560px, and
+            vertically centered against the left column (see grid className
+            above) rather than top-aligned. Sparse tabs (a single activity
+            row, a five-row details card) are much shorter than the left
+            media column, so top-aligning them left a large accidental-looking
+            void filling the rest of the viewport below a full-width card;
+            capping the width and centering both reads as a deliberate,
+            content-sized layout instead. */}
         <div className="flex flex-col">
           <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
 

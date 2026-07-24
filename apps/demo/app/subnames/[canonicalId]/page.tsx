@@ -169,7 +169,7 @@ export default function SubnameDetailPage() {
         Back to subnames
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_1fr]">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_minmax(0,560px)] lg:items-center">
         <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             <div className="flex aspect-square flex-col justify-between p-7" style={{ background: gradientFor(canonicalId) }}>
@@ -199,10 +199,12 @@ export default function SubnameDetailPage() {
           </div>
         </div>
 
-        {/* Sized to its own content rather than stretched to match the left
-            media column's height — forcing that match left the trailing
-            details card (just a Canonical ID / Registry / Lease vault /
-            Tenant list) with a large blank void inside its own border. */}
+        {/* Sized to its own content, capped to 560px, and vertically centered
+            against the left column (see grid className above) rather than
+            top-aligned — the trailing details card (just a Canonical ID /
+            Registry / Lease vault / Tenant list) is much shorter than the
+            left media column, so top-aligning a full-width version of it left
+            a large accidental-looking void filling the rest of the viewport. */}
         <div className="flex flex-col gap-5">
           {writeError && (
             <p className="font-mono text-xs" style={{ color: "var(--accent)" }}>
