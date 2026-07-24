@@ -82,8 +82,8 @@ export function TopNav() {
         </span>
       </Link>
 
-      <form onSubmit={onSearchSubmit} className="flex h-[42px] max-w-[360px] flex-1 items-center gap-2.5 rounded-lg border px-4"
-        style={{ background: "rgba(242,244,241,0.05)", borderColor: "var(--line)" }}>
+      <form onSubmit={onSearchSubmit} className="search-form flex h-[42px] max-w-[360px] flex-1 items-center gap-2.5 rounded-lg border px-4"
+        style={{ background: "rgba(242,244,241,0.05)" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-dim)" strokeWidth={2}>
           <circle cx="11" cy="11" r="7" />
           <path d="m21 21-4.3-4.3" />
@@ -101,12 +101,14 @@ export function TopNav() {
           style={{ color: "var(--fg)" }}
         />
         {searching && <span className="font-mono text-[10px] text-[var(--fg-dim)]">…</span>}
-        {notFound && <span className="font-mono text-[10px] text-[var(--accent)]">Not found</span>}
-        {searchError && (
-          <span className="font-mono text-[10px]" style={{ color: "var(--color-sinal-danger)" }}>
-            Search failed — try again
-          </span>
-        )}
+        <span role="status" aria-live="polite" className="contents">
+          {notFound && <span className="font-mono text-[10px] text-[var(--accent)]">Not found</span>}
+          {searchError && (
+            <span className="font-mono text-[10px]" style={{ color: "var(--color-sinal-danger)" }}>
+              Search failed — try again
+            </span>
+          )}
+        </span>
       </form>
 
       <nav className="flex items-center gap-6 font-sans text-sm font-medium">

@@ -89,7 +89,7 @@ export default function RegisterSubnamePage() {
               value={parentName}
               onChange={(e) => setParentName(e.target.value)}
               placeholder="Parent name, e.g. alice.eth"
-              className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
+              className="input-field h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
               style={{
                 borderColor: parentNotOwnedByMe ? "var(--color-sinal-danger)" : "var(--line)",
                 background: "rgba(242,244,241,0.04)",
@@ -100,7 +100,7 @@ export default function RegisterSubnamePage() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Label, e.g. shop"
-              className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
+              className="input-field h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
               style={{
                 borderColor: isOwnerOfParent && label && alreadyExists ? "var(--color-sinal-danger)" : "var(--line)",
                 background: "rgba(242,244,241,0.04)",

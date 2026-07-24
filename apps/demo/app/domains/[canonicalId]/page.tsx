@@ -7,6 +7,7 @@ import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
+import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
 import { shortAddr, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
@@ -23,7 +24,12 @@ const DETAIL_TABS: TabItem[] = [
 
 export default function DomainDetailPage() {
   const params = useParams<{ canonicalId: string }>();
-  const canonicalId = BigInt(params.canonicalId);
+  const parsedCanonicalId = parseCanonicalId(params.canonicalId);
+  // Hooks below must run unconditionally (rules of hooks), so an invalid id falls back
+  // to 0n — a canonicalId that can never be registered — and the invalid-id message is
+  // rendered explicitly further down rather than relying on the generic "doesn't exist"
+  // fallthrough, so the user sees the actual bad value they navigated to.
+  const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [relistPrice, setRelistPrice] = useState("");
@@ -49,6 +55,27 @@ export default function DomainDetailPage() {
 
   const subnameCount = useSubnameCount(canonicalId);
   const activity = useNameActivity(canonicalId);
+
+  if (parsedCanonicalId === null) {
+    return (
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+        <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Back to explore
+        </Link>
+        <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
+          <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
+            This name doesn&apos;t exist.
+          </p>
+          <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            &quot;{params.canonicalId}&quot; is not a valid domain id.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   if (!order || name === undefined) return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
 
@@ -265,7 +292,7 @@ export default function DomainDetailPage() {
                       value={relistPrice}
                       onChange={(e) => setRelistPrice(e.target.value)}
                       placeholder="New price (ETH)"
-                      className="h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
+                      className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                       style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
                     />
                     <button
@@ -407,7 +434,7 @@ function DiffRow({ label, before, after, changed }: { label: string; before: str
           {label}
         </span>
       </td>
-      <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-dim)", textDecoration: "line-through" } : undefined}>
+      <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-muted)", textDecoration: "line-through" } : undefined}>
         {shortAddr(before as `0x${string}`)}
       </td>
       <td className="py-1.5" style={changed ? { color: "var(--accent)", fontWeight: 600 } : undefined}>

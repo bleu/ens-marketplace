@@ -164,7 +164,7 @@ export default function ListDomainPage() {
                 setSelectedId(undefined);
               }}
               placeholder="e.g. charlie.eth"
-              className="h-11 w-full rounded-[8px] border px-3 font-mono text-sm outline-none"
+              className="input-field h-11 w-full rounded-[8px] border px-3 font-mono text-sm outline-none"
               style={{
                 borderColor: isNameUnavailable ? "var(--color-sinal-danger)" : "var(--line)",
                 background: "rgba(242,244,241,0.04)",
@@ -248,7 +248,7 @@ export default function ListDomainPage() {
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
                 disabled={busy}
-                className="h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none disabled:opacity-50"
+                className="input-field h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
               />
             </div>

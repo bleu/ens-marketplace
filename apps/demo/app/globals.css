@@ -203,6 +203,24 @@ a:hover {
   color: var(--brand-hover);
 }
 
+/* ── Focus feedback for plain text inputs ──
+   These inputs set their resting/error border-color via inline `style`
+   (so the per-instance validation state can be computed in JS), which beats
+   a plain `.input-field:focus { border-color: ... }` rule regardless of
+   specificity. Rather than fight that with `!important`, focus is signaled
+   with a box-shadow ring instead — additive, so it shows up next to any
+   resting or error border color and needs no JS changes. */
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(32, 197, 217, 0.25);
+}
+.search-form {
+  border-color: var(--line);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.search-form:focus-within {
+  border-color: var(--brand);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

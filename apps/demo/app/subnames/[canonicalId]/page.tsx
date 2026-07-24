@@ -8,11 +8,17 @@ import { useAccount, useReadContract, useReadContracts, useWaitForTransactionRec
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, SUBNAME_ADMIN_ROLE, leaseVaultAbi, registryAbi } from "@/lib/contracts";
 import { formatDuration, isZeroAddress, shortAddr, shortId } from "@/lib/format";
+import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
 
 export default function SubnameDetailPage() {
   const params = useParams<{ canonicalId: string }>();
-  const canonicalId = BigInt(params.canonicalId);
+  const parsedCanonicalId = parseCanonicalId(params.canonicalId);
+  // Hooks below must run unconditionally (rules of hooks), so an invalid id falls back
+  // to 0n — a canonicalId that can never be registered — and the invalid-id message is
+  // rendered explicitly further down rather than relying on the generic "doesn't exist"
+  // fallthrough, so the user sees the actual bad value they navigated to.
+  const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [resolver, setResolver] = useState("");
@@ -51,6 +57,27 @@ export default function SubnameDetailPage() {
   const tenant = data?.[2]?.result as string | undefined;
   const name = data?.[3]?.result as string | undefined;
   const vaultPreauthorized = data?.[4]?.result as boolean | undefined;
+
+  if (parsedCanonicalId === null) {
+    return (
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+        <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Back to subnames
+        </Link>
+        <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
+          <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
+            This name doesn&apos;t exist.
+          </p>
+          <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            &quot;{params.canonicalId}&quot; is not a valid subname id.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   if (!listing || activeUntil === undefined || tenant === undefined || name === undefined) {
     return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
@@ -212,7 +239,7 @@ export default function SubnameDetailPage() {
                   value={resolver}
                   onChange={(e) => setResolver(e.target.value)}
                   placeholder="New resolver address"
-                  className="h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
+                  className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
                 />
                 <button
@@ -265,14 +292,14 @@ export default function SubnameDetailPage() {
                   value={announcePrice}
                   onChange={(e) => setAnnouncePrice(e.target.value)}
                   placeholder="Price (ETH)"
-                  className="h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
+                  className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
                 />
                 <input
                   value={announceDays}
                   onChange={(e) => setAnnounceDays(e.target.value)}
                   placeholder="Term (days)"
-                  className="h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
+                  className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
                 />
                 <button
