@@ -1,28 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { computeStateHash } from "@/lib/statehash";
 import { shortAddr } from "@/lib/format";
+import { useNameActivity, useSubnameCount } from "@/lib/events";
+import { gradientFor } from "@/components/NameCard";
+import { Tabs, type TabItem } from "@/components/Tabs";
+import { ComingSoonPanel } from "@/components/ComingSoon";
+
+const DETAIL_TABS: TabItem[] = [
+  { id: "market", label: "Market" },
+  { id: "activity", label: "Activity" },
+  { id: "valuation", label: "Valuation", disabled: true },
+  { id: "details", label: "Details" },
+];
 
 export default function DomainDetailPage() {
   const params = useParams<{ canonicalId: string }>();
   const canonicalId = BigInt(params.canonicalId);
   const { address } = useAccount();
   const [relistPrice, setRelistPrice] = useState("");
+  const [tab, setTab] = useState("market");
 
   const { data } = useReadContracts({
     contracts: [
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [canonicalId] },
       { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "diff", args: [canonicalId] },
       { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [canonicalId] },
+      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "resolverOf", args: [canonicalId] },
     ],
-    // Polling (rather than refetching on tx success) avoids a render-time side effect -
-    // React 19 may double-invoke renders in dev, and refetch() isn't guaranteed idempotent
-    // enough to call unconditionally mid-render. 3s of staleness after a tx is imperceptible here.
     query: { refetchInterval: 3000 },
   });
 
@@ -32,15 +43,28 @@ export default function DomainDetailPage() {
   const order = data?.[0]?.result;
   const diff = data?.[1]?.result;
   const name = data?.[2]?.result as string | undefined;
+  const resolver = data?.[3]?.result as string | undefined;
 
-  if (!order) return <main className="p-8">Loading…</main>;
+  const subnameCount = useSubnameCount(canonicalId);
+  const activity = useNameActivity(canonicalId);
 
-  const [seller, price, , , , status] = order as readonly [string, bigint, `0x${string}`, string, string, number];
+  if (!order) return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+
+  const [seller, price, , , , status] = order as readonly [
+    `0x${string}`,
+    bigint,
+    `0x${string}`,
+    `0x${string}`,
+    `0x${string}`,
+    number,
+  ];
   const isSeller = address?.toLowerCase() === seller.toLowerCase();
   const busy = isPending || isConfirming;
 
-  const buy = () => writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price });
-  const cancel = () => writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] });
+  const buy = () =>
+    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price });
+  const cancel = () =>
+    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] });
   const relist = () =>
     writeContract({
       address: ORDER_MANAGER_ADDRESS,
@@ -62,67 +86,223 @@ export default function DomainDetailPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-4 p-8">
-      <h1 className="text-xl font-semibold">{name ?? canonicalId.toString()}</h1>
-      <p className="text-sm text-gray-500">
-        Seller {shortAddr(seller as `0x${string}`)} · {formatEther(price)} ETH
-      </p>
+    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+        Back to explore
+      </Link>
 
-      {status === OrderStatus.Suspended && diff && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          <p className="font-medium text-amber-600 dark:text-amber-400">
-            This name&apos;s state changed since it was listed — the order suspended
-            itself instead of silently filling. See docs/architecture.md.
-          </p>
-          <DiffTable diff={diff as readonly [string, string, string, string, boolean]} />
-        </div>
-      )}
-
-      {status === OrderStatus.Active && !isSeller && (
-        <button
-          onClick={buy}
-          disabled={busy}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {busy ? "Confirming…" : `Buy for ${formatEther(price)} ETH`}
-        </button>
-      )}
-
-      {status === OrderStatus.Suspended && !isSeller && (
-        <button
-          onClick={acceptDiffAndBuy}
-          disabled={busy}
-          className="rounded-md bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {busy ? "Confirming…" : "Accept new state and buy anyway"}
-        </button>
-      )}
-
-      {isSeller && (status === OrderStatus.Active || status === OrderStatus.Suspended) && (
-        <div className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-          <p className="text-sm font-medium">Seller controls</p>
-          <div className="flex gap-2">
-            <input
-              value={relistPrice}
-              onChange={(e) => setRelistPrice(e.target.value)}
-              placeholder="New price (ETH)"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-transparent"
-            />
-            <button onClick={relist} disabled={busy} className="rounded-md bg-gray-800 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-              Relist
-            </button>
+      <div className="grid grid-cols-[420px_1fr] items-start gap-9">
+        {/* left card */}
+        <div className="sticky top-[108px]">
+          <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            <div
+              className="flex aspect-square flex-col justify-between p-7"
+              style={{ background: gradientFor(canonicalId) }}
+            >
+              <div
+                style={{ width: 40, height: 58, background: "rgba(255,255,255,0.95)", clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }}
+              />
+              <div
+                className="font-sans text-[46px] font-bold break-all text-white"
+                style={{ letterSpacing: "-0.02em", textShadow: "0 2px 20px rgba(0,0,0,0.25)" }}
+              >
+                {name ?? canonicalId.toString()}
+              </div>
+            </div>
           </div>
-          <button onClick={cancel} disabled={busy} className="rounded-md border border-red-500 px-3 py-1.5 text-sm text-red-500 disabled:opacity-50">
-            Cancel listing
-          </button>
-        </div>
-      )}
 
-      {(status === OrderStatus.Filled || status === OrderStatus.Cancelled) && (
-        <p className="text-sm text-gray-500">
-          {status === OrderStatus.Filled ? "This name has been sold." : "This listing was cancelled."}
-        </p>
-      )}
+          {status === OrderStatus.Active && !isSeller && (
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={buy}
+                disabled={busy}
+                className="h-[52px] flex-1 rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-50"
+                style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
+              >
+                {busy ? "Confirming…" : `Buy now · ${formatEther(price)} ETH`}
+              </button>
+              <button
+                className="flex h-[52px] w-[52px] items-center justify-center rounded-[var(--radius-2)] border"
+                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+                title="Watchlist — coming soon"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+                  <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          <div className="mt-5 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+            {[
+              { k: "Owner", v: shortAddr(seller as `0x${string}`) },
+              { k: "Chain", v: "Namechain · ENSv2 (local)" },
+              { k: "Price", v: `${formatEther(price)} ETH` },
+            ].map((m) => (
+              <div key={m.k} className="flex items-center justify-between border-b px-[18px] py-3.5" style={{ borderColor: "var(--line)" }}>
+                <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                  {m.k}
+                </span>
+                <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }}>
+                  {m.v}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="mt-5 rounded-[var(--radius-3)] border p-[18px]"
+            style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-[var(--font-display)] text-[22px] font-light tracking-[var(--tracking-snug)]">
+                {subnameCount} subname{subnameCount === 1 ? "" : "s"}
+              </span>
+              <span
+                className="rounded-[5px] border px-2 py-[3px] font-mono text-[10px] tracking-[0.04em] uppercase"
+                style={{ color: "var(--brand)", borderColor: "rgba(32,197,217,0.4)" }}
+              >
+                ENSv2 · real
+              </span>
+            </div>
+            <div className="mt-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+              Issue and lease subnames — real, working rental contract.{" "}
+              <Link href="/subnames" style={{ color: "var(--brand)" }}>
+                Browse subnames →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* right column */}
+        <div>
+          <Tabs items={DETAIL_TABS} active={tab} onChange={setTab} />
+
+          {tab === "market" && (
+            <div className="flex flex-col gap-5">
+              {status === OrderStatus.Suspended && diff && (
+                <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}>
+                  <p className="font-sans text-sm font-medium" style={{ color: "var(--accent)" }}>
+                    This name&apos;s state changed since it was listed — the order suspended
+                    itself instead of silently filling.
+                  </p>
+                  <DiffTable diff={diff as readonly [string, string, string, string, boolean]} />
+                  {!isSeller && (
+                    <button
+                      onClick={acceptDiffAndBuy}
+                      disabled={busy}
+                      className="mt-4 h-11 rounded-[var(--radius-2)] px-6 font-sans text-sm font-semibold disabled:opacity-50"
+                      style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
+                    >
+                      {busy ? "Confirming…" : "Accept new state and buy anyway"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {isSeller && (status === OrderStatus.Active || status === OrderStatus.Suspended) && (
+                <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
+                  <p className="mb-3 font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
+                    Seller controls
+                  </p>
+                  <div className="mb-3 flex gap-2">
+                    <input
+                      value={relistPrice}
+                      onChange={(e) => setRelistPrice(e.target.value)}
+                      placeholder="New price (ETH)"
+                      className="h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
+                      style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                    />
+                    <button
+                      onClick={relist}
+                      disabled={busy}
+                      className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium disabled:opacity-50"
+                      style={{ background: "var(--fg)", color: "var(--bg)" }}
+                    >
+                      Relist
+                    </button>
+                  </div>
+                  <button
+                    onClick={cancel}
+                    disabled={busy}
+                    className="h-11 w-full rounded-[var(--radius-2)] border font-sans text-sm disabled:opacity-50"
+                    style={{ borderColor: "var(--color-salmao-700)", color: "var(--color-salmao-500)" }}
+                  >
+                    Cancel listing
+                  </button>
+                </div>
+              )}
+
+              {(status === OrderStatus.Filled || status === OrderStatus.Cancelled) && (
+                <p className="font-mono text-sm" style={{ color: "var(--fg-muted)" }}>
+                  {status === OrderStatus.Filled ? "This name has been sold." : "This listing was cancelled."}
+                </p>
+              )}
+
+              <ComingSoonPanel title="Offers" description="Standing offers on unlisted names aren't live yet — grant scope." />
+            </div>
+          )}
+
+          {tab === "activity" && (
+            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+              {activity.length === 0 && (
+                <p className="p-6 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+                  No activity yet.
+                </p>
+              )}
+              {activity.map((a, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-[130px_1fr_160px] items-center gap-3 border-b px-5 py-4"
+                  style={{ borderColor: "var(--line)" }}
+                >
+                  <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: a.color }}>
+                    {a.event}
+                  </span>
+                  <span className="font-mono text-sm" style={{ color: "var(--fg)" }}>
+                    {a.detail}
+                  </span>
+                  <span className="text-right font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                    {new Date(a.at * 1000).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "valuation" && (
+            <ComingSoonPanel
+              title="Estimated value"
+              description="Valuation modeling from comparable sales isn't live yet — no real pricing data source exists for this PoC."
+            />
+          )}
+
+          {tab === "details" && (
+            <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
+              {[
+                { k: "Token standard", v: "ERC-721-style" },
+                { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
+                { k: "Canonical ID", v: canonicalId.toString() },
+                { k: "Resolver", v: resolver ? shortAddr(resolver as `0x${string}`) : "—" },
+                { k: "Subnames", v: `${subnameCount} issued` },
+                { k: "Category", v: "—" },
+              ].map((d) => (
+                <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
+                  <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                    {d.k}
+                  </span>
+                  <span className="font-mono text-[13px]" style={{ color: "var(--fg)" }}>
+                    {d.v}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
@@ -130,9 +310,9 @@ export default function DomainDetailPage() {
 function DiffTable({ diff }: { diff: readonly [string, string, string, string, boolean] }) {
   const [pinnedOwner, pinnedResolver, liveOwner, liveResolver] = diff;
   return (
-    <table className="mt-2 w-full text-xs">
+    <table className="mt-3 w-full font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
       <thead>
-        <tr className="text-left text-gray-500">
+        <tr className="text-left" style={{ color: "var(--fg-dim)" }}>
           <th className="pr-2 font-normal">Field</th>
           <th className="pr-2 font-normal">At listing</th>
           <th className="font-normal">Now</th>
@@ -140,14 +320,14 @@ function DiffTable({ diff }: { diff: readonly [string, string, string, string, b
       </thead>
       <tbody>
         <tr>
-          <td className="pr-2">Owner</td>
-          <td className="pr-2">{shortAddr(pinnedOwner as `0x${string}`)}</td>
-          <td>{shortAddr(liveOwner as `0x${string}`)}</td>
+          <td className="pr-2 pt-1.5">Owner</td>
+          <td className="pr-2 pt-1.5">{shortAddr(pinnedOwner as `0x${string}`)}</td>
+          <td className="pt-1.5">{shortAddr(liveOwner as `0x${string}`)}</td>
         </tr>
         <tr>
-          <td className="pr-2">Resolver</td>
-          <td className="pr-2">{shortAddr(pinnedResolver as `0x${string}`)}</td>
-          <td>{shortAddr(liveResolver as `0x${string}`)}</td>
+          <td className="pr-2 pt-1.5">Resolver</td>
+          <td className="pr-2 pt-1.5">{shortAddr(pinnedResolver as `0x${string}`)}</td>
+          <td className="pt-1.5">{shortAddr(liveResolver as `0x${string}`)}</td>
         </tr>
       </tbody>
     </table>

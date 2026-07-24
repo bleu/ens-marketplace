@@ -1,26 +1,160 @@
+/* ── Bleu design system tokens — ported from the "ENS Market" Claude Design
+   project (colors_and_type.css). Dark-only; this app has no light theme. ──
+   Font @import lines must precede @import "tailwindcss" — CSS requires all
+   @import rules to come first, and Tailwind's own import expands into
+   non-import rules that would otherwise push these out of order. */
+@import url("https://api.fontshare.com/v2/css?f[]=erode@200,300,400,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@300;400;500;600&family=Inter:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Color - primary aqua */
+  --color-aqua-50: #e6fafd;
+  --color-aqua-100: #b8f0f6;
+  --color-aqua-300: #7adfeb;
+  --color-aqua-500: #20c5d9;
+  --color-aqua-600: #20a7d9;
+  --color-aqua-700: #1d87af;
+  --color-aqua-900: #0e202e;
+
+  /* Color - ink (near-black) */
+  --color-ink-900: #0f1321;
+  --color-ink-950: #0a0d18;
+  --color-ink-1000: #020308;
+
+  /* Color - papel */
+  --color-papel-0: #ffffff;
+  --color-papel-50: #f8f6ef;
+  --color-papel-100: #f2f4f1;
+  --color-papel-200: #cfd1cc;
+
+  /* Color - accents */
+  --color-salmao-500: #ff8668;
+  --color-salmao-700: #ce695e;
+  --color-lima-300: #b3fd8b;
+  --color-lima-500: #78ea96;
+
+  /* Color - profundo neutrals */
+  --color-profundo-300: #4c7d92;
+  --color-profundo-500: #4c6f92;
+  --color-profundo-700: #2a3a4c;
+
+  /* Color - sinal */
+  --color-sinal-success: var(--color-lima-500);
+  --color-sinal-warn: var(--color-salmao-500);
+  --color-sinal-danger: var(--color-salmao-700);
+
+  /* Semantic (dark) */
+  --bg: var(--color-ink-900);
+  --bg-deep: var(--color-ink-950);
+  --bg-raised: #11192a;
+  --fg: var(--color-papel-100);
+  --fg-muted: rgba(242, 244, 241, 0.72);
+  --fg-dim: rgba(242, 244, 241, 0.48);
+  --line: rgba(242, 244, 241, 0.1);
+  --line-strong: rgba(242, 244, 241, 0.22);
+
+  --brand: var(--color-aqua-500);
+  --brand-hover: var(--color-aqua-300);
+  --brand-cta: var(--color-aqua-600);
+  --brand-ink: var(--color-ink-900);
+  --accent: var(--color-salmao-500);
+  --highlight: var(--color-lima-300);
+
+  /* Type families */
+  --font-display: "Erode", "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --font-display-italic: "Instrument Serif", "Erode", Georgia, serif;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  --font-kicker: "Geist Mono", "Unbounded", sans-serif;
+
+  /* Letter spacing */
+  --tracking-tight: -0.06em;
+  --tracking-snug: -0.03em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.1em;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 144px;
+
+  /* Radii */
+  --radius-0: 0px;
+  --radius-1: 2px;
+  --radius-2: 6.5px;
+  --radius-3: 12px;
+  --radius-pill: 999px;
+
+  /* Halos & shadows */
+  --halo-soft: 0 0 60px 0 rgba(76, 111, 146, 0.45);
+  --halo-bright: 0 0 100px 0 rgba(32, 197, 217, 0.55);
+  --halo-warm: 0 0 100px 0 rgba(255, 134, 104, 0.45);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(2, 4, 12, 0.45);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-tight);
+}
+* {
+  box-sizing: border-box;
+}
+::selection {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--brand-hover);
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(242, 244, 241, 0.14);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

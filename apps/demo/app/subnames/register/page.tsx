@@ -56,31 +56,47 @@ export default function RegisterSubnamePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-4 p-8">
-      <h1 className="text-xl font-semibold">Register a subname</h1>
+    <main className="mx-auto max-w-lg animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
+      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+        Announce a subname
+      </div>
+      <h1 className="mb-8 font-[var(--font-display)] text-4xl font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
+        Register a <span className="font-[var(--font-display-italic)] italic">subname</span>
+      </h1>
 
-      <input
-        value={parentName}
-        onChange={(e) => setParentName(e.target.value)}
-        placeholder="Parent name, e.g. alice.eth"
-        className="rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-      />
-      <input
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder="Label, e.g. shop"
-        className="rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-      />
+      <div className="mb-3 flex flex-col gap-3">
+        <input
+          value={parentName}
+          onChange={(e) => setParentName(e.target.value)}
+          placeholder="Parent name, e.g. alice.eth"
+          className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
+          style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+        />
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label, e.g. shop"
+          className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
+          style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+        />
+      </div>
 
       {parentId !== undefined && parentOwner !== undefined && (
-        <div className="rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-800">
-          {isZeroAddress(parentOwner as `0x${string}`) && <p className="text-gray-500">Parent name isn&apos;t registered yet.</p>}
-          {!isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent && (
-            <p className="text-gray-500">Parent owned by {shortAddr(parentOwner as `0x${string}`)}, not you.</p>
+        <div className="rounded-[var(--radius-3)] border p-5 font-mono text-sm" style={{ borderColor: "var(--line)" }}>
+          {isZeroAddress(parentOwner as `0x${string}`) && (
+            <p style={{ color: "var(--fg-dim)" }}>Parent name isn&apos;t registered yet.</p>
           )}
-          {isOwnerOfParent && label && alreadyExists && <p className="text-gray-500">This subname already exists.</p>}
+          {!isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent && (
+            <p style={{ color: "var(--fg-dim)" }}>Parent owned by {shortAddr(parentOwner as `0x${string}`)}, not you.</p>
+          )}
+          {isOwnerOfParent && label && alreadyExists && <p style={{ color: "var(--fg-dim)" }}>This subname already exists.</p>}
           {isOwnerOfParent && label && !alreadyExists && (
-            <button onClick={register} disabled={isPending} className="rounded-md bg-blue-600 px-3 py-1.5 text-white disabled:opacity-50">
+            <button
+              onClick={register}
+              disabled={isPending}
+              className="h-11 rounded-[var(--radius-2)] px-4 font-sans text-sm font-semibold disabled:opacity-50"
+              style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
+            >
               {isPending ? "Registering…" : `Register ${label}.${parentName}`}
             </button>
           )}
