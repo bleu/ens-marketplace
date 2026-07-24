@@ -52,9 +52,9 @@ export default function DomainsPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-[280px_1fr] items-start">
+      <div className="grid grid-cols-1 items-start lg:grid-cols-[280px_1fr]">
         {/* filters */}
-        <aside className="sticky top-[76px] border-r p-6" style={{ borderColor: "var(--line)" }}>
+        <aside className="border-b p-6 lg:sticky lg:top-[76px] lg:border-b-0 lg:border-r" style={{ borderColor: "var(--line)" }}>
           <div className="mb-5 flex items-center gap-2">
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
               Filters
@@ -156,31 +156,41 @@ export default function DomainsPage() {
             </div>
           </ComingSoon>
 
-          <div
-            className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 pb-3.5"
-            style={{ borderColor: "var(--line-strong)" }}
-          >
-            {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h) => (
-              <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
-                {h}
-              </span>
-            ))}
+          {/* This row grid has several fixed-width columns (price/owner/last
+              sale/highest offer/select), so below a certain viewport it can't
+              compress further without truncating illegibly. Rather than let
+              that blow out the whole page's width (pushing the sidebar and
+              top nav off-screen too), the horizontal scroll is contained to
+              just this table via its own overflow-x-auto wrapper. */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[1058px]">
+              <div
+                className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b px-4 pb-3.5"
+                style={{ borderColor: "var(--line-strong)" }}
+              >
+                {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h) => (
+                  <span key={h} className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
+                    {h}
+                  </span>
+                ))}
+              </div>
+
+              {isLoading && rows.length === 0 && (
+                <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+                  Loading…
+                </p>
+              )}
+              {!isLoading && rows.length === 0 && (
+                <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+                  No names to show in this tab yet.
+                </p>
+              )}
+
+              {rows.map(({ id, order, name }) => (
+                <ExploreRow key={id.toString()} id={id} order={order!} name={name} />
+              ))}
+            </div>
           </div>
-
-          {isLoading && rows.length === 0 && (
-            <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-              Loading…
-            </p>
-          )}
-          {!isLoading && rows.length === 0 && (
-            <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-              No names to show in this tab yet.
-            </p>
-          )}
-
-          {rows.map(({ id, order, name }) => (
-            <ExploreRow key={id.toString()} id={id} order={order!} name={name} />
-          ))}
         </section>
       </div>
     </main>

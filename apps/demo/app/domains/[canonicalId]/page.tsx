@@ -163,9 +163,9 @@ export default function DomainDetailPage() {
         Back to explore
       </Link>
 
-      <div className="grid grid-cols-[420px_1fr] items-start gap-9">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_1fr]">
         {/* left card */}
-        <div className="sticky top-[108px]">
+        <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             <div
               className="flex aspect-square flex-col justify-between p-7"

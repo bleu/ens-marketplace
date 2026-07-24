@@ -113,7 +113,7 @@ export default function ListDomainPage() {
           otherwise leaves a lopsided void below the shorter column. Grows normally
           (no clipping) when the content is taller than the available space. */}
       <div className="flex flex-1 items-center">
-      <div className="grid w-full grid-cols-[1fr_360px] items-start gap-10">
+      <div className="grid w-full grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_360px]">
         <div>
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
             Select a name from your wallet
@@ -269,7 +269,7 @@ export default function ListDomainPage() {
         </div>
 
         {/* preview */}
-        <div className="sticky top-[108px] rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
+        <div className="rounded-[var(--radius-3)] border p-6 lg:sticky lg:top-[108px]" style={{ borderColor: "var(--line)" }}>
           <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
             Preview
           </div>

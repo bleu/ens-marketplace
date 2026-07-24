@@ -168,8 +168,8 @@ export default function SubnameDetailPage() {
         Back to subnames
       </Link>
 
-      <div className="grid grid-cols-[420px_1fr] items-start gap-9">
-        <div className="sticky top-[108px]">
+      <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[420px_1fr]">
+        <div className="lg:sticky lg:top-[108px]">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             <div className="flex aspect-square flex-col justify-between p-7" style={{ background: gradientFor(canonicalId) }}>
               <div style={{ width: 40, height: 58, background: "rgba(255,255,255,0.95)", clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }} />

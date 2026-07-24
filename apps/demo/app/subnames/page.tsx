@@ -85,7 +85,7 @@ export default function SubnamesPage() {
           <Link
             key={id.toString()}
             href={`/subnames/${id.toString()}`}
-            className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
+            className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b px-4 py-3.5"
             style={{ borderColor: "var(--line)" }}
           >
             <div className="flex items-center gap-3.5">
