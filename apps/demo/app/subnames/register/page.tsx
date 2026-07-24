@@ -48,6 +48,8 @@ export default function RegisterSubnamePage() {
 
   const isOwnerOfParent = parentOwner && address && (parentOwner as string).toLowerCase() === address.toLowerCase();
   const alreadyExists = subnameOwner !== undefined && !isZeroAddress(subnameOwner as `0x${string}`);
+  const parentNotOwnedByMe = parentOwner !== undefined && !isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent;
+  const isBlocked = parentNotOwnedByMe || Boolean(isOwnerOfParent && label && alreadyExists);
 
   const register = () => {
     if (!isConnected) {
@@ -64,7 +66,7 @@ export default function RegisterSubnamePage() {
   };
 
   return (
-    <main className="mx-auto max-w-[1120px] animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
+    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
       <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
         Announce a subname
       </div>
@@ -72,7 +74,12 @@ export default function RegisterSubnamePage() {
         Register a <span className="font-[var(--font-display-italic)] italic">subname</span>
       </h1>
 
-      <div className="grid grid-cols-[1fr_360px] items-start gap-10">
+      {/* Centers the two-column layout in whatever vertical space remains below the
+          header instead of always docking it to the top — a short form (1-2 fields)
+          otherwise leaves a lopsided void below the shorter column. Grows normally
+          (no clipping) when the content is taller than the available space. */}
+      <div className="flex flex-1 items-center">
+      <div className="grid w-full grid-cols-[1fr_360px] items-start gap-10">
         <div>
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
             Parent name and label
@@ -83,27 +90,42 @@ export default function RegisterSubnamePage() {
               onChange={(e) => setParentName(e.target.value)}
               placeholder="Parent name, e.g. alice.eth"
               className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
-              style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+              style={{
+                borderColor: parentNotOwnedByMe ? "var(--color-sinal-danger)" : "var(--line)",
+                background: "rgba(242,244,241,0.04)",
+                color: "var(--fg)",
+              }}
             />
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Label, e.g. shop"
               className="h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
-              style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+              style={{
+                borderColor: isOwnerOfParent && label && alreadyExists ? "var(--color-sinal-danger)" : "var(--line)",
+                background: "rgba(242,244,241,0.04)",
+                color: "var(--fg)",
+              }}
             />
           </div>
 
           {parentId !== undefined && parentOwner !== undefined && (
-            <div className="rounded-[var(--radius-3)] border p-5 font-mono text-sm" style={{ borderColor: "var(--line)" }}>
+            <div
+              className="rounded-[var(--radius-3)] border p-5 font-mono text-sm"
+              style={{ borderColor: isBlocked ? "rgba(206,105,94,0.4)" : "var(--line)" }}
+            >
               {isZeroAddress(parentOwner as `0x${string}`) && (
                 <p style={{ color: "var(--fg-dim)" }}>Parent name isn&apos;t registered yet.</p>
               )}
-              {!isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent && (
-                <p style={{ color: "var(--fg-dim)" }}>Parent owned by {shortAddr(parentOwner as `0x${string}`)}, not you.</p>
+              {parentNotOwnedByMe && (
+                <p style={{ color: "var(--color-sinal-danger)" }}>
+                  Parent owned by {shortAddr(parentOwner as `0x${string}`)}, not you.
+                </p>
               )}
               {isOwnerOfParent && !label && <p style={{ color: "var(--fg-dim)" }}>Enter a label to register under this parent.</p>}
-              {isOwnerOfParent && label && alreadyExists && <p style={{ color: "var(--fg-dim)" }}>This subname already exists.</p>}
+              {isOwnerOfParent && label && alreadyExists && (
+                <p style={{ color: "var(--color-sinal-danger)" }}>This subname already exists.</p>
+              )}
               {isOwnerOfParent && label && !alreadyExists && (
                 <p style={{ color: "var(--brand)" }}>Ready to register {label}.{parentName} →</p>
               )}
@@ -153,6 +175,7 @@ export default function RegisterSubnamePage() {
             Signed with your wallet. No expiry tracking in this PoC.
           </div>
         </div>
+      </div>
       </div>
     </main>
   );

@@ -50,7 +50,7 @@ export default function DomainDetailPage() {
   const subnameCount = useSubnameCount(canonicalId);
   const activity = useNameActivity(canonicalId);
 
-  if (!order) return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+  if (!order || name === undefined) return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
 
   const [seller, price, , , , status] = order as readonly [
     `0x${string}`,
@@ -60,6 +60,35 @@ export default function DomainDetailPage() {
     `0x${string}`,
     number,
   ];
+
+  // A mapping read for a canonicalId that was never registered/listed still returns a
+  // valid zero-value struct (not a revert) — nameOf() returning "" is the actual signal
+  // that nothing real exists at this id, and OrderStatus.None means it was never listed.
+  // Without this guard the page below would render a fully actionable listing (Owner
+  // 0x0…0, Price 0 ETH) for any mistyped or guessed id.
+  if (!name || status === OrderStatus.None) {
+    return (
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+        <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Back to explore
+        </Link>
+        <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
+          <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
+            {!name ? "This name doesn't exist." : "This name isn't listed for sale."}
+          </p>
+          <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            {!name
+              ? `No name is registered at canonical id ${canonicalId.toString()}.`
+              : "It hasn't been listed on the marketplace yet."}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const isSeller = address?.toLowerCase() === seller.toLowerCase();
   const busy = isPending || isConfirming;
 

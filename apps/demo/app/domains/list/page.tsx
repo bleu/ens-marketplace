@@ -37,7 +37,7 @@ export default function ListDomainPage() {
   });
 
   const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
-  const { isSuccess, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isSuccess, isError: isReceiptError, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
     if (!isSuccess || step === "idle") return;
@@ -60,9 +60,19 @@ export default function ListDomainPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess]);
 
+  // A rejected wallet signature or a reverted/failed transaction never fires
+  // `isSuccess`, so without this the effect above never runs and `step` (and therefore
+  // `busy`) would stay stuck forever with no way to retry short of a page reload.
+  useEffect(() => {
+    if ((writeError || isReceiptError) && step !== "idle") {
+      setStep("idle");
+    }
+  }, [writeError, isReceiptError, step]);
+
   const busy = isPending || isConfirming || step !== "idle";
   const isOwnedByMe = owner && address && (owner as string).toLowerCase() === address.toLowerCase();
   const isUnregistered = isZeroAddress(owner as `0x${string}` | undefined);
+  const isNameUnavailable = Boolean(registerName && owner !== undefined && !isUnregistered && !isOwnedByMe);
 
   const register = () => {
     if (!isConnected) {
@@ -90,7 +100,7 @@ export default function ListDomainPage() {
   };
 
   return (
-    <main className="mx-auto max-w-[1120px] animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
+    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
       <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
         Announce a name
       </div>
@@ -98,7 +108,12 @@ export default function ListDomainPage() {
         List a name for <span className="font-[var(--font-display-italic)] italic">sale</span>
       </h1>
 
-      <div className="grid grid-cols-[1fr_360px] items-start gap-10">
+      {/* Centers the two-column layout in whatever vertical space remains below the
+          header instead of always docking it to the top — a short form (1-3 fields)
+          otherwise leaves a lopsided void below the shorter column. Grows normally
+          (no clipping) when the content is taller than the available space. */}
+      <div className="flex flex-1 items-center">
+      <div className="grid w-full grid-cols-[1fr_360px] items-start gap-10">
         <div>
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
             Select a name from your wallet
@@ -138,7 +153,10 @@ export default function ListDomainPage() {
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
             Or register a new name (PoC helper)
           </div>
-          <div className="mb-9 rounded-[10px] border p-4" style={{ borderColor: "var(--line)" }}>
+          <div
+            className="mb-9 rounded-[10px] border p-4"
+            style={{ borderColor: isNameUnavailable ? "rgba(206,105,94,0.4)" : "var(--line)" }}
+          >
             <input
               value={registerName}
               onChange={(e) => {
@@ -147,7 +165,11 @@ export default function ListDomainPage() {
               }}
               placeholder="e.g. charlie.eth"
               className="h-11 w-full rounded-[8px] border px-3 font-mono text-sm outline-none"
-              style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+              style={{
+                borderColor: isNameUnavailable ? "var(--color-sinal-danger)" : "var(--line)",
+                background: "rgba(242,244,241,0.04)",
+                color: "var(--fg)",
+              }}
             />
             {registerName && owner !== undefined && isUnregistered && (
               <button
@@ -159,8 +181,8 @@ export default function ListDomainPage() {
                 {step === "registering" ? "Registering…" : "Register to my address"}
               </button>
             )}
-            {registerName && owner !== undefined && !isUnregistered && !isOwnedByMe && (
-              <p className="mt-3 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            {isNameUnavailable && (
+              <p className="mt-3 font-mono text-xs" style={{ color: "var(--color-sinal-danger)" }}>
                 Owned by {shortAddr(owner as `0x${string}`)} — not available.
               </p>
             )}
@@ -285,6 +307,7 @@ export default function ListDomainPage() {
             </p>
           )}
         </div>
+      </div>
       </div>
     </main>
   );

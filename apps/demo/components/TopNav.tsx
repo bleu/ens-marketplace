@@ -16,6 +16,7 @@ export function TopNav() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [searchError, setSearchError] = useState(false);
 
   const isExplore = pathname.startsWith("/domains") && !pathname.endsWith("/list");
   const isSubnames = pathname.startsWith("/subnames");
@@ -25,6 +26,7 @@ export function TopNav() {
     if (!query.trim() || !publicClient) return;
     setSearching(true);
     setNotFound(false);
+    setSearchError(false);
     try {
       const id = nameToCanonicalId(query.trim());
       const owner = await publicClient.readContract({
@@ -38,6 +40,9 @@ export function TopNav() {
       } else {
         router.push(`/domains/${id.toString()}`);
       }
+    } catch (err) {
+      console.error("Name search failed:", err);
+      setSearchError(true);
     } finally {
       setSearching(false);
     }
@@ -88,6 +93,7 @@ export function TopNav() {
           onChange={(e) => {
             setQuery(e.target.value);
             setNotFound(false);
+            setSearchError(false);
           }}
           placeholder="Search names…"
           aria-label="Search names"
@@ -96,6 +102,11 @@ export function TopNav() {
         />
         {searching && <span className="font-mono text-[10px] text-[var(--fg-dim)]">…</span>}
         {notFound && <span className="font-mono text-[10px] text-[var(--accent)]">Not found</span>}
+        {searchError && (
+          <span className="font-mono text-[10px]" style={{ color: "var(--color-sinal-danger)" }}>
+            Search failed — try again
+          </span>
+        )}
       </form>
 
       <nav className="flex items-center gap-6 font-sans text-sm font-medium">
