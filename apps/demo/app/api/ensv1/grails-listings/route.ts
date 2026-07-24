@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseEther } from "viem";
 import { SEAPORT_CONTRACT_ADDRESS, currencySymbolFor, type EnsV1Listing } from "@/lib/ensv1";
 
 /// Grails' own public search API (api.grails.app/api/v1/search) — no API key required
@@ -69,6 +70,31 @@ export async function GET(req: NextRequest) {
   const url = new URL(GRAILS_SEARCH_URL);
   url.searchParams.set("filters[showListings]", "true");
   url.searchParams.set("filters[marketplace]", "grails");
+
+  // Real server-side filters against Grails' actual schema (services/api/src/routes/
+  // search.ts) — minPrice/maxPrice are wei strings there, so ETH input from the client
+  // is converted; invalid/unparsable values are silently skipped rather than sent
+  // through and left for Grails to reject.
+  const minPriceEth = req.nextUrl.searchParams.get("minPrice");
+  const maxPriceEth = req.nextUrl.searchParams.get("maxPrice");
+  try {
+    if (minPriceEth) url.searchParams.set("filters[minPrice]", parseEther(minPriceEth).toString());
+  } catch {
+    /* invalid input, omit the filter */
+  }
+  try {
+    if (maxPriceEth) url.searchParams.set("filters[maxPrice]", parseEther(maxPriceEth).toString());
+  } catch {
+    /* invalid input, omit the filter */
+  }
+  const minLength = req.nextUrl.searchParams.get("minLength");
+  const maxLength = req.nextUrl.searchParams.get("maxLength");
+  if (minLength) url.searchParams.set("filters[minLength]", minLength);
+  if (maxLength) url.searchParams.set("filters[maxLength]", maxLength);
+  const startsWith = req.nextUrl.searchParams.get("startsWith");
+  const endsWith = req.nextUrl.searchParams.get("endsWith");
+  if (startsWith) url.searchParams.set("filters[startsWith]", startsWith);
+  if (endsWith) url.searchParams.set("filters[endsWith]", endsWith);
 
   if (name) {
     url.searchParams.set("q", name);

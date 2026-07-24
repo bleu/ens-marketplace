@@ -64,20 +64,40 @@ export interface GrailsListingsResult {
   refetch: () => void;
 }
 
+export interface GrailsFilters {
+  minPrice?: string;
+  maxPrice?: string;
+  minLength?: string;
+  maxLength?: string;
+  startsWith?: string;
+  endsWith?: string;
+}
+
 /// Real active Grails-native listings (api.grails.app, no API key required for reads —
 /// see app/api/ensv1/grails-listings) — a second, complementary Explore-grid source
-/// alongside OpenSea's, not a replacement for it.
-export function useGrailsListings(): GrailsListingsResult {
+/// alongside OpenSea's, not a replacement for it. Filters are applied server-side
+/// against Grails' real filter schema (unlike OpenSea, which has no filter params at
+/// all — see the Explore page for how OpenSea-sourced rows are filtered client-side
+/// on whatever's already loaded instead).
+export function useGrailsListings(filters: GrailsFilters = {}): GrailsListingsResult {
   const [listings, setListings] = useState<EnsV1Listing[]>([]);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const { minPrice, maxPrice, minLength, maxLength, startsWith, endsWith } = filters;
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await fetch("/api/ensv1/grails-listings");
+      const params = new URLSearchParams();
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (minLength) params.set("minLength", minLength);
+      if (maxLength) params.set("maxLength", maxLength);
+      if (startsWith) params.set("startsWith", startsWith);
+      if (endsWith) params.set("endsWith", endsWith);
+      const res = await fetch(`/api/ensv1/grails-listings?${params.toString()}`);
       if (!res.ok) throw new Error(`status ${res.status}`);
       const json = await res.json();
       setListings(json.listings ?? []);
@@ -88,7 +108,7 @@ export function useGrailsListings(): GrailsListingsResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [minPrice, maxPrice, minLength, maxLength, startsWith, endsWith]);
 
   useEffect(() => {
     refresh();

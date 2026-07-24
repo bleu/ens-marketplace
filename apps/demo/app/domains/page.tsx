@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
@@ -26,13 +26,77 @@ const TABS: TabItem[] = [
   { id: "activity", label: "Activity", disabled: true },
 ];
 
+interface EnsV1FilterCriteria {
+  source: "all" | "grails" | "opensea";
+  priceInput: { min: string; max: string };
+  lengthInput: { min: string; max: string };
+  patternInput: { startsWith: string; endsWith: string };
+}
+
+/// Applied to every ENSv1 row regardless of source — for Grails this is redundant with
+/// the real server-side filter (harmless, just a no-op re-check), but for OpenSea it's
+/// the only filtering that happens at all, since OpenSea's listings endpoint has no
+/// filter params — see useGrailsListings' doc comment.
+function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
+  if (f.source !== "all" && l.source !== f.source) return false;
+
+  const priceEth = Number(formatUnits(BigInt(l.price.value), l.price.decimals));
+  if (f.priceInput.min && priceEth < Number(f.priceInput.min)) return false;
+  if (f.priceInput.max && priceEth > Number(f.priceInput.max)) return false;
+
+  const label = l.name.replace(/\.eth$/i, "");
+  if (f.lengthInput.min && label.length < Number(f.lengthInput.min)) return false;
+  if (f.lengthInput.max && label.length > Number(f.lengthInput.max)) return false;
+
+  if (f.patternInput.startsWith && !label.toLowerCase().startsWith(f.patternInput.startsWith.toLowerCase())) return false;
+  if (f.patternInput.endsWith && !label.toLowerCase().endsWith(f.patternInput.endsWith.toLowerCase())) return false;
+
+  return true;
+}
+
 export default function DomainsPage() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+
+  // Real filters for the ENSv1 view. Grails has an actual server-side filter schema, so
+  // its query is re-run (debounced, to avoid hammering their API per keystroke) whenever
+  // these change. OpenSea's listings endpoint has no filter params at all — the exact
+  // same criteria are instead applied client-side to whatever page is already loaded,
+  // via matchesFilters below, so at least the OpenSea rows on screen still narrow down
+  // even though the underlying fetch can't be filtered server-side.
+  const [source, setSource] = useState<"all" | "grails" | "opensea">("all");
+  const [priceInput, setPriceInput] = useState({ min: "", max: "" });
+  const [lengthInput, setLengthInput] = useState({ min: "", max: "" });
+  const [patternInput, setPatternInput] = useState({ startsWith: "", endsWith: "" });
+  const [grailsFilters, setGrailsFilters] = useState({
+    minPrice: "",
+    maxPrice: "",
+    minLength: "",
+    maxLength: "",
+    startsWith: "",
+    endsWith: "",
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setGrailsFilters({
+        minPrice: priceInput.min,
+        maxPrice: priceInput.max,
+        minLength: lengthInput.min,
+        maxLength: lengthInput.max,
+        startsWith: patternInput.startsWith,
+        endsWith: patternInput.endsWith,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [priceInput, lengthInput, patternInput]);
+
   const opensea = useEnsV1Listings();
-  const grails = useGrailsListings();
-  const ensv1Listings = [...grails.listings, ...opensea.listings];
+  const grails = useGrailsListings(grailsFilters);
+  const ensv1Listings = [...grails.listings, ...opensea.listings].filter((l) =>
+    matchesFilters(l, { source, priceInput, lengthInput, patternInput }),
+  );
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
@@ -158,24 +222,132 @@ export default function DomainsPage() {
           >
             Refine
           </div>
-          <ComingSoon>
-            <div className="flex flex-col">
-              {["Categories", "Status", "Has offers", "Has last sale", "Price range", "Marketplace"].map((label) => (
-                <div
-                  key={label}
-                  className="flex h-11 items-center justify-between border-b"
-                  style={{ borderColor: "var(--line)" }}
-                >
-                  <span className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-                    {label}
-                  </span>
-                  <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-                    Any
-                  </span>
+          {networkMode === "ensv1" ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-1.5">
+                {(["all", "grails", "opensea"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSource(s)}
+                    className="h-8 flex-1 rounded-[var(--radius-1)] border font-mono text-[11px] uppercase"
+                    style={
+                      source === s
+                        ? { borderColor: "var(--brand)", color: "var(--fg)", background: "rgba(32,197,217,0.08)" }
+                        : { borderColor: "var(--line)", color: "var(--fg-muted)" }
+                    }
+                  >
+                    {s === "all" ? "All" : s === "grails" ? "Grails" : "OpenSea"}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+                  Price (ETH)
                 </div>
-              ))}
+                <div className="flex gap-2">
+                  <input
+                    value={priceInput.min}
+                    onChange={(e) => setPriceInput((p) => ({ ...p, min: e.target.value }))}
+                    placeholder="Min"
+                    aria-label="Minimum price in ETH"
+                    inputMode="decimal"
+                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  />
+                  <input
+                    value={priceInput.max}
+                    onChange={(e) => setPriceInput((p) => ({ ...p, max: e.target.value }))}
+                    placeholder="Max"
+                    aria-label="Maximum price in ETH"
+                    inputMode="decimal"
+                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+                  Length (chars)
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={lengthInput.min}
+                    onChange={(e) => setLengthInput((p) => ({ ...p, min: e.target.value }))}
+                    placeholder="Min"
+                    aria-label="Minimum name length"
+                    inputMode="numeric"
+                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  />
+                  <input
+                    value={lengthInput.max}
+                    onChange={(e) => setLengthInput((p) => ({ ...p, max: e.target.value }))}
+                    placeholder="Max"
+                    aria-label="Maximum name length"
+                    inputMode="numeric"
+                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+                  Starts with
+                </div>
+                <input
+                  value={patternInput.startsWith}
+                  onChange={(e) => setPatternInput((p) => ({ ...p, startsWith: e.target.value }))}
+                  placeholder="e.g. sun"
+                  aria-label="Name starts with"
+                  className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                />
+              </div>
+
+              <div>
+                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+                  Ends with
+                </div>
+                <input
+                  value={patternInput.endsWith}
+                  onChange={(e) => setPatternInput((p) => ({ ...p, endsWith: e.target.value }))}
+                  placeholder="e.g. dao"
+                  aria-label="Name ends with"
+                  className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
+                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
+                />
+              </div>
+
+              <p className="font-mono text-[10px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                Price/length/pattern filters query Grails&apos; real API directly. OpenSea
+                has no filter API, so those filters only narrow whichever OpenSea listings
+                are already loaded on this page.
+              </p>
             </div>
-          </ComingSoon>
+          ) : (
+            <ComingSoon>
+              <div className="flex flex-col">
+                {["Categories", "Status", "Has offers", "Has last sale", "Price range", "Marketplace"].map((label) => (
+                  <div
+                    key={label}
+                    className="flex h-11 items-center justify-between border-b"
+                    style={{ borderColor: "var(--line)" }}
+                  >
+                    <span className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                      Any
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ComingSoon>
+          )}
         </aside>
 
         {/* table */}
