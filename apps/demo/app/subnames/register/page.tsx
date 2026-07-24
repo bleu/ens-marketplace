@@ -48,7 +48,13 @@ export default function RegisterSubnamePage() {
 
   const isOwnerOfParent = parentOwner && address && (parentOwner as string).toLowerCase() === address.toLowerCase();
   const alreadyExists = subnameOwner !== undefined && !isZeroAddress(subnameOwner as `0x${string}`);
-  const parentNotOwnedByMe = parentOwner !== undefined && !isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent;
+  // Gated on `isConnected` (not just `address`) so this — and everything derived from
+  // it (the inline error, the preview's admin-role line, and the CTA's disabled state
+  // below) — agree with each other and with the "click CTA to connect" flow in
+  // register(): before a wallet is connected there's no "you" to compare the parent's
+  // owner against, so it would be actively misleading to assert the parent isn't yours.
+  const parentNotOwnedByMe =
+    isConnected && parentOwner !== undefined && !isZeroAddress(parentOwner as `0x${string}`) && !isOwnerOfParent;
   const isBlocked = parentNotOwnedByMe || Boolean(isOwnerOfParent && label && alreadyExists);
 
   const register = () => {
@@ -89,6 +95,7 @@ export default function RegisterSubnamePage() {
               value={parentName}
               onChange={(e) => setParentName(e.target.value)}
               placeholder="Parent name, e.g. alice.eth"
+              aria-label="Parent name"
               className="input-field h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
               style={{
                 borderColor: parentNotOwnedByMe ? "var(--color-sinal-danger)" : "var(--line)",
@@ -100,6 +107,7 @@ export default function RegisterSubnamePage() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Label, e.g. shop"
+              aria-label="Subname label"
               className="input-field h-12 rounded-[8px] border px-4 font-mono text-sm outline-none"
               style={{
                 borderColor: isOwnerOfParent && label && alreadyExists ? "var(--color-sinal-danger)" : "var(--line)",
@@ -116,6 +124,9 @@ export default function RegisterSubnamePage() {
             >
               {isZeroAddress(parentOwner as `0x${string}`) && (
                 <p style={{ color: "var(--fg-dim)" }}>Parent name isn&apos;t registered yet.</p>
+              )}
+              {!isConnected && !isZeroAddress(parentOwner as `0x${string}`) && (
+                <p style={{ color: "var(--fg-dim)" }}>Connect your wallet to check ownership of this parent.</p>
               )}
               {parentNotOwnedByMe && (
                 <p style={{ color: "var(--color-sinal-danger)" }}>
@@ -161,11 +172,13 @@ export default function RegisterSubnamePage() {
           </div>
           <div className="mt-2.5 flex justify-between font-mono text-xs">
             <span style={{ color: "var(--fg-dim)" }}>Admin role</span>
-            <span style={{ color: "var(--fg)" }}>Granted to your address</span>
+            <span style={{ color: isBlocked ? "var(--fg-dim)" : "var(--fg)" }}>
+              {isBlocked ? "Not granted — blocked" : "Granted to your address"}
+            </span>
           </div>
           <button
             onClick={register}
-            disabled={busy || !parentId || !label || (isConnected && (parentNotOwnedByMe || alreadyExists))}
+            disabled={busy || !parentId || !label || isBlocked}
             className="mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >

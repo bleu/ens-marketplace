@@ -267,6 +267,7 @@ export default function SubnameDetailPage() {
                   value={resolver}
                   onChange={(e) => setResolver(e.target.value)}
                   placeholder="New resolver address"
+                  aria-label="New resolver address"
                   className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
                 />
@@ -338,6 +339,7 @@ export default function SubnameDetailPage() {
                   value={announcePrice}
                   onChange={(e) => setAnnouncePrice(e.target.value)}
                   placeholder="Price (ETH)"
+                  aria-label="Announce price in ETH"
                   inputMode="decimal"
                   className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{
@@ -350,6 +352,7 @@ export default function SubnameDetailPage() {
                   value={announceDays}
                   onChange={(e) => setAnnounceDays(e.target.value)}
                   placeholder="Term (days)"
+                  aria-label="Announce term in days"
                   inputMode="numeric"
                   className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                   style={{

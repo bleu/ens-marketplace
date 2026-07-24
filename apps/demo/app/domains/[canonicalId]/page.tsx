@@ -318,6 +318,7 @@ export default function DomainDetailPage() {
                       value={relistPrice}
                       onChange={(e) => setRelistPrice(e.target.value)}
                       placeholder="New price (ETH)"
+                      aria-label="New price in ETH"
                       inputMode="decimal"
                       className="input-field h-11 flex-1 rounded-[8px] border px-3 font-mono text-sm outline-none"
                       style={{

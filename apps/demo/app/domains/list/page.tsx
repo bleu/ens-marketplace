@@ -167,6 +167,7 @@ export default function ListDomainPage() {
                 setSelectedId(undefined);
               }}
               placeholder="e.g. charlie.eth"
+              aria-label="Name to register"
               className="input-field h-11 w-full rounded-[8px] border px-3 font-mono text-sm outline-none"
               style={{
                 borderColor: isNameUnavailable ? "var(--color-sinal-danger)" : "var(--line)",
@@ -250,6 +251,7 @@ export default function ListDomainPage() {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
+                aria-label="Price in ETH"
                 disabled={busy}
                 className="input-field h-[52px] w-full rounded-[8px] border px-4 font-mono text-lg outline-none disabled:opacity-50"
                 style={{
