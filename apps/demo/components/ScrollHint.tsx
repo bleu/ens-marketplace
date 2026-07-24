@@ -13,7 +13,16 @@ import { useEffect, useRef, useState } from "react";
 /// hint disappears once there's nothing left to scroll to in that direction
 /// (e.g. a viewport wide enough that the table already fits) rather than
 /// permanently overlaying the last column.
-export function ScrollHint({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function ScrollHint({
+  children,
+  className = "",
+  outerClassName = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Applied to the outer positioning wrapper (e.g. so this can size/shrink correctly as a flex item). */
+  outerClassName?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -38,7 +47,7 @@ export function ScrollHint({ children, className = "" }: { children: React.React
   }, []);
 
   return (
-    <div className="relative">
+    <div className={`relative ${outerClassName}`}>
       <div ref={ref} className={`overflow-x-auto ${className}`}>
         {children}
       </div>

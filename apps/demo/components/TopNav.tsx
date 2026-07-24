@@ -13,7 +13,6 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const publicClient = usePublicClient();
-  const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [searchError, setSearchError] = useState(false);
@@ -23,14 +22,22 @@ export function TopNav() {
   const isExplore = pathname.startsWith("/domains") && !pathname.endsWith("/list");
   const isSubnames = pathname.startsWith("/subnames");
 
-  async function onSearchSubmit(e: React.FormEvent) {
+  async function onSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!query.trim() || !publicClient) return;
+    // Read the typed value directly from the submitted form (uncontrolled
+    // input) rather than from React state. A fully-controlled `value={query}`
+    // input is silently reset to its initial "" on the first post-mount
+    // render, which discards anything typed via native DOM events during the
+    // window between a fresh (non-<Link>) page load and React finishing
+    // hydration — a window that's easily wide enough to hit by hand in dev.
+    // Reading straight from the DOM at submit time sidesteps that entirely.
+    const query = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+    if (!query || !publicClient) return;
     setSearching(true);
     setNotFound(false);
     setSearchError(false);
     try {
-      const id = nameToCanonicalId(query.trim());
+      const id = nameToCanonicalId(query);
       const owner = await publicClient.readContract({
         address: REGISTRY_ADDRESS,
         abi: registryAbi,
@@ -61,9 +68,9 @@ export function TopNav() {
         <path d="m21 21-4.3-4.3" />
       </svg>
       <input
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
+        name="q"
+        defaultValue=""
+        onChange={() => {
           setNotFound(false);
           setSearchError(false);
         }}
