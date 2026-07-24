@@ -188,7 +188,7 @@ export default function DomainDetailPage() {
               <button
                 onClick={buy}
                 disabled={busy}
-                className="h-[52px] flex-1 rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-50"
+                className="btn-cta h-[52px] flex-1 rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-50"
                 style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
               >
                 {busy ? "Confirming…" : `Buy now · ${formatEther(price)} ETH`}

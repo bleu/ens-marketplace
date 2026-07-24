@@ -293,7 +293,7 @@ export default function ListDomainPage() {
           <button
             onClick={listForSale}
             disabled={busy || !canonicalId || !price || (isConnected && !isOwnedByMe)}
-            className="mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
+            className="btn-cta mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-40"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >
             {step === "approving" ? "Approving…" : step === "listing" ? "Listing…" : "List name"}

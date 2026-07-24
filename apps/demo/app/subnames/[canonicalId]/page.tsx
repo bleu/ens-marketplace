@@ -222,7 +222,7 @@ export default function SubnameDetailPage() {
             <button
               onClick={rent}
               disabled={busy}
-              className="h-[52px] rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-50"
+              className="btn-cta h-[52px] rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-50"
               style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
             >
               {busy ? "Confirming…" : `Rent for ${formatEther(pricePerTerm)} ETH`}
@@ -265,7 +265,7 @@ export default function SubnameDetailPage() {
             </button>
           )}
 
-          {callerHasRole && isAvailable && !vaultPreauthorized && (
+          {callerHasRole && !isLeased && !vaultPreauthorized && (
             <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
               <p className="mb-3 font-mono text-sm" style={{ color: "var(--fg-muted)" }}>
                 Authorize the rental vault before announcing — it needs to hold this
@@ -282,7 +282,7 @@ export default function SubnameDetailPage() {
             </div>
           )}
 
-          {callerHasRole && isAvailable && vaultPreauthorized && (
+          {callerHasRole && !isLeased && vaultPreauthorized && (
             <div className="rounded-[var(--radius-3)] border p-6" style={{ borderColor: "var(--line)" }}>
               <p className="mb-3 font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
                 Announce for rent
