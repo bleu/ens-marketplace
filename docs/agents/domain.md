@@ -33,8 +33,6 @@ When your output names a domain concept (in an issue title, a refactor proposal,
 
 If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/grill-with-docs`).
 
-## Flag ADR conflicts
+## Edit ADRs on conflict
 
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
-
-> _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
+This is a fast-moving PoC, so decisions are fragile by design. If your output contradicts an existing ADR, don't just flag the contradiction — edit the ADR directly to record the new decision: update its status (superseded/amended), state what changed and why, and keep the old reasoning in place for the record. Then mention in your output which ADR you changed, so a human can review the edit rather than discover it later.
