@@ -43,5 +43,4 @@ indexer, no search, no polish, per the product definition) and get built out her
 5. Whether ENS Labs has a canonical pattern for bounded-term registry role delegation —
    on the agenda for the July 29 Q&A call.
 6. Swap/intent provider selection for Slice 2 (CoW Protocol is the strong internal
-   candidate — see `docs/poc-slice-2.md` and the kept feature set in
-   `docs/cow-automation.md`).
+   candidate — see `docs/poc-slice-2.md`).
