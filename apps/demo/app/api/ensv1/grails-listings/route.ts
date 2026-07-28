@@ -7,11 +7,14 @@ import { SEAPORT_CONTRACT_ADDRESS, currencySymbolFor, type EnsV1Listing } from "
 /// there is SIWE+JWT, but only for write actions like posting a listing, not for browsing
 /// public data). filters[marketplace]=grails is meant to restrict to listings native to
 /// Grails' own Seaport conduit, but in practice also includes OpenSea orders Grails has
-/// display-mirrored into their own index — those come back with OpenSea's display-only
-/// summary shape (see isFulfillable below) rather than a real signature+parameters, and
-/// are dropped as unresolved rather than cross-resolved via OpenSea: Grails and OpenSea
-/// are kept as strictly separate, independently-browsable sources (see app/domains/page.tsx),
-/// not merged or recovered across each other.
+/// display-mirrored into their own index — those come back with a different top-level
+/// order_data shape ({item, maker, protocol_data, ...} rather than Grails-native's
+/// {orderHash, parameters, signature, protocol_data, ...}). Both shapes carry the real,
+/// fulfillable Seaport order at order_data.protocol_data.{signature,parameters} though
+/// (verified against live API responses — every currently-active listing has it there),
+/// so isFulfillable checks that nested path rather than the top level, which is only
+/// populated for the Grails-native shape and silently dropped ~70% of real active
+/// listings when checked directly.
 const GRAILS_SEARCH_URL = "https://api.grails.app/api/v1/search";
 
 interface GrailsListingItem {
@@ -19,11 +22,8 @@ interface GrailsListingItem {
   currency_address: string;
   status: string;
   order_hash: string;
-  // Despite filters[marketplace]=grails, not every returned listing's order_data has the
-  // raw fulfillable Seaport shape ({parameters, signature}) — some come back as an
-  // OpenSea-style display summary instead ({item, maker, ...}) with neither field. Typed
-  // loosely here and validated at runtime (isFulfillable below) rather than trusted,
-  // since treating the summary shape as fulfillable crashes on `.parameters.offerer`.
+  // Loosely typed and validated at runtime (isFulfillable below) rather than trusted,
+  // since the two shapes described above disagree on everything except protocol_data.
   order_data: Record<string, unknown>;
 }
 
@@ -41,11 +41,13 @@ interface GrailsSearchResponse {
 }
 
 function isFulfillable(orderData: Record<string, unknown>): orderData is {
-  signature: string;
-  parameters: { offer: { token: string; identifierOrCriteria: string; itemType: number }[]; [key: string]: unknown };
+  protocol_data: {
+    signature: string;
+    parameters: { offer: { token: string; identifierOrCriteria: string; itemType: number }[]; [key: string]: unknown };
+  };
 } {
-  const parameters = orderData.parameters as { offer?: unknown } | undefined;
-  return typeof orderData.signature === "string" && Array.isArray(parameters?.offer);
+  const protocolData = orderData.protocol_data as { signature?: unknown; parameters?: { offer?: unknown } } | undefined;
+  return typeof protocolData?.signature === "string" && Array.isArray(protocolData.parameters?.offer);
 }
 
 function toEnsV1Listing(result: GrailsResult): EnsV1Listing | null {
@@ -53,13 +55,14 @@ function toEnsV1Listing(result: GrailsResult): EnsV1Listing | null {
   if (!active) return null;
   if (!isFulfillable(active.order_data)) return null;
 
+  const { signature, parameters } = active.order_data.protocol_data;
   return {
     name: result.name,
     price: { value: active.price, decimals: 18, currency: currencySymbolFor(active.currency_address) },
     listing: {
       order_hash: active.order_hash,
       protocol_address: SEAPORT_CONTRACT_ADDRESS,
-      protocol_data: { parameters: active.order_data.parameters, signature: active.order_data.signature },
+      protocol_data: { parameters, signature },
       price: { current: { value: active.price, decimals: 18, currency: currencySymbolFor(active.currency_address) } },
     },
     source: "grails",
