@@ -165,6 +165,11 @@ const SESSION_CACHE_PREFIX = "ensv1-listing:";
 /// clicked into. Passing the grid's own data through keeps the two views consistent —
 /// if it's real enough to show in the grid, it's real enough to attempt to buy.
 export function cacheListingForNavigation(listing: EnsV1Listing) {
+  // Nothing to key the cache on without a resolved name — callers only reach this from a
+  // row that routes to the name-keyed detail page in the first place (see EnsV1Row),
+  // which name-less listings never do (see EnsV1Listing.name), but guarded here too since
+  // this is a public export.
+  if (listing.name === null) return;
   try {
     sessionStorage.setItem(SESSION_CACHE_PREFIX + listing.name.toLowerCase(), JSON.stringify(listing));
   } catch {

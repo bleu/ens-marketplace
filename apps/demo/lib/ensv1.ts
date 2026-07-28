@@ -232,7 +232,11 @@ export interface OpenSeaListing {
 }
 
 export interface EnsV1Listing {
-  name: string;
+  /// Null when the subgraph couldn't map this listing's tokenId back to a dotted name
+  /// (see resolveListingNames in app/api/ensv1/listings) — the listing itself is still
+  /// real and fulfillable, just without a pretty display name. Callers must not assume
+  /// this is always a string.
+  name: string | null;
   price: { value: string; decimals: number; currency: string };
   listing: OpenSeaListing;
   source: "opensea" | "grails";

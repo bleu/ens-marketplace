@@ -9,13 +9,13 @@ import { useKnownDomainIds, useLastSale } from "@/lib/events";
 import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
-import type { EnsV1Listing } from "@/lib/ensv1";
+import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
-import { shortAddr } from "@/lib/format";
+import { shortAddr, shortId } from "@/lib/format";
 
 type Order = readonly [`0x${string}`, bigint, `0x${string}`, `0x${string}`, `0x${string}`, number];
 
@@ -44,6 +44,13 @@ function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
   const priceEth = Number(formatUnits(BigInt(l.price.value), l.price.decimals));
   if (f.priceInput.min && priceEth < Number(f.priceInput.min)) return false;
   if (f.priceInput.max && priceEth > Number(f.priceInput.max)) return false;
+
+  // A listing with no resolved name (see EnsV1Listing.name) has no label to check
+  // length/pattern against — kept in the results (per the price check above) as long as
+  // no length/pattern filter is actually active, rather than dropped outright.
+  if (l.name === null) {
+    return !f.lengthInput.min && !f.lengthInput.max && !f.patternInput.startsWith && !f.patternInput.endsWith;
+  }
 
   const label = l.name.replace(/\.eth$/i, "");
   if (f.lengthInput.min && label.length < Number(f.lengthInput.min)) return false;
@@ -681,24 +688,23 @@ function EnsV1Table({
   );
 }
 
+/// A name-less row (see EnsV1Listing.name) can't route to our internal per-name detail
+/// page (app/domains/ensv1/[name]) — that page looks everything up (subgraph ownership,
+/// Grails/OpenSea by-name search) keyed on a real dotted name, which this listing doesn't
+/// have. It's still a real, fulfillable OpenSea order though (see resolveListingNames), so
+/// rather than hiding it, it links straight out to its OpenSea asset page instead.
 function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
   const seller = listing.listing.protocol_data.parameters.offerer as `0x${string}`;
   const price = formatUnits(BigInt(listing.price.value), listing.price.decimals);
+  const offer = listing.listing.protocol_data.parameters.offer[0];
 
-  return (
-    <Link
-      href={`/domains/ensv1/${encodeURIComponent(listing.name)}`}
-      onClick={() => {
-        if (listing.source === "opensea") cacheListingForNavigation(listing);
-      }}
-      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_110px] items-center border-b pr-4 py-3.5"
-      style={{ borderColor: "var(--line)" }}
-    >
+  const rowContent = (
+    <>
       <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
-              {listing.name}
+            <span className="truncate font-sans text-base font-semibold" style={{ color: listing.name ? "var(--fg)" : "var(--fg-muted)" }}>
+              {listing.name ?? `Unnamed · #${shortId(offer.identifierOrCriteria)}`}
             </span>
             <StatusBadge variant="chain">L1</StatusBadge>
           </div>
@@ -720,9 +726,33 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
       </div>
       <div className="justify-self-end">
         <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
-          Select
+          {listing.name ? "Select" : "View on OpenSea"}
         </span>
       </div>
+    </>
+  );
+
+  const rowClassName = "explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_110px] items-center border-b pr-4 py-3.5";
+  const rowStyle = { borderColor: "var(--line)" };
+
+  if (listing.name === null) {
+    return (
+      <a href={openseaAssetUrl(offer.token as `0x${string}`, offer.identifierOrCriteria)} target="_blank" rel="noreferrer" className={rowClassName} style={rowStyle}>
+        {rowContent}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={`/domains/ensv1/${encodeURIComponent(listing.name)}`}
+      onClick={() => {
+        if (listing.source === "opensea") cacheListingForNavigation(listing);
+      }}
+      className={rowClassName}
+      style={rowStyle}
+    >
+      {rowContent}
     </Link>
   );
 }

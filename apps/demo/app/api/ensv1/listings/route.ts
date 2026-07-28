@@ -23,8 +23,10 @@ async function fetchOpenSeaPage(apiKey: string, cursor: string | null): Promise<
 }
 
 /// Classifies each listing's NFT offer item by which real ENS contract minted it, and
-/// resolves the actual dotted name for each via the subgraph. Listings whose token isn't
-/// a recognized ENS contract, or whose id the subgraph doesn't recognize, are dropped.
+/// resolves the actual dotted name for each via the subgraph. Every listing is kept
+/// regardless of whether a name was found — the listing itself (price, seller, Seaport
+/// order data) is real and fulfillable either way, so a subgraph gap shouldn't hide a
+/// real, buyable order. Callers render `name: null` with a fallback identifier instead.
 async function resolveListingNames(listings: OpenSeaListing[]): Promise<{ resolved: EnsV1Listing[]; unresolvedCount: number }> {
   const wrapperHexIds: string[] = [];
   const registrarHexIds: string[] = [];
@@ -57,17 +59,14 @@ async function resolveListingNames(listings: OpenSeaListing[]): Promise<{ resolv
   }
 
   const resolved: EnsV1Listing[] = [];
-  let unresolvedCount = 0;
   for (const listing of listings) {
     const hexId = wrapperIdByListing.get(listing) ?? registrarIdByListing.get(listing);
-    const name = hexId ? namesById.get(hexId) : undefined;
-    if (!name) {
-      unresolvedCount++;
-      continue;
-    }
+    const name = hexId ? (namesById.get(hexId) ?? null) : null;
     resolved.push({ name, price: listing.price.current, listing, source: "opensea" });
   }
-  return { resolved, unresolvedCount };
+  // Nothing is hidden anymore (see doc comment above) — kept as a field for API/UI
+  // compatibility with the Grails route's genuinely-hidden count, always 0 here.
+  return { resolved, unresolvedCount: 0 };
 }
 
 /// Server-side proxy to OpenSea's real active listings for the ENS collection — keeps
