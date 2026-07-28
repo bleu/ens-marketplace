@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
-import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
+import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import type { EnsV1Listing } from "@/lib/ensv1";
@@ -70,6 +70,7 @@ export default function DomainsPage() {
 function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
+  const { registry, orderManager } = useContractAddresses();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
 
   const router = useRouter();
@@ -189,8 +190,8 @@ function DomainsPageInner() {
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
-      { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [id] } as const,
-      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
+      { address: orderManager, abi: orderManagerAbi, functionName: "orders", args: [id] } as const,
+      { address: registry, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
     ]),
     query: { enabled: ids.length > 0 && networkMode === "ensv2", refetchInterval: 3000 },
   });

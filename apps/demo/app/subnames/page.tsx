@@ -4,7 +4,7 @@ import Link from "next/link";
 import { formatEther } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownSubnameIds } from "@/lib/events";
-import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, leaseVaultAbi, registryAbi } from "@/lib/contracts";
+import { leaseVaultAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { isZeroAddress } from "@/lib/format";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -23,14 +23,15 @@ function statusOf(activeUntil: bigint, tenant: string): { label: string; variant
 }
 
 export default function SubnamesPage() {
+  const { registry, leaseVault } = useContractAddresses();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownSubnameIds();
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "listings", args: [id] } as const,
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [id] } as const,
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "tenantOf", args: [id] } as const,
-      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "listings", args: [id] } as const,
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [id] } as const,
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "tenantOf", args: [id] } as const,
+      { address: registry, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
     ]),
     query: { enabled: ids.length > 0, refetchInterval: 3000 },
   });

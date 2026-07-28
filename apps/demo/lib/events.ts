@@ -1,16 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { formatEther, type Log } from "viem";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
 import {
-  LEASE_VAULT_ADDRESS,
-  ORDER_MANAGER_ADDRESS,
-  REGISTRY_ADDRESS,
-  leaseVaultAbi,
-  orderManagerAbi,
-  registryAbi,
-} from "./contracts";
+  formatEther,
+  type Abi,
+  type ContractEventName,
+  type GetContractEventsParameters,
+  type GetContractEventsReturnType,
+  type Log,
+} from "viem";
+import { usePublicClient, useWatchContractEvent } from "wagmi";
+import { leaseVaultAbi, orderManagerAbi, registryAbi, useContractAddresses } from "./contracts";
+
+type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
+
+/// Public RPCs commonly cap `eth_getLogs`' block range (e.g. the default Sepolia RPC,
+/// thirdweb, caps it at 10,000 blocks) — scanning in windows under that cap, starting at
+/// `fromBlock` (the network's actual deploy block — see lib/contracts.ts's `fromBlock`,
+/// threaded in via `useContractAddresses()`) rather than block 0, is what makes event
+/// scanning work on a real chain instead of just Anvil's tiny local chain.
+const MAX_BLOCK_RANGE = 5000n;
+
+async function getContractEventsChunked<const abi extends Abi | readonly unknown[], eventName extends ContractEventName<abi>>(
+  client: PublicClient,
+  params: GetContractEventsParameters<abi, eventName> & { fromBlock: bigint },
+): Promise<GetContractEventsReturnType<abi, eventName>> {
+  const latest = await client.getBlockNumber();
+  if (params.fromBlock > latest) return [] as GetContractEventsReturnType<abi, eventName>;
+
+  const windows: Array<[bigint, bigint]> = [];
+  for (let start = params.fromBlock; start <= latest; start += MAX_BLOCK_RANGE) {
+    const end = start + MAX_BLOCK_RANGE - 1n > latest ? latest : start + MAX_BLOCK_RANGE - 1n;
+    windows.push([start, end]);
+  }
+
+  const results = await Promise.all(
+    windows.map(([fromBlock, toBlock]) => client.getContractEvents({ ...params, fromBlock, toBlock })),
+  );
+  return results.flat() as GetContractEventsReturnType<abi, eventName>;
+}
 
 /// No indexer at PoC stage (see docs/roadmap.md) — canonicalIds are discovered directly
 /// from historical + live contract events. Once an ID is known, the pages that use these
@@ -29,18 +57,18 @@ export interface KnownIds {
 
 export function useKnownDomainIds(): KnownIds {
   const client = usePublicClient();
+  const { orderManager, fromBlock } = useContractAddresses();
   const [ids, setIds] = useState<bigint[]>([]);
   const [isError, setIsError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!client) return;
     try {
-      const logs = await client.getContractEvents({
-        address: ORDER_MANAGER_ADDRESS,
+      const logs = await getContractEventsChunked(client, {
+        address: orderManager,
         abi: orderManagerAbi,
         eventName: "Listed",
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
       });
       setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
       setIsError(false);
@@ -48,14 +76,14 @@ export function useKnownDomainIds(): KnownIds {
       console.error("useKnownDomainIds: failed to scan Listed events", err);
       setIsError(true);
     }
-  }, [client]);
+  }, [client, orderManager, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useWatchContractEvent({
-    address: ORDER_MANAGER_ADDRESS,
+    address: orderManager,
     abi: orderManagerAbi,
     eventName: "Listed",
     onLogs: refresh,
@@ -66,18 +94,18 @@ export function useKnownDomainIds(): KnownIds {
 
 export function useKnownSubnameIds(): KnownIds {
   const client = usePublicClient();
+  const { leaseVault, fromBlock } = useContractAddresses();
   const [ids, setIds] = useState<bigint[]>([]);
   const [isError, setIsError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!client) return;
     try {
-      const logs = await client.getContractEvents({
-        address: LEASE_VAULT_ADDRESS,
+      const logs = await getContractEventsChunked(client, {
+        address: leaseVault,
         abi: leaseVaultAbi,
         eventName: "Announced",
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
       });
       setIds(Array.from(new Set(logs.map((log) => log.args.canonicalId as bigint))));
       setIsError(false);
@@ -85,14 +113,14 @@ export function useKnownSubnameIds(): KnownIds {
       console.error("useKnownSubnameIds: failed to scan Announced events", err);
       setIsError(true);
     }
-  }, [client]);
+  }, [client, leaseVault, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useWatchContractEvent({
-    address: LEASE_VAULT_ADDRESS,
+    address: leaseVault,
     abi: leaseVaultAbi,
     eventName: "Announced",
     onLogs: refresh,
@@ -110,27 +138,26 @@ export interface LastSale {
 /// numbers, and no sale shown at all if the name has never actually changed hands.
 export function useLastSale(canonicalId: bigint): LastSale | null {
   const client = usePublicClient();
+  const { orderManager, fromBlock } = useContractAddresses();
   const [sale, setSale] = useState<LastSale | null>(null);
 
   const refresh = useCallback(async () => {
     if (!client) return;
     try {
       const [filled, refilled] = await Promise.all([
-        client.getContractEvents({
-          address: ORDER_MANAGER_ADDRESS,
+        getContractEventsChunked(client, {
+          address: orderManager,
           abi: orderManagerAbi,
           eventName: "Filled",
           args: { canonicalId },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
         }),
-        client.getContractEvents({
-          address: ORDER_MANAGER_ADDRESS,
+        getContractEventsChunked(client, {
+          address: orderManager,
           abi: orderManagerAbi,
           eventName: "Refilled",
           args: { canonicalId },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
         }),
       ]);
       const all = [...filled, ...refilled].sort((a, b) => Number(a.blockNumber! - b.blockNumber!));
@@ -144,14 +171,14 @@ export function useLastSale(canonicalId: bigint): LastSale | null {
     } catch (err) {
       console.error("useLastSale: failed to scan Filled/Refilled events", err);
     }
-  }, [client, canonicalId]);
+  }, [client, canonicalId, orderManager, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Filled", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Refilled", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Filled", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Refilled", onLogs: refresh });
 
   return sale;
 }
@@ -189,6 +216,7 @@ function formatActivity(log: Log & { eventName?: string; args?: Record<string, u
 /// indexer, matching this repo's PoC scope, and no fabricated activity.
 export function useNameActivity(canonicalId: bigint): ActivityItem[] {
   const client = usePublicClient();
+  const { orderManager, fromBlock } = useContractAddresses();
   const [items, setItems] = useState<ActivityItem[]>([]);
 
   const refresh = useCallback(async () => {
@@ -197,13 +225,12 @@ export function useNameActivity(canonicalId: bigint): ActivityItem[] {
       const eventNames = ["Listed", "Relisted", "Filled", "OrderSuspended", "Cancelled", "Refilled"] as const;
       const logsByEvent = await Promise.all(
         eventNames.map((eventName) =>
-          client.getContractEvents({
-            address: ORDER_MANAGER_ADDRESS,
+          getContractEventsChunked(client, {
+            address: orderManager,
             abi: orderManagerAbi,
             eventName,
             args: { canonicalId },
-            fromBlock: 0n,
-            toBlock: "latest",
+            fromBlock,
           }),
         ),
       );
@@ -219,18 +246,18 @@ export function useNameActivity(canonicalId: bigint): ActivityItem[] {
     } catch (err) {
       console.error("useNameActivity: failed to scan activity events", err);
     }
-  }, [client, canonicalId]);
+  }, [client, canonicalId, orderManager, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Listed", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Relisted", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Filled", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "OrderSuspended", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Cancelled", onLogs: refresh });
-  useWatchContractEvent({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, eventName: "Refilled", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Listed", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Relisted", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Filled", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "OrderSuspended", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Cancelled", onLogs: refresh });
+  useWatchContractEvent({ address: orderManager, abi: orderManagerAbi, eventName: "Refilled", onLogs: refresh });
 
   return items;
 }
@@ -239,30 +266,30 @@ export function useNameActivity(canonicalId: bigint): ActivityItem[] {
 /// domain detail page's "N subnames" box, linking our two real features together.
 export function useSubnameCount(parentId: bigint): number {
   const client = usePublicClient();
+  const { registry, fromBlock } = useContractAddresses();
   const [count, setCount] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!client) return;
     try {
-      const logs = await client.getContractEvents({
-        address: REGISTRY_ADDRESS,
+      const logs = await getContractEventsChunked(client, {
+        address: registry,
         abi: registryAbi,
         eventName: "SubnameRegistered",
         args: { parentId },
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
       });
       setCount(logs.length);
     } catch (err) {
       console.error("useSubnameCount: failed to scan SubnameRegistered events", err);
     }
-  }, [client, parentId]);
+  }, [client, parentId, registry, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  useWatchContractEvent({ address: REGISTRY_ADDRESS, abi: registryAbi, eventName: "SubnameRegistered", onLogs: refresh });
+  useWatchContractEvent({ address: registry, abi: registryAbi, eventName: "SubnameRegistered", onLogs: refresh });
 
   return count;
 }
@@ -277,6 +304,7 @@ export interface OwnedName {
 /// than requiring the user to type a name they already know they own.
 export function useOwnedNames(owner: `0x${string}` | undefined): OwnedName[] {
   const client = usePublicClient();
+  const { registry, fromBlock } = useContractAddresses();
   const [names, setNames] = useState<OwnedName[]>([]);
 
   const refresh = useCallback(async () => {
@@ -286,19 +314,17 @@ export function useOwnedNames(owner: `0x${string}` | undefined): OwnedName[] {
     }
     try {
       const [registered, ownerChanged] = await Promise.all([
-        client.getContractEvents({
-          address: REGISTRY_ADDRESS,
+        getContractEventsChunked(client, {
+          address: registry,
           abi: registryAbi,
           eventName: "Registered",
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
         }),
-        client.getContractEvents({
-          address: REGISTRY_ADDRESS,
+        getContractEventsChunked(client, {
+          address: registry,
           abi: registryAbi,
           eventName: "OwnerChanged",
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
         }),
       ]);
       const all = [...registered, ...ownerChanged].sort((a, b) => {
@@ -329,14 +355,14 @@ export function useOwnedNames(owner: `0x${string}` | undefined): OwnedName[] {
     } catch (err) {
       console.error("useOwnedNames: failed to scan Registered/OwnerChanged events", err);
     }
-  }, [client, owner]);
+  }, [client, owner, registry, fromBlock]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  useWatchContractEvent({ address: REGISTRY_ADDRESS, abi: registryAbi, eventName: "Registered", onLogs: refresh });
-  useWatchContractEvent({ address: REGISTRY_ADDRESS, abi: registryAbi, eventName: "OwnerChanged", onLogs: refresh });
+  useWatchContractEvent({ address: registry, abi: registryAbi, eventName: "Registered", onLogs: refresh });
+  useWatchContractEvent({ address: registry, abi: registryAbi, eventName: "OwnerChanged", onLogs: refresh });
 
   return names;
 }

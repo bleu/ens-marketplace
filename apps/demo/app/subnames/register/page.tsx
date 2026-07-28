@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { REGISTRY_ADDRESS, registryAbi } from "@/lib/contracts";
+import { registryAbi, useContractAddresses } from "@/lib/contracts";
 import { nameToCanonicalId, subnameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress, shortAddr } from "@/lib/format";
 import { gradientFor } from "@/components/NameCard";
@@ -13,13 +13,14 @@ export default function RegisterSubnamePage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { registry } = useContractAddresses();
   const [parentName, setParentName] = useState("");
   const [label, setLabel] = useState("");
 
   const parentId = parentName ? nameToCanonicalId(parentName) : undefined;
 
   const { data: parentOwner } = useReadContract({
-    address: REGISTRY_ADDRESS,
+    address: registry,
     abi: registryAbi,
     functionName: "ownerOf",
     args: parentId !== undefined ? [parentId] : undefined,
@@ -29,7 +30,7 @@ export default function RegisterSubnamePage() {
   const subnameId = parentId !== undefined && label ? subnameToCanonicalId(parentId, label) : undefined;
 
   const { data: subnameOwner } = useReadContract({
-    address: REGISTRY_ADDRESS,
+    address: registry,
     abi: registryAbi,
     functionName: "ownerOf",
     args: subnameId !== undefined ? [subnameId] : undefined,
@@ -68,7 +69,7 @@ export default function RegisterSubnamePage() {
     }
     if (parentId === undefined || !address) return;
     writeContract({
-      address: REGISTRY_ADDRESS,
+      address: registry,
       abi: registryAbi,
       functionName: "registerSubname",
       args: [parentId, label, address],

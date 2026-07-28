@@ -6,7 +6,14 @@ import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { LEASE_VAULT_ADDRESS, REGISTRY_ADDRESS, SUBNAME_ADMIN_ROLE, leaseVaultAbi, registryAbi } from "@/lib/contracts";
+import {
+  Network,
+  SUBNAME_ADMIN_ROLE,
+  leaseVaultAbi,
+  registryAbi,
+  useContractAddresses,
+  useCurrentNetwork,
+} from "@/lib/contracts";
 import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortAddr, shortId } from "@/lib/format";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
@@ -21,28 +28,30 @@ export default function SubnameDetailPage() {
   const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { registry, leaseVault } = useContractAddresses();
+  const network = useCurrentNetwork();
   const [resolver, setResolver] = useState("");
   const [announcePrice, setAnnouncePrice] = useState("");
   const [announceDays, setAnnounceDays] = useState("");
 
   const { data, isError: readsError, refetch } = useReadContracts({
     contracts: [
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "listings", args: [canonicalId] },
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [canonicalId] },
-      { address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "tenantOf", args: [canonicalId] },
-      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [canonicalId] },
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "listings", args: [canonicalId] },
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [canonicalId] },
+      { address: leaseVault, abi: leaseVaultAbi, functionName: "tenantOf", args: [canonicalId] },
+      { address: registry, abi: registryAbi, functionName: "nameOf", args: [canonicalId] },
       {
-        address: REGISTRY_ADDRESS,
+        address: registry,
         abi: registryAbi,
         functionName: "hasRole",
-        args: [canonicalId, SUBNAME_ADMIN_ROLE, LEASE_VAULT_ADDRESS],
+        args: [canonicalId, SUBNAME_ADMIN_ROLE, leaseVault],
       },
     ],
     query: { refetchInterval: 3000 },
   });
 
   const { data: callerHasRole } = useReadContract({
-    address: REGISTRY_ADDRESS,
+    address: registry,
     abi: registryAbi,
     functionName: "hasRole",
     args: address ? [canonicalId, SUBNAME_ADMIN_ROLE, address] : undefined,
@@ -151,14 +160,14 @@ export default function SubnameDetailPage() {
   };
 
   const rent = withWallet(() =>
-    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "rent", args: [canonicalId], value: pricePerTerm })
+    writeContract({ address: leaseVault, abi: leaseVaultAbi, functionName: "rent", args: [canonicalId], value: pricePerTerm })
   );
   const reclaim = withWallet(() =>
-    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "reclaim", args: [canonicalId] })
+    writeContract({ address: leaseVault, abi: leaseVaultAbi, functionName: "reclaim", args: [canonicalId] })
   );
   const setLeasedResolver = withWallet(() =>
     writeContract({
-      address: LEASE_VAULT_ADDRESS,
+      address: leaseVault,
       abi: leaseVaultAbi,
       functionName: "setLeasedResolver",
       args: [canonicalId, resolver as `0x${string}`],
@@ -166,23 +175,23 @@ export default function SubnameDetailPage() {
   );
   const authorizeVault = withWallet(() =>
     writeContract({
-      address: REGISTRY_ADDRESS,
+      address: registry,
       abi: registryAbi,
       functionName: "setRole",
-      args: [canonicalId, SUBNAME_ADMIN_ROLE, LEASE_VAULT_ADDRESS, true],
+      args: [canonicalId, SUBNAME_ADMIN_ROLE, leaseVault, true],
     })
   );
   const announce = withWallet(() => {
     if (!isPositiveNumber(announcePrice) || !isPositiveInteger(announceDays)) return;
     writeContract({
-      address: LEASE_VAULT_ADDRESS,
+      address: leaseVault,
       abi: leaseVaultAbi,
       functionName: "announceForRent",
       args: [canonicalId, parseEther(announcePrice), BigInt(Number(announceDays) * 86400)],
     });
   });
   const withdraw = withWallet(() =>
-    writeContract({ address: LEASE_VAULT_ADDRESS, abi: leaseVaultAbi, functionName: "withdraw", args: [canonicalId] })
+    writeContract({ address: leaseVault, abi: leaseVaultAbi, functionName: "withdraw", args: [canonicalId] })
   );
 
   return (
@@ -383,8 +392,14 @@ export default function SubnameDetailPage() {
           <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
               { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
-              { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
-              { k: "Lease vault", v: shortAddr(LEASE_VAULT_ADDRESS) },
+              {
+                k: "Registry",
+                v:
+                  network === Network.Sepolia
+                    ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
+                    : "Mock ENSv2 registry (local Anvil)",
+              },
+              { k: "Lease vault", v: shortAddr(leaseVault) },
               { k: "Tenant", v: isZeroAddress(tenant as `0x${string}`) ? "None" : shortAddr(tenant as `0x${string}`) },
             ].map((d) => (
               <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>

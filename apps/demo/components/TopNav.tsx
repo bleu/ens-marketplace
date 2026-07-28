@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { usePublicClient } from "wagmi";
-import { REGISTRY_ADDRESS, registryAbi } from "@/lib/contracts";
+import { registryAbi, useContractAddresses } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress } from "@/lib/format";
 import { useNetworkMode } from "@/lib/network-mode";
@@ -14,6 +14,7 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const publicClient = usePublicClient();
+  const { registry } = useContractAddresses();
   const [networkMode] = useNetworkMode();
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -68,7 +69,7 @@ export function TopNav() {
     try {
       const id = nameToCanonicalId(query);
       const owner = await publicClient.readContract({
-        address: REGISTRY_ADDRESS,
+        address: registry,
         abi: registryAbi,
         functionName: "ownerOf",
         args: [id],

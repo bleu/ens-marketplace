@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { ORDER_MANAGER_ADDRESS, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
+import { orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
 import { isPositiveNumber, isZeroAddress, shortAddr } from "@/lib/format";
 import { useOwnedNames } from "@/lib/events";
@@ -18,6 +18,7 @@ export default function ListDomainPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { registry, orderManager } = useContractAddresses();
   const owned = useOwnedNames(address);
 
   const [selectedId, setSelectedId] = useState<bigint | undefined>();
@@ -29,7 +30,7 @@ export default function ListDomainPage() {
   const selectedName = owned.find((o) => o.canonicalId === selectedId)?.name ?? registerName;
 
   const { data: owner, refetch: refetchOwner } = useReadContract({
-    address: REGISTRY_ADDRESS,
+    address: registry,
     abi: registryAbi,
     functionName: "ownerOf",
     args: canonicalId !== undefined ? [canonicalId] : undefined,
@@ -50,7 +51,7 @@ export default function ListDomainPage() {
         return;
       }
       writeContract({
-        address: ORDER_MANAGER_ADDRESS,
+        address: orderManager,
         abi: orderManagerAbi,
         functionName: "list",
         args: [canonicalId, parseEther(price)],
@@ -87,7 +88,7 @@ export default function ListDomainPage() {
     }
     if (!address || !registerName) return;
     setStep("registering");
-    writeContract({ address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "register", args: [registerName, address] });
+    writeContract({ address: registry, abi: registryAbi, functionName: "register", args: [registerName, address] });
   };
 
   const listForSale = () => {
@@ -98,10 +99,10 @@ export default function ListDomainPage() {
     if (!canonicalId) return;
     setStep("approving");
     writeContract({
-      address: REGISTRY_ADDRESS,
+      address: registry,
       abi: registryAbi,
       functionName: "approveTransfer",
-      args: [canonicalId, ORDER_MANAGER_ADDRESS],
+      args: [canonicalId, orderManager],
     });
   };
 

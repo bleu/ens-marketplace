@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
+import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
 import { isPositiveNumber, shortAddr, shortId } from "@/lib/format";
@@ -32,15 +32,17 @@ export default function DomainDetailPage() {
   const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { registry, orderManager } = useContractAddresses();
+  const network = useCurrentNetwork();
   const [relistPrice, setRelistPrice] = useState("");
   const [tab, setTab] = useState("market");
 
   const { data, isError: readsError, refetch } = useReadContracts({
     contracts: [
-      { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "orders", args: [canonicalId] },
-      { address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "diff", args: [canonicalId] },
-      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "nameOf", args: [canonicalId] },
-      { address: REGISTRY_ADDRESS, abi: registryAbi, functionName: "resolverOf", args: [canonicalId] },
+      { address: orderManager, abi: orderManagerAbi, functionName: "orders", args: [canonicalId] },
+      { address: orderManager, abi: orderManagerAbi, functionName: "diff", args: [canonicalId] },
+      { address: registry, abi: registryAbi, functionName: "nameOf", args: [canonicalId] },
+      { address: registry, abi: registryAbi, functionName: "resolverOf", args: [canonicalId] },
     ],
     query: { refetchInterval: 3000 },
   });
@@ -150,15 +152,15 @@ export default function DomainDetailPage() {
   };
 
   const buy = withWallet(() =>
-    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price })
+    writeContract({ address: orderManager, abi: orderManagerAbi, functionName: "buy", args: [canonicalId], value: price })
   );
   const cancel = withWallet(() =>
-    writeContract({ address: ORDER_MANAGER_ADDRESS, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] })
+    writeContract({ address: orderManager, abi: orderManagerAbi, functionName: "cancel", args: [canonicalId] })
   );
   const relist = withWallet(() => {
     if (!isPositiveNumber(relistPrice)) return;
     writeContract({
-      address: ORDER_MANAGER_ADDRESS,
+      address: orderManager,
       abi: orderManagerAbi,
       functionName: "relist",
       args: [canonicalId, parseEther(relistPrice)],
@@ -169,7 +171,7 @@ export default function DomainDetailPage() {
     const [, , liveOwner, liveResolver] = diff as readonly [string, string, string, string, boolean];
     const expectedHash = computeStateHash(liveOwner as `0x${string}`, liveResolver as `0x${string}`);
     writeContract({
-      address: ORDER_MANAGER_ADDRESS,
+      address: orderManager,
       abi: orderManagerAbi,
       functionName: "acceptDiffAndRefill",
       args: [canonicalId, expectedHash],
@@ -403,7 +405,13 @@ export default function DomainDetailPage() {
             <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
-                { k: "Registry", v: "Mock ENSv2 registry (local — not real Sepolia)" },
+                {
+                  k: "Registry",
+                  v:
+                    network === Network.Sepolia
+                      ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
+                      : "Mock ENSv2 registry (local Anvil)",
+                },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
                 { k: "Resolver", v: resolver ? shortAddr(resolver as `0x${string}`) : "—" },
                 { k: "Subnames", v: `${subnameCount} issued` },
