@@ -37,6 +37,18 @@ export function labelhash(label: string): `0x${string}` {
   return keccak256(toBytes(normalize(label)));
 }
 
+/// The decimal-string tokenId(s) a given name could be listed under, so a by-name
+/// lookup can query OpenSea's direct per-NFT endpoint instead of paginating the whole
+/// collection. `wrapped` (NameWrapper, namehash) always applies; `unwrapped`
+/// (BaseRegistrar, labelhash of just the 2LD label) only applies to a direct "label.eth"
+/// name — subnames and non-.eth names can't exist unwrapped, so it's null there.
+export function candidateTokenIds(name: string): { wrapped: string; unwrapped: string | null } {
+  const wrapped = BigInt(namehash(name)).toString();
+  const labels = normalize(name).split(".");
+  const unwrapped = labels.length === 2 && labels[1] === "eth" ? BigInt(labelhash(labels[0])).toString() : null;
+  return { wrapped, unwrapped };
+}
+
 /// Seaport 1.6 mainnet deployment — shared by every marketplace built on the protocol
 /// (OpenSea, Grails, ...); verified against Grails' own contracts.ts. Grails' listings
 /// don't include this as an explicit field the way OpenSea's response does, so it's
@@ -95,16 +107,34 @@ export function subgraphEndpoint(): string {
   return `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH`;
 }
 
+const SUBGRAPH_RETRY_DELAYS_MS = [300, 900, 1800];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/// The free/no-key fallback subgraph endpoint (see subgraphEndpoint) is shared and
+/// rate-limited — a 429 there is routine, transient traffic contention, not a real
+/// failure, and without a retry it surfaces as "couldn't load this name" on the very
+/// first click after any burst of other requests (e.g. the Explore grid's own listing
+/// resolution). Retried with backoff before giving up; a dedicated THE_GRAPH_API_KEY
+/// (see .env.example) removes the rate limit entirely and makes this a non-issue.
 async function querySubgraph<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  const res = await fetch(subgraphEndpoint(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
-  if (!res.ok) throw new Error(`Subgraph request failed: ${res.status}`);
-  const json = await res.json();
-  if (json.errors) throw new Error(`Subgraph query error: ${JSON.stringify(json.errors)}`);
-  return json.data as T;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(subgraphEndpoint(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (res.status === 429 && attempt < SUBGRAPH_RETRY_DELAYS_MS.length) {
+      await sleep(SUBGRAPH_RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    if (!res.ok) throw new Error(`Subgraph request failed: ${res.status}`);
+    const json = await res.json();
+    if (json.errors) throw new Error(`Subgraph query error: ${JSON.stringify(json.errors)}`);
+    return json.data as T;
+  }
 }
 
 interface DomainQueryResult {

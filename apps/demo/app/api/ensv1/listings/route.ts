@@ -3,16 +3,32 @@ import {
   BASE_REGISTRAR_ADDRESS,
   NAME_WRAPPER_ADDRESS,
   batchResolveNames,
+  candidateTokenIds,
   tokenIdToHex,
   type EnsV1Listing,
   type OpenSeaListing,
 } from "@/lib/ensv1";
 
 const OPENSEA_COLLECTION_SLUG = "ens";
-// Bound on how many pages the ?name= search mode will walk looking for one specific
-// listing, so a name that isn't currently listed doesn't turn into an unbounded scan of
-// OpenSea's whole "ens" collection (many thousands of listings).
-const MAX_SEARCH_PAGES = 10;
+
+/// Direct per-NFT lookup (GET /listings/collection/{slug}/nfts/{identifier}/best) —
+/// used for the ?name= search mode instead of paginating the whole collection, since we
+/// already know exactly which token(s) the name could be listed under (see
+/// candidateTokenIds). Also authoritative in a way the bulk /all feed isn't: OpenSea's
+/// own docs describe this as the listing actually usable for fulfillment, whereas /all
+/// has been observed returning a listing still marked "ACTIVE" that this endpoint no
+/// longer considers fulfillable (e.g. the offerer's approval/balance state changed) —
+/// so this doubles as a stronger existence check, not just a faster one.
+async function fetchBestListingForToken(apiKey: string, tokenIdDecimal: string): Promise<OpenSeaListing | null> {
+  const res = await fetch(
+    `https://api.opensea.io/api/v2/listings/collection/${OPENSEA_COLLECTION_SLUG}/nfts/${tokenIdDecimal}/best`,
+    { headers: { accept: "application/json", "x-api-key": apiKey } },
+  );
+  if (res.status === 404) return null;
+  const json = await res.json();
+  if (json.errors || json.status !== "ACTIVE") return null;
+  return json as OpenSeaListing;
+}
 
 async function fetchOpenSeaPage(apiKey: string, cursor: string | null): Promise<{ listings: OpenSeaListing[]; next: string | null }> {
   const url = new URL(`https://api.opensea.io/api/v2/listings/collection/${OPENSEA_COLLECTION_SLUG}/all`);
@@ -73,11 +89,18 @@ async function resolveListingNames(listings: OpenSeaListing[]): Promise<{ resolv
 }
 
 /// Server-side proxy to OpenSea's real active listings for the ENS collection — keeps
-/// OPENSEA_API_KEY out of the browser. Two modes:
+/// OPENSEA_API_KEY out of the browser. Every listing OpenSea returns in the browse feed
+/// is included as-is (no spam/price filtering — this is a PoC integration meant to show
+/// exactly what each marketplace has, and anything shown is a real order a user can
+/// choose to attempt on-chain). Two modes:
 ///   - GET /api/ensv1/listings?cursor=...        — one page of the browsable Explore feed
-///   - GET /api/ensv1/listings?name=alice.eth     — look for one specific name's active
-///     listing (reached via search rather than browsing), walking up to MAX_SEARCH_PAGES
-///     of the same feed since OpenSea's collection-listings API has no per-token filter.
+///   - GET /api/ensv1/listings?name=alice.eth     — direct per-token lookup for one
+///     specific name's active listing (see fetchBestListingForToken) — fast and doesn't
+///     depend on the ENS subgraph at all, unlike the paginated browse mode above. Note
+///     this uses OpenSea's own curated /best endpoint, which can be more conservative
+///     than the raw browse feed (see app/domains/ensv1/[name]/page.tsx and
+///     lib/ensv1-client.ts's session-cache passthrough for how a row clicked from the
+///     Explore grid bypasses this and always remains attemptable).
 export async function GET(req: NextRequest) {
   const apiKey = process.env.OPENSEA_API_KEY;
   if (!apiKey) {
@@ -88,16 +111,16 @@ export async function GET(req: NextRequest) {
 
   try {
     if (name) {
-      let cursor: string | null = null;
-      for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
-        const pageResult: { listings: OpenSeaListing[]; next: string | null } = await fetchOpenSeaPage(apiKey, cursor);
-        const { resolved } = await resolveListingNames(pageResult.listings);
-        const match = resolved.find((l) => l.name.toLowerCase() === name.toLowerCase());
-        if (match) return NextResponse.json({ listing: match, pagesChecked: page + 1 });
-        if (!pageResult.next) break;
-        cursor = pageResult.next;
-      }
-      return NextResponse.json({ listing: null, pagesChecked: MAX_SEARCH_PAGES });
+      const { wrapped, unwrapped } = candidateTokenIds(name);
+      const [wrappedListing, unwrappedListing] = await Promise.all([
+        fetchBestListingForToken(apiKey, wrapped),
+        unwrapped ? fetchBestListingForToken(apiKey, unwrapped) : Promise.resolve(null),
+      ]);
+      const found = wrappedListing ?? unwrappedListing;
+      if (!found) return NextResponse.json({ listing: null });
+      return NextResponse.json({
+        listing: { name, price: found.price.current, listing: found, source: "opensea" as const } satisfies EnsV1Listing,
+      });
     }
 
     const cursor = req.nextUrl.searchParams.get("cursor");

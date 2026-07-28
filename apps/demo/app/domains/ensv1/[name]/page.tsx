@@ -4,12 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatUnits } from "viem";
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useEnsV1Domain, useEnsV1ListingForName } from "@/lib/ensv1-client";
 import { ensAppUrl, grailsUrl, namehash, openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
-import { fulfillOpenSeaListing, useEthersSigner } from "@/lib/seaport";
+import { fulfillListing, isInsufficientBalanceError, useEthersSigner } from "@/lib/seaport";
 import { gradientFor } from "@/components/NameCard";
 import { shortAddr } from "@/lib/format";
 
@@ -19,10 +19,10 @@ export default function EnsV1DomainDetailPage() {
   const params = useParams<{ name: string }>();
   const name = params.name;
 
-  const { domain, isLoading: domainLoading, isError: domainError, notFound } = useEnsV1Domain(name);
+  const { domain, isLoading: domainLoading, isError: domainError, notFound, refetch: refetchDomain } = useEnsV1Domain(name);
   const { listing, isLoading: listingLoading, notConfigured } = useEnsV1ListingForName(name);
 
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const chainId = useChainId();
   const { switchChain, isPending: switching } = useSwitchChain();
@@ -35,17 +35,38 @@ export default function EnsV1DomainDetailPage() {
   const gradient = gradientFor(BigInt(namehash(name)));
   const onMainnet = chainId === mainnet.id;
 
+  // Proactive check so "insufficient balance" shows up before the user even reaches the
+  // confirm step, rather than only surfacing after they click through and Seaport's own
+  // pre-flight check rejects the attempt. Only meaningful for ETH-denominated listings
+  // (a wallet's native balance says nothing about its WETH/other-token balance) — for
+  // anything else this simply doesn't block, and Seaport's own check remains the
+  // authoritative guard either way.
+  const { data: ethBalance } = useBalance({ address, chainId: mainnet.id, query: { enabled: isConnected && onMainnet } });
+  const insufficientBalance =
+    !!listing &&
+    listing.price.currency === "ETH" &&
+    !!ethBalance &&
+    ethBalance.value < BigInt(listing.price.value);
+
   async function confirmPurchase() {
     if (!listing || !signer) return;
     setBuyStep("pending");
     setBuyError(null);
     try {
-      const tx = await fulfillOpenSeaListing(signer, listing.listing, await signer.getAddress());
+      const tx = await fulfillListing(signer, listing, await signer.getAddress());
       setTxHash("hash" in tx ? (tx as { hash: string }).hash : null);
       setBuyStep("success");
     } catch (err) {
-      console.error("ENSv1 purchase failed:", err);
-      setBuyError(err instanceof Error ? err.message.split("\n")[0] : "Purchase failed");
+      if (isInsufficientBalanceError(err)) {
+        // Expected, common outcome for a real-money flow — not a bug, so this
+        // deliberately skips console.error (which Next's dev overlay surfaces as if the
+        // app had crashed) in favor of a quieter warn plus a dedicated UI message.
+        console.warn("ENSv1 purchase rejected: insufficient balance", err);
+        setBuyError("insufficient-balance");
+      } else {
+        console.error("ENSv1 purchase failed:", err);
+        setBuyError(err instanceof Error ? err.message.split("\n")[0] : "Purchase failed");
+      }
       setBuyStep("error");
     }
   }
@@ -75,8 +96,16 @@ export default function EnsV1DomainDetailPage() {
             Couldn&apos;t load this name.
           </p>
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            The subgraph lookup failed — check your connection and try again.
+            The subgraph lookup failed — this is usually a transient rate limit on the
+            shared free endpoint. Try again in a moment.
           </p>
+          <button
+            onClick={refetchDomain}
+            className="mt-5 h-10 rounded-[var(--radius-2)] border px-5 font-mono text-sm"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Retry
+          </button>
         </div>
       </main>
     );
@@ -130,6 +159,8 @@ export default function EnsV1DomainDetailPage() {
                 buyStep={buyStep}
                 txHash={txHash}
                 buyError={buyError}
+                insufficientBalance={insufficientBalance}
+                ethBalance={ethBalance?.value}
                 onConnect={() => openConnectModal?.()}
                 onSwitch={() => switchChain({ chainId: mainnet.id })}
                 onStartConfirm={() => setBuyStep("confirming")}
@@ -138,12 +169,14 @@ export default function EnsV1DomainDetailPage() {
               />
             </div>
           )}
+          {!notConfigured && listingLoading && (
+            <p className="mt-4 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              Checking Grails and OpenSea for an active listing…
+            </p>
+          )}
           {!notConfigured && !listing && !listingLoading && (
             <p className="mt-4 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              Not currently listed for sale on Grails or OpenSea (Grails is checked
-              exactly; OpenSea has no per-name lookup, so a bounded window of its active
-              listings is scanned instead — a very recent OpenSea listing might not show
-              up yet).
+              Not currently listed for sale on Grails or OpenSea.
             </p>
           )}
 
@@ -228,6 +261,8 @@ function BuyBox({
   buyStep,
   txHash,
   buyError,
+  insufficientBalance,
+  ethBalance,
   onConnect,
   onSwitch,
   onStartConfirm,
@@ -241,6 +276,8 @@ function BuyBox({
   buyStep: BuyStep;
   txHash: string | null;
   buyError: string | null;
+  insufficientBalance: boolean;
+  ethBalance: bigint | undefined;
   onConnect: () => void;
   onSwitch: () => void;
   onStartConfirm: () => void;
@@ -298,6 +335,19 @@ function BuyBox({
     );
   }
 
+  if (insufficientBalance) {
+    return (
+      <div
+        className="rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
+        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(206,105,94,0.08)", color: "var(--color-sinal-danger)" }}
+      >
+        Not enough ETH to buy this name. This listing costs {price} {listing.price.currency}
+        {ethBalance !== undefined && <> — your wallet has {formatUnits(ethBalance, 18)} ETH</>}. You&apos;ll also need
+        a bit more to cover gas.
+      </div>
+    );
+  }
+
   if (buyStep === "confirming") {
     return (
       <div className="rounded-[var(--radius-3)] border p-[18px]" style={{ borderColor: "var(--accent)", background: "rgba(255,134,104,0.08)" }}>
@@ -328,6 +378,18 @@ function BuyBox({
             Cancel
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (buyError === "insufficient-balance") {
+    return (
+      <div
+        className="rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
+        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(206,105,94,0.08)", color: "var(--color-sinal-danger)" }}
+      >
+        Not enough ETH to buy this name — the transaction was rejected before submitting,
+        so no gas was spent. This listing costs {price} {listing.price.currency} plus gas.
       </div>
     );
   }

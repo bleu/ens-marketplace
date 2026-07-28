@@ -7,7 +7,7 @@ import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
 import { ORDER_MANAGER_ADDRESS, OrderStatus, REGISTRY_ADDRESS, orderManagerAbi, registryAbi } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
-import { useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
+import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import type { EnsV1Listing } from "@/lib/ensv1";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -78,6 +78,13 @@ export default function DomainsPage() {
     endsWith: "",
   });
 
+  // Pagination is a single "page" concept shared across both sources, even though
+  // Grails paginates by plain page number and OpenSea by opaque cursor — see
+  // useEnsV1Listings' doc comment for how the OpenSea side maps a page number back to
+  // the right cursor. Reset to page 1 whenever the server-side (Grails) filters change,
+  // since page 2 of a stale filter set doesn't mean anything once the filter changes.
+  const [page, setPage] = useState(1);
+
   useEffect(() => {
     const t = setTimeout(() => {
       setGrailsFilters({
@@ -88,12 +95,13 @@ export default function DomainsPage() {
         startsWith: patternInput.startsWith,
         endsWith: patternInput.endsWith,
       });
+      setPage(1);
     }, 400);
     return () => clearTimeout(t);
   }, [priceInput, lengthInput, patternInput]);
 
-  const opensea = useEnsV1Listings();
-  const grails = useGrailsListings(grailsFilters);
+  const opensea = useEnsV1Listings(page);
+  const grails = useGrailsListings(grailsFilters, page);
   const ensv1Listings = [...grails.listings, ...opensea.listings].filter((l) =>
     matchesFilters(l, { source, priceInput, lengthInput, patternInput }),
   );
@@ -364,6 +372,10 @@ export default function DomainsPage() {
               grailsError={grails.isError}
               retryOpensea={opensea.refetch}
               retryGrails={grails.refetch}
+              page={page}
+              hasNext={opensea.hasNext || grails.hasNext}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
             />
           ) : (
             <>
@@ -474,6 +486,10 @@ function EnsV1Table({
   grailsError,
   retryOpensea,
   retryGrails,
+  page,
+  hasNext,
+  onPrev,
+  onNext,
 }: {
   listings: EnsV1Listing[];
   isLoading: boolean;
@@ -485,9 +501,14 @@ function EnsV1Table({
   grailsError: boolean;
   retryOpensea: () => void;
   retryGrails: () => void;
+  page: number;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
 }) {
   return (
-    <ScrollHint className="no-scrollbar" arrowAlign="top">
+    <>
+      <ScrollHint className="no-scrollbar" arrowAlign="top">
       <div className="min-w-[900px]">
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 pb-3.5"
@@ -570,7 +591,31 @@ function EnsV1Table({
           </p>
         )}
       </div>
-    </ScrollHint>
+      </ScrollHint>
+      {!bothErrored && (
+        <div className="flex items-center justify-center gap-4 py-6">
+          <button
+            onClick={onPrev}
+            disabled={page === 1}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            ← Previous
+          </button>
+          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            Page {page}
+          </span>
+          <button
+            onClick={onNext}
+            disabled={!hasNext}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -581,6 +626,9 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
   return (
     <Link
       href={`/domains/ensv1/${encodeURIComponent(listing.name)}`}
+      onClick={() => {
+        if (listing.source === "opensea") cacheListingForNavigation(listing);
+      }}
       className="explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
