@@ -237,3 +237,24 @@ export interface EnsV1Listing {
   listing: OpenSeaListing;
   source: "opensea" | "grails";
 }
+
+const OPENSEA_COLLECTION_SLUG = "ens";
+
+/// Direct per-NFT lookup (GET /listings/collection/{slug}/nfts/{identifier}/best) — used
+/// by the OpenSea by-name search route (app/api/ensv1/listings, which already knows the
+/// candidate token id for a typed name — see candidateTokenIds). Also authoritative in a
+/// way the bulk /all feed isn't: OpenSea's own docs describe this as the listing actually
+/// usable for fulfillment, whereas /all has been observed returning a listing still
+/// marked "ACTIVE" that this endpoint no longer considers fulfillable (e.g. the offerer's
+/// approval/balance state changed) — so this doubles as a stronger existence check, not
+/// just a faster one.
+export async function fetchOpenSeaBestListingForToken(apiKey: string, tokenIdDecimal: string): Promise<OpenSeaListing | null> {
+  const res = await fetch(
+    `https://api.opensea.io/api/v2/listings/collection/${OPENSEA_COLLECTION_SLUG}/nfts/${tokenIdDecimal}/best`,
+    { headers: { accept: "application/json", "x-api-key": apiKey } },
+  );
+  if (res.status === 404) return null;
+  const json = await res.json();
+  if (json.errors || json.status !== "ACTIVE") return null;
+  return json as OpenSeaListing;
+}

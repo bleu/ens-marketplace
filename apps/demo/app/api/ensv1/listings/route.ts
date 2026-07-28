@@ -4,31 +4,13 @@ import {
   NAME_WRAPPER_ADDRESS,
   batchResolveNames,
   candidateTokenIds,
+  fetchOpenSeaBestListingForToken,
   tokenIdToHex,
   type EnsV1Listing,
   type OpenSeaListing,
 } from "@/lib/ensv1";
 
 const OPENSEA_COLLECTION_SLUG = "ens";
-
-/// Direct per-NFT lookup (GET /listings/collection/{slug}/nfts/{identifier}/best) —
-/// used for the ?name= search mode instead of paginating the whole collection, since we
-/// already know exactly which token(s) the name could be listed under (see
-/// candidateTokenIds). Also authoritative in a way the bulk /all feed isn't: OpenSea's
-/// own docs describe this as the listing actually usable for fulfillment, whereas /all
-/// has been observed returning a listing still marked "ACTIVE" that this endpoint no
-/// longer considers fulfillable (e.g. the offerer's approval/balance state changed) —
-/// so this doubles as a stronger existence check, not just a faster one.
-async function fetchBestListingForToken(apiKey: string, tokenIdDecimal: string): Promise<OpenSeaListing | null> {
-  const res = await fetch(
-    `https://api.opensea.io/api/v2/listings/collection/${OPENSEA_COLLECTION_SLUG}/nfts/${tokenIdDecimal}/best`,
-    { headers: { accept: "application/json", "x-api-key": apiKey } },
-  );
-  if (res.status === 404) return null;
-  const json = await res.json();
-  if (json.errors || json.status !== "ACTIVE") return null;
-  return json as OpenSeaListing;
-}
 
 async function fetchOpenSeaPage(apiKey: string, cursor: string | null): Promise<{ listings: OpenSeaListing[]; next: string | null }> {
   const url = new URL(`https://api.opensea.io/api/v2/listings/collection/${OPENSEA_COLLECTION_SLUG}/all`);
@@ -95,7 +77,7 @@ async function resolveListingNames(listings: OpenSeaListing[]): Promise<{ resolv
 /// choose to attempt on-chain). Two modes:
 ///   - GET /api/ensv1/listings?cursor=...        — one page of the browsable Explore feed
 ///   - GET /api/ensv1/listings?name=alice.eth     — direct per-token lookup for one
-///     specific name's active listing (see fetchBestListingForToken) — fast and doesn't
+///     specific name's active listing (see fetchOpenSeaBestListingForToken) — fast and doesn't
 ///     depend on the ENS subgraph at all, unlike the paginated browse mode above. Note
 ///     this uses OpenSea's own curated /best endpoint, which can be more conservative
 ///     than the raw browse feed (see app/domains/ensv1/[name]/page.tsx and
@@ -113,8 +95,8 @@ export async function GET(req: NextRequest) {
     if (name) {
       const { wrapped, unwrapped } = candidateTokenIds(name);
       const [wrappedListing, unwrappedListing] = await Promise.all([
-        fetchBestListingForToken(apiKey, wrapped),
-        unwrapped ? fetchBestListingForToken(apiKey, unwrapped) : Promise.resolve(null),
+        fetchOpenSeaBestListingForToken(apiKey, wrapped),
+        unwrapped ? fetchOpenSeaBestListingForToken(apiKey, unwrapped) : Promise.resolve(null),
       ]);
       const found = wrappedListing ?? unwrappedListing;
       if (!found) return NextResponse.json({ listing: null });

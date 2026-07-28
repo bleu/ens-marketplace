@@ -5,9 +5,13 @@ import { SEAPORT_CONTRACT_ADDRESS, currencySymbolFor, type EnsV1Listing } from "
 /// Grails' own public search API (api.grails.app/api/v1/search) — no API key required
 /// for reads (confirmed live and documented at docs.grails.app/docs/api/search; auth
 /// there is SIWE+JWT, but only for write actions like posting a listing, not for browsing
-/// public data). filters[marketplace]=grails restricts to listings native to Grails' own
-/// Seaport conduit, so this never overlaps with our separate OpenSea-sourced fetch
-/// (app/api/ensv1/listings) — the two are complementary, not duplicates of each other.
+/// public data). filters[marketplace]=grails is meant to restrict to listings native to
+/// Grails' own Seaport conduit, but in practice also includes OpenSea orders Grails has
+/// display-mirrored into their own index — those come back with OpenSea's display-only
+/// summary shape (see isFulfillable below) rather than a real signature+parameters, and
+/// are dropped as unresolved rather than cross-resolved via OpenSea: Grails and OpenSea
+/// are kept as strictly separate, independently-browsable sources (see app/domains/page.tsx),
+/// not merged or recovered across each other.
 const GRAILS_SEARCH_URL = "https://api.grails.app/api/v1/search";
 
 interface GrailsListingItem {
@@ -32,7 +36,7 @@ interface GrailsSearchResponse {
   success: boolean;
   data: {
     results: GrailsResult[];
-    pagination: { page: number; hasNext: boolean };
+    pagination: { page: number; hasNext: boolean; total: number; totalPages: number };
   };
 }
 
@@ -46,7 +50,9 @@ function isFulfillable(orderData: Record<string, unknown>): orderData is {
 
 function toEnsV1Listing(result: GrailsResult): EnsV1Listing | null {
   const active = result.listings.find((l) => l.status === "active");
-  if (!active || !isFulfillable(active.order_data)) return null;
+  if (!active) return null;
+  if (!isFulfillable(active.order_data)) return null;
+
   return {
     name: result.name,
     price: { value: active.price, decimals: 18, currency: currencySymbolFor(active.currency_address) },
@@ -119,10 +125,19 @@ export async function GET(req: NextRequest) {
     }
 
     const page = Number(req.nextUrl.searchParams.get("page") ?? "1");
-    const mapped = json.data.results.map(toEnsV1Listing);
+    const mapped = json.data.results.map((r) => toEnsV1Listing(r));
     const listings = mapped.filter((l): l is EnsV1Listing => l !== null);
     const unresolvedCount = mapped.length - listings.length;
-    return NextResponse.json({ listings, unresolvedCount, next: json.data.pagination.hasNext ? page + 1 : null });
+    return NextResponse.json({
+      listings,
+      unresolvedCount,
+      next: json.data.pagination.hasNext ? page + 1 : null,
+      // Grails' own real total across all its pages (currently ~9,981 at 50/page,
+      // ~200 pages) — surfaced so the UI can show "page N of ~200" instead of leaving
+      // the per-page resolved count looking like the entire dataset available.
+      total: json.data.pagination.total,
+      totalPages: json.data.pagination.totalPages,
+    });
   } catch (err) {
     console.error("GET /api/ensv1/grails-listings failed:", err);
     return NextResponse.json({ error: "Grails request failed" }, { status: 502 });

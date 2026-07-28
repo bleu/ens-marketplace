@@ -26,8 +26,9 @@ export interface EnsV1ListingsResult {
 /// which cursor produced each page number as the user navigates forward, and looks it
 /// up again on Previous rather than needing the caller to track cursors. This only
 /// supports moving one page at a time (no jumping straight to an arbitrary page), which
-/// is fine since the UI only exposes Next/Previous.
-export function useEnsV1Listings(page: number): EnsV1ListingsResult {
+/// is fine since the UI only exposes Next/Previous. `enabled` skips fetching entirely
+/// when this source isn't the one currently selected (see useGrailsListings).
+export function useEnsV1Listings(page: number, enabled = true): EnsV1ListingsResult {
   const [listings, setListings] = useState<EnsV1Listing[]>([]);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +38,7 @@ export function useEnsV1Listings(page: number): EnsV1ListingsResult {
   const cursorForPageRef = useRef<Record<number, string | null>>({ 1: null });
 
   const refresh = useCallback(async () => {
+    if (!enabled) return;
     setIsLoading(true);
     setIsError(false);
     setNotConfigured(false);
@@ -62,11 +64,12 @@ export function useEnsV1Listings(page: number): EnsV1ListingsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [page]);
+  }, [page, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh();
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   return { listings, isLoading, isError, notConfigured, unresolvedCount, hasNext, refetch: refresh };
 }
@@ -77,6 +80,12 @@ export interface GrailsListingsResult {
   isError: boolean;
   unresolvedCount: number;
   hasNext: boolean;
+  /** Grails' real total listing count and page count across their whole dataset (not
+   * just this page) — null until the first successful fetch resolves. Exists so the UI
+   * can show "page N of ~totalPages" instead of the per-page resolved count looking like
+   * the entire available dataset. */
+  total: number | null;
+  totalPages: number | null;
   refetch: () => void;
 }
 
@@ -90,21 +99,26 @@ export interface GrailsFilters {
 }
 
 /// Real active Grails-native listings (api.grails.app, no API key required for reads —
-/// see app/api/ensv1/grails-listings) — a second, complementary Explore-grid source
-/// alongside OpenSea's, not a replacement for it. Filters are applied server-side
-/// against Grails' real filter schema (unlike OpenSea, which has no filter params at
-/// all — see the Explore page for how OpenSea-sourced rows are filtered client-side
-/// on whatever's already loaded instead). Grails' pagination is plain page numbers, so
-/// unlike OpenSea's cursor-based hook, `page` is passed straight through as a query param.
-export function useGrailsListings(filters: GrailsFilters = {}, page = 1): GrailsListingsResult {
+/// see app/api/ensv1/grails-listings) — an independent Explore-grid source, browsed one
+/// at a time with OpenSea's (never merged/cross-resolved — see the Explore page's source
+/// toggle). Filters are applied server-side against Grails' real filter schema (unlike
+/// OpenSea, which has no filter params at all — see the Explore page for how OpenSea-
+/// sourced rows are filtered client-side on whatever's already loaded instead). Grails'
+/// pagination is plain page numbers, so unlike OpenSea's cursor-based hook, `page` is
+/// passed straight through as a query param. `enabled` skips fetching entirely when this
+/// source isn't the one currently selected.
+export function useGrailsListings(filters: GrailsFilters = {}, page = 1, enabled = true): GrailsListingsResult {
   const [listings, setListings] = useState<EnsV1Listing[]>([]);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [hasNext, setHasNext] = useState(false);
+  const [total, setTotal] = useState<number | null>(null);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
   const { minPrice, maxPrice, minLength, maxLength, startsWith, endsWith } = filters;
 
   const refresh = useCallback(async () => {
+    if (!enabled) return;
     setIsLoading(true);
     setIsError(false);
     try {
@@ -122,19 +136,22 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1): Grails
       setListings(json.listings ?? []);
       setUnresolvedCount(json.unresolvedCount ?? 0);
       setHasNext(!!json.next);
+      setTotal(typeof json.total === "number" ? json.total : null);
+      setTotalPages(typeof json.totalPages === "number" ? json.totalPages : null);
     } catch (err) {
       console.error("useGrailsListings: failed to fetch listings", err);
       setIsError(true);
     } finally {
       setIsLoading(false);
     }
-  }, [minPrice, maxPrice, minLength, maxLength, startsWith, endsWith, page]);
+  }, [minPrice, maxPrice, minLength, maxLength, startsWith, endsWith, page, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh();
-  }, [refresh]);
+  }, [refresh, enabled]);
 
-  return { listings, isLoading, isError, unresolvedCount, hasNext, refetch: refresh };
+  return { listings, isLoading, isError, unresolvedCount, hasNext, total, totalPages, refetch: refresh };
 }
 
 const SESSION_CACHE_PREFIX = "ensv1-listing:";

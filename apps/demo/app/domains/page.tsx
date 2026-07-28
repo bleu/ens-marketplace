@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
@@ -27,19 +28,19 @@ const TABS: TabItem[] = [
 ];
 
 interface EnsV1FilterCriteria {
-  source: "all" | "grails" | "opensea";
   priceInput: { min: string; max: string };
   lengthInput: { min: string; max: string };
   patternInput: { startsWith: string; endsWith: string };
 }
 
-/// Applied to every ENSv1 row regardless of source — for Grails this is redundant with
-/// the real server-side filter (harmless, just a no-op re-check), but for OpenSea it's
-/// the only filtering that happens at all, since OpenSea's listings endpoint has no
-/// filter params — see useGrailsListings' doc comment.
+/// Applied to every ENSv1 row — for Grails this is redundant with the real server-side
+/// filter (harmless, just a no-op re-check), but for OpenSea it's the only filtering that
+/// happens at all, since OpenSea's listings endpoint has no filter params — see
+/// useGrailsListings' doc comment. Grails and OpenSea are independent, mutually exclusive
+/// sources (see the Refine source toggle below) rather than a merged/crossed set, so
+/// there's no source field to check here — whichever hook is enabled already determines
+/// the source of everything being filtered.
 function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
-  if (f.source !== "all" && l.source !== f.source) return false;
-
   const priceEth = Number(formatUnits(BigInt(l.price.value), l.price.decimals));
   if (f.priceInput.min && priceEth < Number(f.priceInput.min)) return false;
   if (f.priceInput.max && priceEth > Number(f.priceInput.max)) return false;
@@ -54,10 +55,43 @@ function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
   return true;
 }
 
+/// useSearchParams() requires an ancestor Suspense boundary (Next.js App Router build
+/// requirement, not just a dev-mode nicety) — the default export below provides it so
+/// `next build` doesn't fail, since the actual page body needs the hook to seed
+/// page/filters from the URL on load.
 export default function DomainsPage() {
+  return (
+    <Suspense fallback={<main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>}>
+      <DomainsPageInner />
+    </Suspense>
+  );
+}
+
+function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Any of these params only make sense in ENSv1 mode — if a shared/bookmarked link
+  // carries one, switch to that view on load rather than leaving the visible mode as
+  // the ENSv2 default while the URL (silently, to the user) already reflects ENSv1 state.
+  // Runs once on mount only (via the ref guard) — syncUrl below deliberately leaves
+  // these params in the URL when switching back to ENSv2 mode (so re-entering ENSv1
+  // restores them), and if this effect re-ran on every searchParams change it would
+  // immediately force the user back into ENSv1 mode the moment they tried to leave it.
+  const hasAppliedUrlMode = useRef(false);
+  useEffect(() => {
+    if (hasAppliedUrlMode.current) return;
+    hasAppliedUrlMode.current = true;
+    const hasEnsV1Params = ["page", "refine", "priceMin", "priceMax", "lengthMin", "lengthMax", "startsWith", "endsWith"].some(
+      (key) => searchParams.has(key),
+    );
+    if (hasEnsV1Params) setNetworkMode("ensv1");
+  }, [searchParams, setNetworkMode]);
 
   // Real filters for the ENSv1 view. Grails has an actual server-side filter schema, so
   // its query is re-run (debounced, to avoid hammering their API per keystroke) whenever
@@ -65,17 +99,31 @@ export default function DomainsPage() {
   // same criteria are instead applied client-side to whatever page is already loaded,
   // via matchesFilters below, so at least the OpenSea rows on screen still narrow down
   // even though the underlying fetch can't be filtered server-side.
-  const [source, setSource] = useState<"all" | "grails" | "opensea">("all");
-  const [priceInput, setPriceInput] = useState({ min: "", max: "" });
-  const [lengthInput, setLengthInput] = useState({ min: "", max: "" });
-  const [patternInput, setPatternInput] = useState({ startsWith: "", endsWith: "" });
+  //
+  // Page and every filter are seeded from the URL query string on first render (below)
+  // and kept in sync with it (see the syncUrl effect further down) — this makes the
+  // current view shareable/bookmarkable/restorable on refresh, e.g.
+  // ?page=2&refine=opensea&priceMin=1&priceMax=5.
+  const [source, setSource] = useState<"grails" | "opensea">(() => (searchParams.get("refine") === "opensea" ? "opensea" : "grails"));
+  const [priceInput, setPriceInput] = useState({
+    min: searchParams.get("priceMin") ?? "",
+    max: searchParams.get("priceMax") ?? "",
+  });
+  const [lengthInput, setLengthInput] = useState({
+    min: searchParams.get("lengthMin") ?? "",
+    max: searchParams.get("lengthMax") ?? "",
+  });
+  const [patternInput, setPatternInput] = useState({
+    startsWith: searchParams.get("startsWith") ?? "",
+    endsWith: searchParams.get("endsWith") ?? "",
+  });
   const [grailsFilters, setGrailsFilters] = useState({
-    minPrice: "",
-    maxPrice: "",
-    minLength: "",
-    maxLength: "",
-    startsWith: "",
-    endsWith: "",
+    minPrice: searchParams.get("priceMin") ?? "",
+    maxPrice: searchParams.get("priceMax") ?? "",
+    minLength: searchParams.get("lengthMin") ?? "",
+    maxLength: searchParams.get("lengthMax") ?? "",
+    startsWith: searchParams.get("startsWith") ?? "",
+    endsWith: searchParams.get("endsWith") ?? "",
   });
 
   // Pagination is a single "page" concept shared across both sources, even though
@@ -83,9 +131,21 @@ export default function DomainsPage() {
   // useEnsV1Listings' doc comment for how the OpenSea side maps a page number back to
   // the right cursor. Reset to page 1 whenever the server-side (Grails) filters change,
   // since page 2 of a stale filter set doesn't mean anything once the filter changes.
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const fromUrl = Number(searchParams.get("page"));
+    return Number.isFinite(fromUrl) && fromUrl >= 1 ? fromUrl : 1;
+  });
 
+  // Skips the debounce's own recompute + page reset on the very first run — grailsFilters
+  // and page are already correctly seeded straight from the URL above, so re-deriving
+  // them from priceInput/lengthInput/patternInput on mount would just be redundant, and
+  // resetting page to 1 on mount would stomp a `?page=3` from a shared/refreshed URL.
+  const isFirstFilterSync = useRef(true);
   useEffect(() => {
+    if (isFirstFilterSync.current) {
+      isFirstFilterSync.current = false;
+      return;
+    }
     const t = setTimeout(() => {
       setGrailsFilters({
         minPrice: priceInput.min,
@@ -100,11 +160,32 @@ export default function DomainsPage() {
     return () => clearTimeout(t);
   }, [priceInput, lengthInput, patternInput]);
 
-  const opensea = useEnsV1Listings(page);
-  const grails = useGrailsListings(grailsFilters, page);
-  const ensv1Listings = [...grails.listings, ...opensea.listings].filter((l) =>
-    matchesFilters(l, { source, priceInput, lengthInput, patternInput }),
-  );
+  const syncUrl = useCallback(() => {
+    if (networkMode !== "ensv1") return;
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (source !== "grails") params.set("refine", source);
+    if (priceInput.min) params.set("priceMin", priceInput.min);
+    if (priceInput.max) params.set("priceMax", priceInput.max);
+    if (lengthInput.min) params.set("lengthMin", lengthInput.min);
+    if (lengthInput.max) params.set("lengthMax", lengthInput.max);
+    if (patternInput.startsWith) params.set("startsWith", patternInput.startsWith);
+    if (patternInput.endsWith) params.set("endsWith", patternInput.endsWith);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router]);
+
+  useEffect(() => {
+    syncUrl();
+  }, [syncUrl]);
+
+  // Grails and OpenSea are strictly separate, mutually exclusive browsing modes — only
+  // the currently-selected source's hook actually fetches (via `enabled`), and its
+  // listings are shown as-is, never merged or cross-resolved with the other source.
+  const opensea = useEnsV1Listings(page, source === "opensea");
+  const grails = useGrailsListings(grailsFilters, page, source === "grails");
+  const active = source === "grails" ? grails : opensea;
+  const ensv1Listings = active.listings.filter((l) => matchesFilters(l, { priceInput, lengthInput, patternInput }));
 
   const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
     contracts: ids.flatMap((id) => [
@@ -142,10 +223,11 @@ export default function DomainsPage() {
         ) : (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Real listings — OpenSea + Grails
+              Real listings — {source === "grails" ? "Grails" : "OpenSea"}
             </span>
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              {ensv1Listings.length} listed
+              {ensv1Listings.length} on this page
+              {source === "grails" && grails.total !== null && <> · Grails has {grails.total.toLocaleString()} listings total</>}
             </span>
           </>
         )}
@@ -233,11 +315,14 @@ export default function DomainsPage() {
           {networkMode === "ensv1" ? (
             <div className="flex flex-col gap-4">
               <div className="flex gap-1.5">
-                {(["all", "grails", "opensea"] as const).map((s) => (
+                {(["grails", "opensea"] as const).map((s) => (
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setSource(s)}
+                    onClick={() => {
+                      setSource(s);
+                      setPage(1);
+                    }}
                     className="h-8 flex-1 rounded-[var(--radius-1)] border font-mono text-[11px] uppercase"
                     style={
                       source === s
@@ -245,7 +330,7 @@ export default function DomainsPage() {
                         : { borderColor: "var(--line)", color: "var(--fg-muted)" }
                     }
                   >
-                    {s === "all" ? "All" : s === "grails" ? "Grails" : "OpenSea"}
+                    {s === "grails" ? "Grails" : "OpenSea"}
                   </button>
                 ))}
               </div>
@@ -362,18 +447,16 @@ export default function DomainsPage() {
         <section className="px-8 pb-20">
           {networkMode === "ensv1" ? (
             <EnsV1Table
+              source={source}
               listings={ensv1Listings}
-              isLoading={ensv1Listings.length === 0 && (opensea.isLoading || grails.isLoading)}
-              bothErrored={opensea.isError && grails.isError}
-              openseaError={opensea.isError}
-              openseaNotConfigured={opensea.notConfigured}
-              unresolvedCount={opensea.unresolvedCount}
-              grailsUnresolvedCount={grails.unresolvedCount}
-              grailsError={grails.isError}
-              retryOpensea={opensea.refetch}
-              retryGrails={grails.refetch}
+              isLoading={ensv1Listings.length === 0 && active.isLoading}
+              isError={active.isError}
+              notConfigured={source === "opensea" ? opensea.notConfigured : false}
+              unresolvedCount={active.unresolvedCount}
+              retry={active.refetch}
               page={page}
-              hasNext={opensea.hasNext || grails.hasNext}
+              grailsTotalPages={source === "grails" ? grails.totalPages : null}
+              hasNext={active.hasNext}
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
               onNext={() => setPage((p) => p + 1)}
             />
@@ -476,45 +559,42 @@ export default function DomainsPage() {
 }
 
 function EnsV1Table({
+  source,
   listings,
   isLoading,
-  bothErrored,
-  openseaError,
-  openseaNotConfigured,
+  isError,
+  notConfigured,
   unresolvedCount,
-  grailsUnresolvedCount,
-  grailsError,
-  retryOpensea,
-  retryGrails,
+  retry,
   page,
+  grailsTotalPages,
   hasNext,
   onPrev,
   onNext,
 }: {
+  source: "grails" | "opensea";
   listings: EnsV1Listing[];
   isLoading: boolean;
-  bothErrored: boolean;
-  openseaError: boolean;
-  openseaNotConfigured: boolean;
+  isError: boolean;
+  notConfigured: boolean;
   unresolvedCount: number;
-  grailsUnresolvedCount: number;
-  grailsError: boolean;
-  retryOpensea: () => void;
-  retryGrails: () => void;
+  retry: () => void;
   page: number;
+  grailsTotalPages: number | null;
   hasNext: boolean;
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const sourceLabel = source === "grails" ? "Grails" : "OpenSea";
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[900px]">
+      <div className="min-w-[780px]">
         <div
-          className="grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 pb-3.5"
+          className="grid grid-cols-[minmax(260px,2.2fr)_170px_220px_110px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
         >
-          {["Name", "Price", "Seller", "Source", ""].map((h, i) => (
+          {["Name", "Price", "Seller", ""].map((h, i) => (
             <span
               key={h}
               className={
@@ -529,16 +609,19 @@ function EnsV1Table({
           ))}
         </div>
 
-        {bothErrored && (
+        {notConfigured && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            OpenSea listings aren&apos;t configured — set <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code>{" "}
+            in <code style={{ color: "var(--fg)" }}>apps/demo/.env.local</code> to browse them.
+          </p>
+        )}
+        {!notConfigured && isError && (
           <div className="flex items-center gap-3 py-8">
             <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-              Couldn&apos;t load real listings — both OpenSea and Grails requests failed.
+              Couldn&apos;t load {sourceLabel} listings — the request failed.
             </p>
             <button
-              onClick={() => {
-                retryOpensea();
-                retryGrails();
-              }}
+              onClick={retry}
               className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
               style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
             >
@@ -546,14 +629,14 @@ function EnsV1Table({
             </button>
           </div>
         )}
-        {!bothErrored && isLoading && (
+        {!notConfigured && !isError && isLoading && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            Loading real listings from OpenSea and Grails…
+            Loading real listings from {sourceLabel}…
           </p>
         )}
-        {!bothErrored && !isLoading && listings.length === 0 && (
+        {!notConfigured && !isError && !isLoading && listings.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            No real ENS listings resolved on this page.
+            No real {sourceLabel} listings resolved on this page.
           </p>
         )}
 
@@ -561,38 +644,15 @@ function EnsV1Table({
           <EnsV1Row key={l.listing.order_hash} listing={l} />
         ))}
 
-        {openseaNotConfigured && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            OpenSea listings aren&apos;t configured — set <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code>{" "}
-            in <code style={{ color: "var(--fg)" }}>apps/demo/.env.local</code> to include them too. Grails listings
-            above don&apos;t need a key.
-          </p>
-        )}
-        {!openseaNotConfigured && openseaError && !bothErrored && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--accent)" }}>
-            OpenSea listings failed to load this time — Grails listings above are unaffected.
-          </p>
-        )}
-        {grailsError && !bothErrored && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--accent)" }}>
-            Grails listings failed to load this time — OpenSea listings above are unaffected.
-          </p>
-        )}
         {unresolvedCount > 0 && (
           <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            {unresolvedCount} other active OpenSea listing{unresolvedCount === 1 ? "" : "s"} on this page couldn&apos;t
-            be matched to a name via the subgraph and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
-          </p>
-        )}
-        {grailsUnresolvedCount > 0 && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            {grailsUnresolvedCount} other active Grails listing{grailsUnresolvedCount === 1 ? "" : "s"} on this page
-            didn&apos;t include fulfillable order data and {grailsUnresolvedCount === 1 ? "isn't" : "aren't"} shown.
+            {unresolvedCount} other active {sourceLabel} listing{unresolvedCount === 1 ? "" : "s"} on this page
+            couldn&apos;t be resolved to a shown row and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
           </p>
         )}
       </div>
       </ScrollHint>
-      {!bothErrored && (
+      {!notConfigured && !isError && (
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={onPrev}
@@ -604,6 +664,7 @@ function EnsV1Table({
           </button>
           <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
             Page {page}
+            {grailsTotalPages !== null && <> of ~{grailsTotalPages.toLocaleString()} (Grails)</>}
           </span>
           <button
             onClick={onNext}
@@ -629,7 +690,7 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
       onClick={() => {
         if (listing.source === "opensea") cacheListingForNavigation(listing);
       }}
-      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_100px_110px] items-center border-b pr-4 py-3.5"
+      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_170px_220px_110px] items-center border-b pr-4 py-3.5"
       style={{ borderColor: "var(--line)" }}
     >
       <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
@@ -654,18 +715,6 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
           <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
             {shortAddr(seller)}
           </span>
-        </span>
-      </div>
-      <div>
-        <span
-          className="rounded-[5px] border px-2 py-[3px] font-mono text-[10px] tracking-[0.04em] uppercase"
-          style={
-            listing.source === "grails"
-              ? { color: "var(--color-lima-500)", borderColor: "rgba(120,234,150,0.4)" }
-              : { color: "var(--brand)", borderColor: "rgba(32,197,217,0.4)" }
-          }
-        >
-          {listing.source === "grails" ? "Grails" : "OpenSea"}
         </span>
       </div>
       <div className="justify-self-end">
