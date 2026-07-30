@@ -8,7 +8,12 @@ import { createContext, useContext, useState } from "react";
 /// - "ensv1": real mainnet ENS names, read-only ownership (via the ENS subgraph) plus
 ///   real OpenSea listings, with a real Seaport buy flow. Scoped to the Domains section
 ///   only — Subnames is an ENSv2-only differentiator with no ENSv1 equivalent.
-export type NetworkMode = "ensv2" | "ensv1";
+/// - "ensv2-alpha": ENS Labs' own real ENSv2 alpha contracts on Sepolia (see
+///   lib/ensv2-alpha.ts) — real commit-reveal registration paid in a real ERC-20, not our
+///   mock. A genuinely different chain-address-pair from "ensv2" even though both happen
+///   to run on Sepolia, which is why this is a UI-mode switch rather than a chainId one
+///   (same reasoning as "ensv1" vs "ensv2" below).
+export type NetworkMode = "ensv2" | "ensv1" | "ensv2-alpha";
 
 const NetworkModeContext = createContext<[NetworkMode, (mode: NetworkMode) => void] | null>(null);
 

@@ -10,6 +10,7 @@ import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from 
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
+import { useEnsV2AlphaRegisteredNames, type EnsV2AlphaName } from "@/lib/ensv2-alpha";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
@@ -79,6 +80,7 @@ function DomainsPageInner() {
   const [networkMode, setNetworkMode] = useNetworkMode();
   const { registry, orderManager } = useContractAddresses();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+  const alpha = useEnsV2AlphaRegisteredNames();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -221,14 +223,15 @@ function DomainsPageInner() {
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-8" style={{ borderColor: "var(--line)" }}>
-        {networkMode === "ensv2" ? (
+        {networkMode === "ensv2" && (
           <>
             <Tabs items={TABS} active={tab} onChange={setTab} />
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
               {rows.length} names
             </span>
           </>
-        ) : (
+        )}
+        {networkMode === "ensv1" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
               Real listings — {source === "grails" ? "Grails" : "OpenSea"}
@@ -237,6 +240,23 @@ function DomainsPageInner() {
               {ensv1Listings.length} on this page
               {source === "grails" && grails.total !== null && <> · Grails has {grails.total.toLocaleString()} listings total</>}
             </span>
+          </>
+        )}
+        {networkMode === "ensv2-alpha" && (
+          <>
+            <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
+              Real ENSv2 · Sepolia Alpha
+            </span>
+            <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              {alpha.names.length} registered
+            </span>
+            <Link
+              href="/domains/ensv2-alpha/register"
+              className="flex h-9 shrink-0 items-center rounded-[var(--radius-2)] px-4 font-sans text-xs font-semibold"
+              style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
+            >
+              Register a real name
+            </Link>
           </>
         )}
       </div>
@@ -312,6 +332,39 @@ function DomainsPageInner() {
                 active OpenSea orders — buying executes a real on-chain purchase.
               </p>
             )}
+            <button
+              type="button"
+              onClick={() => setNetworkMode("ensv2-alpha")}
+              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+              style={
+                networkMode === "ensv2-alpha"
+                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                  : { borderColor: "var(--line)" }
+              }
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                />
+                <span
+                  className="font-sans text-[13px] font-medium"
+                  style={{ color: networkMode === "ensv2-alpha" ? "var(--fg)" : "var(--fg-muted)" }}
+                >
+                  Real ENSv2 (Sepolia Alpha)
+                </span>
+              </div>
+              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                {alpha.names.length}
+              </span>
+            </button>
+            {networkMode === "ensv2-alpha" && (
+              <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
+                Connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not
+                our mock. Pre-audit, unofficial, unpublished addresses that can change
+                without notice. Registration spends real (test) Sepolia ETH/USDC.
+              </p>
+            )}
           </div>
 
           <div
@@ -320,7 +373,11 @@ function DomainsPageInner() {
           >
             Refine
           </div>
-          {networkMode === "ensv1" ? (
+          {networkMode === "ensv2-alpha" ? (
+            <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+              No filters yet — this reads real on-chain registrations directly, no indexer.
+            </p>
+          ) : networkMode === "ensv1" ? (
             <div className="flex flex-col gap-4">
               <div className="flex gap-1.5">
                 {(["grails", "opensea"] as const).map((s) => (
@@ -453,7 +510,9 @@ function DomainsPageInner() {
 
         {/* table */}
         <section className="px-8 pb-20">
-          {networkMode === "ensv1" ? (
+          {networkMode === "ensv2-alpha" ? (
+            <EnsV2AlphaTable names={alpha.names} isError={alpha.isError} retry={alpha.refetch} />
+          ) : networkMode === "ensv1" ? (
             <EnsV1Table
               source={source}
               listings={ensv1Listings}
@@ -563,6 +622,91 @@ function DomainsPageInner() {
         </section>
       </div>
     </main>
+  );
+}
+
+/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no pagination
+/// (event-scanned client-side, not a paginated API) and no filters yet (see the sidebar
+/// note above this table). Deliberately simple compared to EnsV1Table/the ensv2 mock
+/// table: this alpha has no price/seller/order concept, just a registered label + tokenId.
+function EnsV2AlphaTable({
+  names,
+  isError,
+  retry,
+}: {
+  names: EnsV2AlphaName[];
+  isError: boolean;
+  retry: () => void;
+}) {
+  return (
+    <ScrollHint className="no-scrollbar" arrowAlign="top">
+      <div className="min-w-[520px]">
+        <div
+          className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
+          style={{ borderColor: "var(--line-strong)" }}
+        >
+          {["Name", ""].map((h, i) => (
+            <span
+              key={h}
+              className={
+                i === 0
+                  ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
+                  : "font-mono text-[11px] tracking-[0.04em] uppercase"
+              }
+              style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
+            >
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {isError && (
+          <div className="flex items-center gap-3 py-8">
+            <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
+              Couldn&apos;t load real registrations — the on-chain read failed.
+            </p>
+            <button
+              onClick={retry}
+              className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
+              style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!isError && names.length === 0 && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            No names registered on this alpha deployment yet — be the first.
+          </p>
+        )}
+
+        {names.map(({ tokenId, label }) => (
+          <Link
+            key={tokenId.toString()}
+            href={`/domains/ensv2-alpha/${encodeURIComponent(label)}`}
+            className="explore-row grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 py-3.5"
+            style={{ borderColor: "var(--line)" }}
+          >
+            <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
+              <NameCard canonicalId={tokenId} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
+                    {label}
+                  </span>
+                  <StatusBadge variant="chain">Real L1</StatusBadge>
+                </div>
+              </div>
+            </div>
+            <div className="justify-self-end">
+              <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
+                View
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </ScrollHint>
   );
 }
 

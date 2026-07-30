@@ -14,14 +14,17 @@ import { leaseVaultAbi, orderManagerAbi, registryAbi, useContractAddresses } fro
 
 type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
 
-/// Public RPCs commonly cap `eth_getLogs`' block range (e.g. the default Sepolia RPC,
-/// thirdweb, caps it at 10,000 blocks) — scanning in windows under that cap, starting at
-/// `fromBlock` (the network's actual deploy block — see lib/contracts.ts's `fromBlock`,
-/// threaded in via `useContractAddresses()`) rather than block 0, is what makes event
-/// scanning work on a real chain instead of just Anvil's tiny local chain.
-const MAX_BLOCK_RANGE = 5000n;
+/// Public RPCs commonly cap `eth_getLogs`' block range — the default Sepolia RPC
+/// (thirdweb, wagmi.ts's fallback transport) rejects anything over 1000 blocks per
+/// request ("Log response size exceeded... Maximum allowed number of requested blocks is
+/// 1000", confirmed live while scanning the real ENSv2 alpha registry — see
+/// lib/ensv2-alpha.ts). Scanning in windows under that cap, starting at `fromBlock` (the
+/// network's actual deploy block — see lib/contracts.ts's `fromBlock`, threaded in via
+/// `useContractAddresses()`) rather than block 0, is what makes event scanning work on a
+/// real chain instead of just Anvil's tiny local chain.
+const MAX_BLOCK_RANGE = 900n;
 
-async function getContractEventsChunked<const abi extends Abi | readonly unknown[], eventName extends ContractEventName<abi>>(
+export async function getContractEventsChunked<const abi extends Abi | readonly unknown[], eventName extends ContractEventName<abi>>(
   client: PublicClient,
   params: GetContractEventsParameters<abi, eventName> & { fromBlock: bigint },
 ): Promise<GetContractEventsReturnType<abi, eventName>> {
