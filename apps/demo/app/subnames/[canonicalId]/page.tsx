@@ -14,9 +14,10 @@ import {
   useContractAddresses,
   useCurrentNetwork,
 } from "@/lib/contracts";
-import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortAddr, shortId } from "@/lib/format";
+import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortId } from "@/lib/format";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function SubnameDetailPage() {
   const params = useParams<{ canonicalId: string }>();
@@ -69,7 +70,7 @@ export default function SubnameDetailPage() {
 
   if (parsedCanonicalId === null) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -90,7 +91,7 @@ export default function SubnameDetailPage() {
 
   if (readsError) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
             Couldn&apos;t load this subname.
@@ -111,7 +112,7 @@ export default function SubnameDetailPage() {
   }
 
   if (!listing || activeUntil === undefined || tenant === undefined || name === undefined) {
-    return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+    return <main className="p-4 font-mono text-sm text-[var(--fg-dim)] lg:p-8">Loading…</main>;
   }
 
   const [, pricePerTerm, termSeconds, active] = listing;
@@ -130,7 +131,7 @@ export default function SubnameDetailPage() {
   // were a real subname.
   if (!name) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -195,7 +196,7 @@ export default function SubnameDetailPage() {
   );
 
   return (
-    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
       <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="m15 18-6-6 6-6" />
@@ -256,7 +257,7 @@ export default function SubnameDetailPage() {
           {isLeased && (
             <div className="rounded-[var(--radius-3)] border p-5" style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}>
               <p className="font-mono text-sm" style={{ color: "var(--brand)" }}>
-                Currently leased to {shortAddr(tenant as `0x${string}`)} until{" "}
+                Currently leased to <AddressLink address={tenant as `0x${string}`} network={network} /> until{" "}
                 {new Date(Number(activeUntil) * 1000).toLocaleString()}
               </p>
             </div>
@@ -399,8 +400,11 @@ export default function SubnameDetailPage() {
                     ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
                     : "Mock ENSv2 registry (local Anvil)",
               },
-              { k: "Lease vault", v: shortAddr(leaseVault) },
-              { k: "Tenant", v: isZeroAddress(tenant as `0x${string}`) ? "None" : shortAddr(tenant as `0x${string}`) },
+              { k: "Lease vault", v: <AddressLink address={leaseVault} network={network} /> },
+              {
+                k: "Tenant",
+                v: isZeroAddress(tenant as `0x${string}`) ? "None" : <AddressLink address={tenant as `0x${string}`} network={network} />,
+              },
             ].map((d) => (
               <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
                 <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>

@@ -9,8 +9,9 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
-import { isPositiveNumber, shortAddr, shortId } from "@/lib/format";
+import { isPositiveNumber, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
+import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoonPanel } from "@/components/ComingSoon";
@@ -60,7 +61,7 @@ export default function DomainDetailPage() {
 
   if (parsedCanonicalId === null) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -81,7 +82,7 @@ export default function DomainDetailPage() {
 
   if (readsError) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
             Couldn&apos;t load this name.
@@ -101,7 +102,7 @@ export default function DomainDetailPage() {
     );
   }
 
-  if (!order || name === undefined) return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+  if (!order || name === undefined) return <main className="p-4 font-mono text-sm text-[var(--fg-dim)] lg:p-8">Loading…</main>;
 
   const [seller, price, , , , status] = order as readonly [
     `0x${string}`,
@@ -119,7 +120,7 @@ export default function DomainDetailPage() {
   // 0x0…0, Price 0 ETH) for any mistyped or guessed id.
   if (!name || status === OrderStatus.None) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -180,7 +181,7 @@ export default function DomainDetailPage() {
   });
 
   return (
-    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
       <Link href="/domains" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="m15 18-6-6 6-6" />
@@ -236,7 +237,7 @@ export default function DomainDetailPage() {
 
           <div className="mt-5 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
-              { k: "Owner", v: shortAddr(seller as `0x${string}`) },
+              { k: "Owner", v: <AddressLink address={seller as `0x${string}`} network={network} /> },
               { k: "Chain", v: "Namechain · ENSv2 (local)" },
               { k: "Price", v: `${formatEther(price)} ETH` },
             ].map((m) => (
@@ -303,7 +304,7 @@ export default function DomainDetailPage() {
                     This name&apos;s state changed since it was listed — the order suspended
                     itself instead of silently filling.
                   </p>
-                  <DiffTable diff={diff as readonly [string, string, string, string, boolean]} />
+                  <DiffTable network={network} diff={diff as readonly [string, string, string, string, boolean]} />
                   {!isSeller && (
                     <button
                       onClick={acceptDiffAndBuy}
@@ -413,7 +414,7 @@ export default function DomainDetailPage() {
                       : "Mock ENSv2 registry (local Anvil)",
                 },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
-                { k: "Resolver", v: resolver ? shortAddr(resolver as `0x${string}`) : "—" },
+                { k: "Resolver", v: resolver ? <AddressLink address={resolver as `0x${string}`} network={network} /> : "—" },
                 { k: "Subnames", v: `${subnameCount} issued` },
                 { k: "Category", v: "—" },
               ].map((d) => (
@@ -434,7 +435,7 @@ export default function DomainDetailPage() {
   );
 }
 
-function DiffTable({ diff }: { diff: readonly [string, string, string, string, boolean] }) {
+function DiffTable({ network, diff }: { network: Network; diff: readonly [string, string, string, string, boolean] }) {
   const [pinnedOwner, pinnedResolver, liveOwner, liveResolver] = diff;
   const ownerChanged = pinnedOwner.toLowerCase() !== liveOwner.toLowerCase();
   const resolverChanged = pinnedResolver.toLowerCase() !== liveResolver.toLowerCase();
@@ -448,14 +449,26 @@ function DiffTable({ diff }: { diff: readonly [string, string, string, string, b
         </tr>
       </thead>
       <tbody>
-        <DiffRow label="Owner" before={pinnedOwner} after={liveOwner} changed={ownerChanged} />
-        <DiffRow label="Resolver" before={pinnedResolver} after={liveResolver} changed={resolverChanged} />
+        <DiffRow network={network} label="Owner" before={pinnedOwner} after={liveOwner} changed={ownerChanged} />
+        <DiffRow network={network} label="Resolver" before={pinnedResolver} after={liveResolver} changed={resolverChanged} />
       </tbody>
     </table>
   );
 }
 
-function DiffRow({ label, before, after, changed }: { label: string; before: string; after: string; changed: boolean }) {
+function DiffRow({
+  network,
+  label,
+  before,
+  after,
+  changed,
+}: {
+  network: Network;
+  label: string;
+  before: string;
+  after: string;
+  changed: boolean;
+}) {
   return (
     <tr style={changed ? { background: "rgba(255,134,104,0.1)" } : undefined}>
       <td className="pr-2 py-1.5 align-middle">
@@ -483,10 +496,10 @@ function DiffRow({ label, before, after, changed }: { label: string; before: str
         </span>
       </td>
       <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-muted)", textDecoration: "line-through" } : undefined}>
-        {shortAddr(before as `0x${string}`)}
+        <AddressLink address={before as `0x${string}`} network={network} />
       </td>
       <td className="py-1.5" style={changed ? { color: "var(--accent)", fontWeight: 600 } : undefined}>
-        {shortAddr(after as `0x${string}`)}
+        <AddressLink address={after as `0x${string}`} network={network} />
       </td>
     </tr>
   );

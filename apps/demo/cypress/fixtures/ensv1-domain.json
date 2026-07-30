@@ -1,0 +1,10 @@
+{
+  "domain": {
+    "name": "cyfixture.eth",
+    "owner": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "resolver": "0x231b0Ee14048e9dcCD1d247744d114a4E15A8e63",
+    "resolvedAddress": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "registrationDate": 1600000000,
+    "expiryDate": 1900000000
+  }
+}

@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
+import { orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
-import { isPositiveNumber, isZeroAddress, shortAddr } from "@/lib/format";
+import { isPositiveNumber, isZeroAddress } from "@/lib/format";
 import { useOwnedNames } from "@/lib/events";
 import { NameCard, gradientFor } from "@/components/NameCard";
+import { AddressLink } from "@/components/AddressLink";
 import { ComingSoon } from "@/components/ComingSoon";
 
 type Step = "idle" | "registering" | "approving" | "listing";
@@ -19,6 +20,7 @@ export default function ListDomainPage() {
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { registry, orderManager } = useContractAddresses();
+  const network = useCurrentNetwork();
   const owned = useOwnedNames(address);
 
   const [selectedId, setSelectedId] = useState<bigint | undefined>();
@@ -107,7 +109,7 @@ export default function ListDomainPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
+    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
       <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
         Announce a name
       </div>
@@ -193,7 +195,7 @@ export default function ListDomainPage() {
             )}
             {isNameUnavailable && (
               <p className="mt-3 font-mono text-xs" style={{ color: "var(--color-sinal-danger)" }}>
-                Owned by {shortAddr(owner as `0x${string}`)} — not available.
+                Owned by <AddressLink address={owner as `0x${string}`} network={network} /> — not available.
               </p>
             )}
             {!isConnected && registerName && owner !== undefined && !isUnregistered && (

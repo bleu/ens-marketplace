@@ -21,16 +21,22 @@ const projectId = /^[0-9a-f]{32}$/i.test(rawProjectId) ? rawProjectId : "";
 // anyway.
 const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] : []), safe()];
 
-/// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain
-/// since the PoC currently runs against a local mock registry (see docs/local-demo.md),
-/// not real ENSv2 Sepolia yet. Sepolia/mainnet stay wired for Slice 1/2 once that lands.
+/// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain,
+/// since /domains defaults to the ENSv2 mock-marketplace view against it (see
+/// docs/local-demo.md). The ENSv2 mock marketplace is also deployed to Sepolia (README
+/// "Deployed addresses"); real ENSv2 mainnet doesn't exist yet.
+///
+/// http()'s URL arg is optional and falls back to the chain's public default RPC when
+/// unset — fine for local dev, but exactly the kind of shared/rate-limited endpoint a
+/// public demo shouldn't depend on, so these read from the dedicated RPC env vars
+/// (documented in .env.example) when configured.
 export const wagmiConfig = createConfig({
   connectors,
   chains: [foundry, sepolia, mainnet],
   transports: {
     [foundry.id]: http(),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || undefined),
+    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
   },
   ssr: true,
 });

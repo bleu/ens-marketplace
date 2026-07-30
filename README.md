@@ -27,11 +27,11 @@ forkable — if Bleu ever couldn't run this, someone else could.
 
 | Component | Path | Status |
 |---|---|---|
-| Canonical-ID v2 order manager (regeneration-aware validation) | `contracts/src/v2/` | PoC — Sepolia, interfaces only so far |
-| Subname lease vault (parent-role delegation for the lease term) | `contracts/src/v2/` | PoC — Sepolia, interfaces only so far |
-| Renewal router (swap-in-any-token, routes to existing referrer contract) | `contracts/src/v1/` | PoC — mainnet v1, interfaces only so far |
+| ENSv2 mock marketplace — canonical-ID orders, regeneration-aware suspend/diff/accept-refill, subname leasing (announce/rent/reclaim) | `contracts/src/v2/`, `contracts/src/mock/` | **Live** — deployed + tested on local Anvil and Sepolia (see Deployed addresses) |
+| Real ENSv1 (mainnet) integration — real name/owner/resolver lookups via the ENS subgraph, real active listings from OpenSea and Grails, a real Seaport buy flow using real ETH | `apps/demo/lib/ensv1.ts`, `apps/demo/app/api/ensv1/` | **Live** — reads real mainnet data; purchases are genuine on-chain transactions |
+| Demo app — Explore/detail/list pages for both the ENSv2 mock marketplace and real ENSv1 data, Cypress e2e suite | `apps/demo` | **Live** |
+| Renewal router (swap-in-any-token, routes to the already-deployed referrer contract) | `contracts/src/v1/` | PoC — mainnet v1, interface-only so far (Slice 2, see `docs/poc-slice-2.md`) |
 | v1 core market (listings/offers/registrations, Seaport-based) | `contracts/src/market/` | Stub — grant-scope |
-| Demo app | `apps/demo` | Bare scaffold — wallet connect wired, demo flows not yet built |
 | Indexer | `indexer/` | Stub — grant-scope |
 | SDKs | `sdk/` | Stub — grant-scope |
 
@@ -50,21 +50,35 @@ cd ens-marketplace
 # Contracts
 cd contracts && forge install && forge build && forge test -vvv && cd ..
 
-# Demo app
+# Demo app — against local Anvil (see docs/local-demo.md for the full walkthrough,
+# including seeding demo data and running the Cypress suite)
 cd apps/demo
 cp .env.example .env.local   # fill in a WalletConnect project ID + RPC URLs
 pnpm install && pnpm dev
 ```
 
+The demo app also runs against the real Sepolia deployment below with no local chain
+needed — set `NEXT_PUBLIC_SEPOLIA_RPC_URL` and switch your wallet to Sepolia.
+
 ## Deployed addresses
 
-Not yet deployed — filled in as Sepolia/mainnet deployments happen (see
-`docs/roadmap.md`).
+### ENSv2 mock marketplace
+
+Our own `MockENSv2Registry` (ERC-1155-style canonical IDs, mutable token IDs that
+regenerate on owner/resolver change) — not the real ENSv2 protocol, which isn't live on
+any network yet. See `docs/roadmap.md`'s open items for why. Deployed via
+`contracts/script/DeployV2Sepolia.s.sol` / `DeployLocal.s.sol` — see `docs/local-demo.md`.
+
+| Contract | Sepolia | Local Anvil |
+|---|---|---|
+| `MockENSv2Registry` | [`0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2`](https://sepolia.etherscan.io/address/0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2) | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
+| `CanonicalIdOrderManager` | [`0xdF913A7a34A232C934A09FE7FF322926CeF14812`](https://sepolia.etherscan.io/address/0xdF913A7a34A232C934A09FE7FF322926CeF14812) | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
+| `SubnameLeaseVault` | [`0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f`](https://sepolia.etherscan.io/address/0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f) | `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0` |
+
+### Slice 2 (mainnet v1, not yet deployed)
 
 | Contract | Network | Address |
 |---|---|---|
-| `CanonicalIdOrderManager` | Sepolia | _pending_ |
-| `SubnameLeaseVault` | Sepolia | _pending_ |
 | `RenewalRouter` | Sepolia | _pending_ |
 | `RenewalRouter` | Mainnet | _pending_ |
 

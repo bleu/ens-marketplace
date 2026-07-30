@@ -68,7 +68,7 @@ function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
 /// page/filters from the URL on load.
 export default function DomainsPage() {
   return (
-    <Suspense fallback={<main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>}>
+    <Suspense fallback={<main className="p-4 font-mono text-sm text-[var(--fg-dim)] lg:p-8">Loading…</main>}>
       <DomainsPageInner />
     </Suspense>
   );
@@ -220,7 +220,7 @@ function DomainsPageInner() {
 
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
-      <div className="flex h-[60px] items-center gap-2 border-b px-8" style={{ borderColor: "var(--line)" }}>
+      <div className="flex h-[60px] items-center gap-2 border-b px-4 lg:px-8" style={{ borderColor: "var(--line)" }}>
         {networkMode === "ensv2" ? (
           <>
             <Tabs items={TABS} active={tab} onChange={setTab} />
@@ -452,7 +452,7 @@ function DomainsPageInner() {
         </aside>
 
         {/* table */}
-        <section className="px-8 pb-20">
+        <section className="px-4 pb-20 lg:px-8">
           {networkMode === "ensv1" ? (
             <EnsV1Table
               source={source}
