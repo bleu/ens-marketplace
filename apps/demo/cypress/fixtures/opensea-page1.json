@@ -1,0 +1,23 @@
+{
+  "listings": [
+    {
+      "name": "cyopensea1.eth",
+      "price": { "value": "250000000000000000", "decimals": 18, "currency": "ETH" },
+      "listing": {
+        "order_hash": "0x3333333333333333333333333333333333333333333333333333333333cccc",
+        "protocol_address": "0x0000000000000068F116a894984e2DB1123eB395",
+        "protocol_data": {
+          "parameters": {
+            "offerer": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "offer": [{ "token": "0x0635513f179d50a207757e05759cbd106d7dfce8", "identifierOrCriteria": "3", "itemType": 2 }]
+          },
+          "signature": "0xdeadbeef"
+        },
+        "price": { "current": { "value": "250000000000000000", "decimals": 18, "currency": "ETH" } }
+      },
+      "source": "opensea"
+    }
+  ],
+  "unresolvedCount": 0,
+  "next": "opensea-cursor-page-2"
+}

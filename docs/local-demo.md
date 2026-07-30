@@ -59,3 +59,25 @@ pnpm dev
 
 Open `http://localhost:3000`, connect a wallet on the Anvil network, and browse `/domains`
 and `/subnames`.
+
+## 5. Run the Cypress test suite
+
+With Anvil running and seeded (steps 1-2 above) and the demo app running (step 4), from
+`apps/demo`:
+
+```bash
+pnpm cypress:run       # headless, against whatever's already running on :3000
+pnpm cypress:open      # interactive runner
+pnpm e2e               # builds a production bundle, serves it, and runs the suite end
+                       # to end — no separately-running dev server needed; this is what CI runs
+```
+
+Read-only specs (`navigation`, `ensv1-*`, the read parts of `ensv2-explore`) work against
+whatever's already seeded. The write-flow specs (`ensv2-write-flows`, `ensv2-subname-rent`)
+make real transactions against Anvil — using a fake EIP-1193 provider that impersonates one
+of Anvil's own "unlocked" dev accounts (see `cypress/support/wallet.ts`) — and register
+their own uniquely-named domains per run, so they never depend on or mutate the
+alice/bob/charlie seed data above. Scenario setup for those (registering/listing/mutating
+state before the UI-driven part of a test) goes through direct contract calls via
+`cy.task(...)` (see `cypress/support/anvil-tasks.ts`) rather than the UI, mirroring how
+`DeployLocal.s.sol` seeds `bob.xyz`'s Suspended state.

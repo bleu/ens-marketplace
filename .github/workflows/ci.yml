@@ -43,6 +43,40 @@ jobs:
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
 
+  e2e:
+    needs: [frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Start Anvil + deploy local demo contracts
+        working-directory: contracts
+        run: |
+          anvil > /tmp/anvil.log 2>&1 &
+          npx --yes wait-port 127.0.0.1:8545
+          forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - name: Build + run Cypress against a production build
+        run: pnpm --filter demo e2e
+        env:
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: apps/demo/cypress/screenshots
+
   testnet-deploy:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [contracts]
