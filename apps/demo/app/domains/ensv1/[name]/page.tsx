@@ -146,8 +146,8 @@ export default function EnsV1DomainDetailPage() {
             className="mt-4 rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
             style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)", color: "var(--accent)" }}
           >
-            Real mainnet ENS name — read-only. Owner/resolver data comes from the ENS
-            subgraph; a purchase below is a genuine on-chain transaction using real ETH.
+            Real mainnet ENS name — read-only. A purchase below is a genuine on-chain
+            transaction using real ETH.
           </div>
 
           {!notConfigured && listing && (
