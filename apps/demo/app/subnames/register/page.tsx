@@ -4,16 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { registryAbi, useContractAddresses } from "@/lib/contracts";
+import { registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { nameToCanonicalId, subnameToCanonicalId } from "@/lib/canonicalId";
-import { isZeroAddress, shortAddr } from "@/lib/format";
+import { isZeroAddress } from "@/lib/format";
 import { gradientFor } from "@/components/NameCard";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function RegisterSubnamePage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { registry } = useContractAddresses();
+  const network = useCurrentNetwork();
   const [parentName, setParentName] = useState("");
   const [label, setLabel] = useState("");
 
@@ -135,7 +137,7 @@ export default function RegisterSubnamePage() {
               )}
               {parentNotOwnedByMe && (
                 <p style={{ color: "var(--color-sinal-danger)" }}>
-                  Parent owned by {shortAddr(parentOwner as `0x${string}`)}, not you.
+                  Parent owned by <AddressLink address={parentOwner as `0x${string}`} network={network} />, not you.
                 </p>
               )}
               {isOwnerOfParent && !label && <p style={{ color: "var(--fg-dim)" }}>Enter a label to register under this parent.</p>}
