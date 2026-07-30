@@ -10,8 +10,9 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useEnsV1Domain, useEnsV1ListingForName } from "@/lib/ensv1-client";
 import { ensAppUrl, grailsUrl, namehash, openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { fulfillListing, isInsufficientBalanceError, useEthersSigner } from "@/lib/seaport";
+import { Network } from "@/lib/contracts";
+import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
-import { shortAddr } from "@/lib/format";
 
 type BuyStep = "idle" | "confirming" | "pending" | "success" | "error";
 
@@ -145,8 +146,8 @@ export default function EnsV1DomainDetailPage() {
             className="mt-4 rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
             style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)", color: "var(--accent)" }}
           >
-            Real mainnet ENS name — read-only. Owner/resolver data comes from the ENS
-            subgraph; a purchase below is a genuine on-chain transaction using real ETH.
+            Real mainnet ENS name — read-only. A purchase below is a genuine on-chain
+            transaction using real ETH.
           </div>
 
           {!notConfigured && listing && (
@@ -219,9 +220,15 @@ export default function EnsV1DomainDetailPage() {
         <div className="flex flex-col">
           <div className="overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
-              { k: "Owner", v: shortAddr(domain.owner) },
-              { k: "Resolver", v: domain.resolver ? shortAddr(domain.resolver) : "—" },
-              { k: "Resolved address", v: domain.resolvedAddress ? shortAddr(domain.resolvedAddress) : "—" },
+              { k: "Owner", v: <AddressLink address={domain.owner} network={Network.Mainnet} /> },
+              {
+                k: "Resolver",
+                v: domain.resolver ? <AddressLink address={domain.resolver} network={Network.Mainnet} /> : "—",
+              },
+              {
+                k: "Resolved address",
+                v: domain.resolvedAddress ? <AddressLink address={domain.resolvedAddress} network={Network.Mainnet} /> : "—",
+              },
               { k: "Registered", v: domain.registrationDate ? new Date(domain.registrationDate * 1000).toLocaleDateString() : "—" },
               { k: "Expires", v: domain.expiryDate ? new Date(domain.expiryDate * 1000).toLocaleDateString() : "—" },
               { k: "Network", v: "Ethereum mainnet (ENSv1, real)" },

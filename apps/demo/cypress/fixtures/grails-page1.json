@@ -1,0 +1,42 @@
+{
+  "listings": [
+    {
+      "name": "cyfixture1.eth",
+      "price": { "value": "500000000000000000", "decimals": 18, "currency": "ETH" },
+      "listing": {
+        "order_hash": "0x1111111111111111111111111111111111111111111111111111111111aaaa",
+        "protocol_address": "0x0000000000000068F116a894984e2DB1123eB395",
+        "protocol_data": {
+          "parameters": {
+            "offerer": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "offer": [{ "token": "0x0635513f179d50a207757e05759cbd106d7dfce8", "identifierOrCriteria": "1", "itemType": 2 }]
+          },
+          "signature": "0xdeadbeef"
+        },
+        "price": { "current": { "value": "500000000000000000", "decimals": 18, "currency": "ETH" } }
+      },
+      "source": "grails"
+    },
+    {
+      "name": "cyfixture2.eth",
+      "price": { "value": "1200000000000000000", "decimals": 18, "currency": "ETH" },
+      "listing": {
+        "order_hash": "0x2222222222222222222222222222222222222222222222222222222222bbbb",
+        "protocol_address": "0x0000000000000068F116a894984e2DB1123eB395",
+        "protocol_data": {
+          "parameters": {
+            "offerer": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "offer": [{ "token": "0x0635513f179d50a207757e05759cbd106d7dfce8", "identifierOrCriteria": "2", "itemType": 2 }]
+          },
+          "signature": "0xdeadbeef"
+        },
+        "price": { "current": { "value": "1200000000000000000", "decimals": 18, "currency": "ETH" } }
+      },
+      "source": "grails"
+    }
+  ],
+  "unresolvedCount": 3,
+  "next": 2,
+  "total": 9199,
+  "totalPages": 184
+}
