@@ -93,6 +93,12 @@ jobs:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
-          echo "Deploy scripts are skeletons until contracts land — see docs/roadmap.md"
+          # DeployV2Sepolia.s.sol is implemented and already deployed manually — see the
+          # addresses in the root README.md. Left commented (rather than wired up here)
+          # since running it again would deploy a fresh instance and immediately
+          # invalidate those README addresses; re-enable deliberately, together with a
+          # README update, once auto-redeploy-per-tag is actually the intended workflow.
+          # DeployV1Sepolia.s.sol (RenewalRouter) is still a skeleton — see docs/poc-slice-2.md.
+          echo "No auto-deploy wired up yet — see comments in this step for why."
           # forge script script/DeployV2Sepolia.s.sol --rpc-url sepolia --broadcast --verify
           # forge script script/DeployV1Sepolia.s.sol --rpc-url sepolia --broadcast --verify
