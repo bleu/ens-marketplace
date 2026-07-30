@@ -79,7 +79,7 @@ export default function RegisterSubnamePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-8 pt-12">
+    <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
       <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
         Announce a subname
       </div>

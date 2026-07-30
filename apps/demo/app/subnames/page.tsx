@@ -53,7 +53,7 @@ export default function SubnamesPage() {
     .filter((r) => r.listing && r.listing[3] && r.activeUntil !== undefined && r.tenant !== undefined);
 
   return (
-    <main className="animate-[fadeIn_0.2s_var(--ease-out)] px-8 pb-20 pt-8">
+    <main className="animate-[fadeIn_0.2s_var(--ease-out)] px-4 pb-20 pt-8 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-[var(--font-display)] text-2xl font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
           Subnames

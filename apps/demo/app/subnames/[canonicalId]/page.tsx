@@ -70,7 +70,7 @@ export default function SubnameDetailPage() {
 
   if (parsedCanonicalId === null) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -91,7 +91,7 @@ export default function SubnameDetailPage() {
 
   if (readsError) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
             Couldn&apos;t load this subname.
@@ -112,7 +112,7 @@ export default function SubnameDetailPage() {
   }
 
   if (!listing || activeUntil === undefined || tenant === undefined || name === undefined) {
-    return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+    return <main className="p-4 font-mono text-sm text-[var(--fg-dim)] lg:p-8">Loading…</main>;
   }
 
   const [, pricePerTerm, termSeconds, active] = listing;
@@ -131,7 +131,7 @@ export default function SubnameDetailPage() {
   // were a real subname.
   if (!name) {
     return (
-      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="m15 18-6-6 6-6" />
@@ -196,7 +196,7 @@ export default function SubnameDetailPage() {
   );
 
   return (
-    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+    <main className="mx-auto max-w-[1400px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
       <Link href="/subnames" className="mb-6 inline-flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="m15 18-6-6 6-6" />

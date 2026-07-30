@@ -19,7 +19,7 @@ export default function RootLayout({
       <body className="antialiased">
         <Providers>
           <TopNav />
-          <div className="px-8 pt-4">
+          <div className="px-4 pt-4 lg:px-8">
             <ChainGuard />
           </div>
           {children}

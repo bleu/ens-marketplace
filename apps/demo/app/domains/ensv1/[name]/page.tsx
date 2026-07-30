@@ -74,7 +74,7 @@ export default function EnsV1DomainDetailPage() {
 
   if (notFound) {
     return (
-      <main className="mx-auto max-w-[900px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[900px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <BackLink />
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
@@ -90,7 +90,7 @@ export default function EnsV1DomainDetailPage() {
 
   if (domainError) {
     return (
-      <main className="mx-auto max-w-[900px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+      <main className="mx-auto max-w-[900px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
         <BackLink />
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
@@ -113,11 +113,11 @@ export default function EnsV1DomainDetailPage() {
   }
 
   if (domainLoading || !domain) {
-    return <main className="p-8 font-mono text-sm text-[var(--fg-dim)]">Loading…</main>;
+    return <main className="p-4 font-mono text-sm text-[var(--fg-dim)] lg:p-8">Loading…</main>;
   }
 
   return (
-    <main className="mx-auto max-w-[1200px] animate-[fadeIn_0.2s_var(--ease-out)] p-8">
+    <main className="mx-auto max-w-[1200px] animate-[fadeIn_0.2s_var(--ease-out)] p-4 lg:p-8">
       <BackLink />
 
       <div className="grid grid-cols-1 gap-9 lg:grid-cols-[420px_1fr]">
