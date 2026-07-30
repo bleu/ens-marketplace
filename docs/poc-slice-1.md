@@ -24,6 +24,10 @@ to prevent.
 
 ## Status
 
-Not yet implemented — `contracts/src/v2/interfaces/` and `contracts/src/v2/libraries/`
-contain interface/stub scaffolding only. See `docs/roadmap.md` for what's gating real
-implementation (ENSv2 Sepolia addresses/events/roles need confirming first).
+Implemented and deployed — `CanonicalIdOrderManager` and `SubnameLeaseVault` are live on
+Sepolia (addresses in the root `README.md`) and on local Anvil for demo purposes, with the
+full script above (list → buy → mutate → suspend → diff → accept-refill, plus subname
+rent/reclaim) working end-to-end and covered by the Cypress suite (`apps/demo/cypress/`).
+This is our own `MockENSv2Registry`, not the real ENSv2 protocol — see `docs/roadmap.md`'s
+open items for why real ENSv2 Sepolia addresses/events/roles are still unconfirmed
+upstream.

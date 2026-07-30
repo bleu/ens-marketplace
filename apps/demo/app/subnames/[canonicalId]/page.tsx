@@ -14,9 +14,10 @@ import {
   useContractAddresses,
   useCurrentNetwork,
 } from "@/lib/contracts";
-import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortAddr, shortId } from "@/lib/format";
+import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortId } from "@/lib/format";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function SubnameDetailPage() {
   const params = useParams<{ canonicalId: string }>();
@@ -256,7 +257,7 @@ export default function SubnameDetailPage() {
           {isLeased && (
             <div className="rounded-[var(--radius-3)] border p-5" style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}>
               <p className="font-mono text-sm" style={{ color: "var(--brand)" }}>
-                Currently leased to {shortAddr(tenant as `0x${string}`)} until{" "}
+                Currently leased to <AddressLink address={tenant as `0x${string}`} network={network} /> until{" "}
                 {new Date(Number(activeUntil) * 1000).toLocaleString()}
               </p>
             </div>
@@ -399,8 +400,11 @@ export default function SubnameDetailPage() {
                     ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
                     : "Mock ENSv2 registry (local Anvil)",
               },
-              { k: "Lease vault", v: shortAddr(leaseVault) },
-              { k: "Tenant", v: isZeroAddress(tenant as `0x${string}`) ? "None" : shortAddr(tenant as `0x${string}`) },
+              { k: "Lease vault", v: <AddressLink address={leaseVault} network={network} /> },
+              {
+                k: "Tenant",
+                v: isZeroAddress(tenant as `0x${string}`) ? "None" : <AddressLink address={tenant as `0x${string}`} network={network} />,
+              },
             ].map((d) => (
               <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
                 <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
