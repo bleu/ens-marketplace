@@ -322,10 +322,27 @@ export default function EnsV2AlphaRegisterPage() {
                 ) : canReveal ? (
                   <p style={{ color: "var(--brand)" }}>Commitment ready — you can register now.</p>
                 ) : commitTime ? (
-                  <p style={{ color: "var(--fg-muted)" }}>
-                    Waiting {Math.max(0, MIN_COMMITMENT_AGE_SECONDS - secondsWaited)}s more before this commitment can be revealed
-                    (prevents front-running).
-                  </p>
+                  <>
+                    <div className="flex items-baseline justify-between">
+                      <span style={{ color: "var(--fg-muted)" }}>Waiting to reveal…</span>
+                      <span className="text-2xl font-bold tabular-nums" style={{ color: "var(--brand)" }}>
+                        {Math.max(0, MIN_COMMITMENT_AGE_SECONDS - secondsWaited)}s
+                      </span>
+                    </div>
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--line)" }}>
+                      <div
+                        className="h-full rounded-full transition-[width] duration-1000 ease-linear"
+                        style={{
+                          width: `${Math.min(100, (secondsWaited / MIN_COMMITMENT_AGE_SECONDS) * 100)}%`,
+                          background: "var(--brand)",
+                        }}
+                      />
+                    </div>
+                    <p className="mt-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                      This delay prevents front-running — someone else can&apos;t see your commit and register the
+                      name first.
+                    </p>
+                  </>
                 ) : (
                   <p style={{ color: "var(--fg-muted)" }}>Confirming commitment on-chain…</p>
                 )}
