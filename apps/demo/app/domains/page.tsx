@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
-import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
+import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
@@ -78,6 +78,12 @@ export default function DomainsPage() {
 function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
+  // Which source options are even relevant to show — each source only makes sense
+  // against one specific chain (Local's mock contracts only exist on Anvil, the real
+  // ENSv2 alpha only exists on Sepolia, ENSv1/Grails/OpenSea are all Ethereum mainnet
+  // data), so this gates which buttons render rather than showing options that would
+  // require a chain switch just to be meaningful.
+  const currentNetwork = useCurrentNetwork();
   const { registry, orderManager } = useContractAddresses();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
   const alpha = useEnsV2AlphaRegisteredNames();
@@ -274,96 +280,164 @@ function DomainsPageInner() {
             className="mb-6 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
             style={{ color: "var(--color-profundo-300)" }}
           >
-            Chain
+            Source
           </div>
           <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv2")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv2"
-                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
-                >
-                  Namechain (local, ENSv2)
+            {currentNetwork === Network.Anvil && (
+              <button
+                type="button"
+                onClick={() => setNetworkMode("ensv2")}
+                className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                style={
+                  networkMode === "ensv2"
+                    ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                    : { borderColor: "var(--line)" }
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                  />
+                  <span
+                    className="font-sans text-[13px] font-medium"
+                    style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
+                  >
+                    Local
+                  </span>
+                </div>
+                <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                  {ids.length}
                 </span>
-              </div>
-              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                {ids.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv1")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv1"
-                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
-                >
-                  Mainnet (L1, ENSv1)
-                </span>
-              </div>
-            </button>
-            {networkMode === "ensv1" && (
-              <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                Real ENS names on Ethereum mainnet, read-only. Listings below are real
-                active OpenSea orders — buying executes a real on-chain purchase.
-              </p>
+              </button>
             )}
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv2-alpha")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv2-alpha"
-                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv2-alpha" ? "var(--fg)" : "var(--fg-muted)" }}
+            {currentNetwork === Network.Sepolia && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNetworkMode("ensv2-alpha")}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv2-alpha"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
                 >
-                  Real ENSv2 (Sepolia Alpha)
-                </span>
-              </div>
-              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                {alpha.names.length}
-              </span>
-            </button>
-            {networkMode === "ensv2-alpha" && (
-              <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
-                Connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not
-                our mock. Pre-audit, unofficial, unpublished addresses that can change
-                without notice. Registration spends real (test) Sepolia ETH/USDC.
-              </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv2-alpha" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      ENSv2
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                    {alpha.names.length}
+                  </span>
+                </button>
+                {networkMode === "ensv2-alpha" && (
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
+                    Connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not
+                    our mock. Pre-audit, unofficial, unpublished addresses that can change
+                    without notice. Registration spends real (test) Sepolia ETH/USDC.
+                  </p>
+                )}
+              </>
+            )}
+            {currentNetwork === Network.Mainnet && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNetworkMode("ensv1")}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      ENSv1
+                    </span>
+                  </div>
+                </button>
+                {networkMode === "ensv1" && (
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                    Real ENS names on Ethereum mainnet, read-only. Listings below are real
+                    active OpenSea orders — buying executes a real on-chain purchase.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNetworkMode("ensv1");
+                    setSource("grails");
+                    setPage(1);
+                  }}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1" && source === "grails"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{
+                        background: networkMode === "ensv1" && source === "grails" ? "var(--brand)" : "var(--color-profundo-300)",
+                      }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" && source === "grails" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      Grails
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNetworkMode("ensv1");
+                    setSource("opensea");
+                    setPage(1);
+                  }}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1" && source === "opensea"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{
+                        background: networkMode === "ensv1" && source === "opensea" ? "var(--brand)" : "var(--color-profundo-300)",
+                      }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" && source === "opensea" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      OpenSea
+                    </span>
+                  </div>
+                </button>
+              </>
             )}
           </div>
 
@@ -379,27 +453,6 @@ function DomainsPageInner() {
             </p>
           ) : networkMode === "ensv1" ? (
             <div className="flex flex-col gap-4">
-              <div className="flex gap-1.5">
-                {(["grails", "opensea"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setSource(s);
-                      setPage(1);
-                    }}
-                    className="h-8 flex-1 rounded-[var(--radius-1)] border font-mono text-[11px] uppercase"
-                    style={
-                      source === s
-                        ? { borderColor: "var(--brand)", color: "var(--fg)", background: "rgba(32,197,217,0.08)" }
-                        : { borderColor: "var(--line)", color: "var(--fg-muted)" }
-                    }
-                  >
-                    {s === "grails" ? "Grails" : "OpenSea"}
-                  </button>
-                ))}
-              </div>
-
               <div>
                 <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
                   Price (ETH)
