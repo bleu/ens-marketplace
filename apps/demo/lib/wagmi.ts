@@ -24,13 +24,21 @@ const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] :
 /// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain
 /// since the PoC currently runs against a local mock registry (see docs/local-demo.md),
 /// not real ENSv2 Sepolia yet. Sepolia/mainnet stay wired for Slice 1/2 once that lands.
+// viem/wagmi's built-in default RPC for Sepolia (thirdweb's public endpoint) is a
+// shared, rate-limited free tier — under real load (e.g. the ENSv2 alpha detail page's
+// activity scan, which fires several eth_getLogs calls at once) it fails outright with
+// "HttpRequestError: ... Details: Failed to fetch", not just a slow response. Falls back
+// to a more reliable public archive node when NEXT_PUBLIC_SEPOLIA_RPC_URL isn't
+// configured (documented in .env.example), rather than trusting the chain-default silently.
+const SEPOLIA_FALLBACK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
+
 export const wagmiConfig = createConfig({
   connectors,
   chains: [foundry, sepolia, mainnet],
   transports: {
     [foundry.id]: http(),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
+    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
   },
   ssr: true,
 });
