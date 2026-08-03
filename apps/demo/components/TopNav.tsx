@@ -247,7 +247,7 @@ export function TopNav() {
             className="whitespace-nowrap font-[var(--font-display)] text-xl font-normal tracking-[0.02em]"
             style={{ color: "var(--fg)" }}
           >
-            Bleu ENS Marketplace
+            Blue Marketplace
           </span>
         </Link>
 

@@ -219,7 +219,7 @@ export default function ListDomainPage() {
                   style={{ background: "linear-gradient(135deg,var(--color-aqua-500),var(--color-aqua-700))" }}
                 />
                 <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-                  Bleu ENS Marketplace
+                  Blue Marketplace
                 </span>
                 <span className="font-mono text-[11px]" style={{ color: "var(--brand)" }}>
                   0% fee

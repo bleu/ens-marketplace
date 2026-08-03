@@ -5,7 +5,7 @@ import { TopNav } from "@/components/TopNav";
 import { ChainGuard } from "@/components/ChainGuard";
 
 export const metadata: Metadata = {
-  title: "Bleu ENS Marketplace — PoC Demo",
+  title: "Blue Marketplace — PoC Demo",
   description: "ENS DAO SPP3 Marketplace RFP proof-of-concept demo",
 };
 
