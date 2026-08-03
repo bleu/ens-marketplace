@@ -6,10 +6,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
 import { useKnownDomainIds, useLastSale } from "@/lib/events";
-import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
+import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
+import { useEnsV2AlphaRegisteredNames, type EnsV2AlphaName } from "@/lib/ensv2-alpha";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
@@ -77,8 +78,15 @@ export default function DomainsPage() {
 function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
+  // Which source options are even relevant to show — each source only makes sense
+  // against one specific chain (Local's mock contracts only exist on Anvil, the real
+  // ENSv2 alpha only exists on Sepolia, ENSv1/Grails/OpenSea are all Ethereum mainnet
+  // data), so this gates which buttons render rather than showing options that would
+  // require a chain switch just to be meaningful.
+  const currentNetwork = useCurrentNetwork();
   const { registry, orderManager } = useContractAddresses();
   const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+  const alpha = useEnsV2AlphaRegisteredNames();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -221,14 +229,15 @@ function DomainsPageInner() {
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-4 lg:px-8" style={{ borderColor: "var(--line)" }}>
-        {networkMode === "ensv2" ? (
+        {networkMode === "ensv2" && (
           <>
             <Tabs items={TABS} active={tab} onChange={setTab} />
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
               {rows.length} names
             </span>
           </>
-        ) : (
+        )}
+        {networkMode === "ensv1" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
               Real listings — {source === "grails" ? "Grails" : "OpenSea"}
@@ -237,6 +246,23 @@ function DomainsPageInner() {
               {ensv1Listings.length} on this page
               {source === "grails" && grails.total !== null && <> · Grails has {grails.total.toLocaleString()} listings total</>}
             </span>
+          </>
+        )}
+        {networkMode === "ensv2-alpha" && (
+          <>
+            <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
+              Real ENSv2 · Sepolia Alpha
+            </span>
+            <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              {alpha.names.length} registered
+            </span>
+            <Link
+              href="/domains/ensv2-alpha/register"
+              className="flex h-9 shrink-0 items-center rounded-[var(--radius-2)] px-4 font-sans text-xs font-semibold"
+              style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
+            >
+              Register a real name
+            </Link>
           </>
         )}
       </div>
@@ -254,63 +280,164 @@ function DomainsPageInner() {
             className="mb-6 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
             style={{ color: "var(--color-profundo-300)" }}
           >
-            Chain
+            Source
           </div>
           <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv2")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv2"
-                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
-                >
-                  Namechain (local, ENSv2)
+            {currentNetwork === Network.Anvil && (
+              <button
+                type="button"
+                onClick={() => setNetworkMode("ensv2")}
+                className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                style={
+                  networkMode === "ensv2"
+                    ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                    : { borderColor: "var(--line)" }
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                  />
+                  <span
+                    className="font-sans text-[13px] font-medium"
+                    style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
+                  >
+                    Local
+                  </span>
+                </div>
+                <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                  {ids.length}
                 </span>
-              </div>
-              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                {ids.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv1")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv1"
-                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
+              </button>
+            )}
+            {currentNetwork === Network.Sepolia && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNetworkMode("ensv2-alpha")}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv2-alpha"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
                 >
-                  Mainnet (L1, ENSv1)
-                </span>
-              </div>
-            </button>
-            {networkMode === "ensv1" && (
-              <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                Real ENS names on Ethereum mainnet, read-only. Listings below are real
-                active OpenSea orders — buying executes a real on-chain purchase.
-              </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv2-alpha" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      ENSv2
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                    {alpha.names.length}
+                  </span>
+                </button>
+                {networkMode === "ensv2-alpha" && (
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
+                    Connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not
+                    our mock. Pre-audit, unofficial, unpublished addresses that can change
+                    without notice. Registration spends real (test) Sepolia ETH/USDC.
+                  </p>
+                )}
+              </>
+            )}
+            {currentNetwork === Network.Mainnet && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNetworkMode("ensv1")}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      ENSv1
+                    </span>
+                  </div>
+                </button>
+                {networkMode === "ensv1" && (
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                    Real ENS names on Ethereum mainnet, read-only. Listings below are real
+                    active OpenSea orders — buying executes a real on-chain purchase.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNetworkMode("ensv1");
+                    setSource("grails");
+                    setPage(1);
+                  }}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1" && source === "grails"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{
+                        background: networkMode === "ensv1" && source === "grails" ? "var(--brand)" : "var(--color-profundo-300)",
+                      }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" && source === "grails" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      Grails
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNetworkMode("ensv1");
+                    setSource("opensea");
+                    setPage(1);
+                  }}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+                  style={
+                    networkMode === "ensv1" && source === "opensea"
+                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      : { borderColor: "var(--line)" }
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{
+                        background: networkMode === "ensv1" && source === "opensea" ? "var(--brand)" : "var(--color-profundo-300)",
+                      }}
+                    />
+                    <span
+                      className="font-sans text-[13px] font-medium"
+                      style={{ color: networkMode === "ensv1" && source === "opensea" ? "var(--fg)" : "var(--fg-muted)" }}
+                    >
+                      OpenSea
+                    </span>
+                  </div>
+                </button>
+              </>
             )}
           </div>
 
@@ -320,29 +447,12 @@ function DomainsPageInner() {
           >
             Refine
           </div>
-          {networkMode === "ensv1" ? (
+          {networkMode === "ensv2-alpha" ? (
+            <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+              No filters yet — this reads real on-chain registrations directly, no indexer.
+            </p>
+          ) : networkMode === "ensv1" ? (
             <div className="flex flex-col gap-4">
-              <div className="flex gap-1.5">
-                {(["grails", "opensea"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setSource(s);
-                      setPage(1);
-                    }}
-                    className="h-8 flex-1 rounded-[var(--radius-1)] border font-mono text-[11px] uppercase"
-                    style={
-                      source === s
-                        ? { borderColor: "var(--brand)", color: "var(--fg)", background: "rgba(32,197,217,0.08)" }
-                        : { borderColor: "var(--line)", color: "var(--fg-muted)" }
-                    }
-                  >
-                    {s === "grails" ? "Grails" : "OpenSea"}
-                  </button>
-                ))}
-              </div>
-
               <div>
                 <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
                   Price (ETH)
@@ -453,7 +563,9 @@ function DomainsPageInner() {
 
         {/* table */}
         <section className="px-4 pb-20 lg:px-8">
-          {networkMode === "ensv1" ? (
+          {networkMode === "ensv2-alpha" ? (
+            <EnsV2AlphaTable names={alpha.names} isError={alpha.isError} retry={alpha.refetch} />
+          ) : networkMode === "ensv1" ? (
             <EnsV1Table
               source={source}
               listings={ensv1Listings}
@@ -563,6 +675,128 @@ function DomainsPageInner() {
         </section>
       </div>
     </main>
+  );
+}
+
+const ENSV2_ALPHA_PAGE_SIZE = 20;
+
+/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
+/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table/the
+/// ensv2 mock table: this alpha has no price/seller/order concept, just a registered label
+/// + tokenId. Pagination here is a client-side slice, not a paginated API call like
+/// Grails/OpenSea — the full list is already in hand from the event scan
+/// (useEnsV2AlphaRegisteredNames), so "next page" just moves the slice window rather than
+/// fetching anything new.
+function EnsV2AlphaTable({
+  names,
+  isError,
+  retry,
+}: {
+  names: EnsV2AlphaName[];
+  isError: boolean;
+  retry: () => void;
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(names.length / ENSV2_ALPHA_PAGE_SIZE));
+  // Clamps down if the list shrinks (a page reload with fewer results) rather than
+  // stranding the view on a now-nonexistent page with nothing to show.
+  const clampedPage = Math.min(page, totalPages);
+  const pageNames = names.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
+
+  return (
+    <>
+      <ScrollHint className="no-scrollbar" arrowAlign="top">
+      <div className="min-w-[520px]">
+        <div
+          className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
+          style={{ borderColor: "var(--line-strong)" }}
+        >
+          {["Name", ""].map((h, i) => (
+            <span
+              key={h}
+              className={
+                i === 0
+                  ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
+                  : "font-mono text-[11px] tracking-[0.04em] uppercase"
+              }
+              style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
+            >
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {isError && (
+          <div className="flex items-center gap-3 py-8">
+            <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
+              Couldn&apos;t load real registrations — the on-chain read failed.
+            </p>
+            <button
+              onClick={retry}
+              className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
+              style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!isError && names.length === 0 && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            No names registered on this alpha deployment yet — be the first.
+          </p>
+        )}
+
+        {pageNames.map(({ tokenId, label }) => (
+          <Link
+            key={tokenId.toString()}
+            href={`/domains/ensv2-alpha/${encodeURIComponent(label)}`}
+            className="explore-row grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 py-3.5"
+            style={{ borderColor: "var(--line)" }}
+          >
+            <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4" style={{ background: "var(--bg)" }}>
+              <NameCard canonicalId={tokenId} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
+                    {label}
+                  </span>
+                  <StatusBadge variant="chain">Real L1</StatusBadge>
+                </div>
+              </div>
+            </div>
+            <div className="justify-self-end">
+              <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
+                View
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+      </ScrollHint>
+      {!isError && names.length > ENSV2_ALPHA_PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-4 py-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={clampedPage === 1}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            ← Previous
+          </button>
+          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            Page {clampedPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={clampedPage === totalPages}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -29,13 +29,19 @@ const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] :
 /// http()'s URL arg is optional and falls back to the chain's public default RPC when
 /// unset — fine for local dev, but exactly the kind of shared/rate-limited endpoint a
 /// public demo shouldn't depend on, so these read from the dedicated RPC env vars
-/// (documented in .env.example) when configured.
+/// (documented in .env.example) when configured, and otherwise fall back to a more
+/// reliable public archive node rather than trusting the chain default silently — that
+/// default (thirdweb's public Sepolia endpoint) fails outright under real load ("HttpRequestError:
+/// ... Details: Failed to fetch"), confirmed live via the ENSv2 alpha detail page's activity
+/// scan, which fires several eth_getLogs calls at once.
+const SEPOLIA_FALLBACK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
+
 export const wagmiConfig = createConfig({
   connectors,
   chains: [foundry, sepolia, mainnet],
   transports: {
     [foundry.id]: http(),
-    [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || undefined),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
     [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
   },
   ssr: true,
