@@ -625,10 +625,15 @@ function DomainsPageInner() {
   );
 }
 
-/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no pagination
-/// (event-scanned client-side, not a paginated API) and no filters yet (see the sidebar
-/// note above this table). Deliberately simple compared to EnsV1Table/the ensv2 mock
-/// table: this alpha has no price/seller/order concept, just a registered label + tokenId.
+const ENSV2_ALPHA_PAGE_SIZE = 20;
+
+/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
+/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table/the
+/// ensv2 mock table: this alpha has no price/seller/order concept, just a registered label
+/// + tokenId. Pagination here is a client-side slice, not a paginated API call like
+/// Grails/OpenSea — the full list is already in hand from the event scan
+/// (useEnsV2AlphaRegisteredNames), so "next page" just moves the slice window rather than
+/// fetching anything new.
 function EnsV2AlphaTable({
   names,
   isError,
@@ -638,8 +643,16 @@ function EnsV2AlphaTable({
   isError: boolean;
   retry: () => void;
 }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(names.length / ENSV2_ALPHA_PAGE_SIZE));
+  // Clamps down if the list shrinks (a page reload with fewer results) rather than
+  // stranding the view on a now-nonexistent page with nothing to show.
+  const clampedPage = Math.min(page, totalPages);
+  const pageNames = names.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
+
   return (
-    <ScrollHint className="no-scrollbar" arrowAlign="top">
+    <>
+      <ScrollHint className="no-scrollbar" arrowAlign="top">
       <div className="min-w-[520px]">
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
@@ -680,7 +693,7 @@ function EnsV2AlphaTable({
           </p>
         )}
 
-        {names.map(({ tokenId, label }) => (
+        {pageNames.map(({ tokenId, label }) => (
           <Link
             key={tokenId.toString()}
             href={`/domains/ensv2-alpha/${encodeURIComponent(label)}`}
@@ -706,7 +719,31 @@ function EnsV2AlphaTable({
           </Link>
         ))}
       </div>
-    </ScrollHint>
+      </ScrollHint>
+      {!isError && names.length > ENSV2_ALPHA_PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-4 py-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={clampedPage === 1}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            ← Previous
+          </button>
+          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            Page {clampedPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={clampedPage === totalPages}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
