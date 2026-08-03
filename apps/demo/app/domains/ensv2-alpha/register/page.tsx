@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatUnits, keccak256, parseUnits, toBytes, toHex, zeroAddress, zeroHash } from "viem";
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import {
@@ -30,6 +30,7 @@ interface PersistedCommitment {
   label: string;
   durationDays: string;
   secret: `0x${string}`;
+  commitment: `0x${string}`;
 }
 
 function storageKey(address: string | undefined): string {
@@ -44,8 +45,10 @@ export default function EnsV2AlphaRegisterPage() {
   const [label, setLabel] = useState("");
   const [durationDays, setDurationDays] = useState(String(DEFAULT_DURATION_DAYS));
   const [secret, setSecret] = useState<`0x${string}` | undefined>();
+  const [commitment, setCommitment] = useState<`0x${string}` | undefined>();
   const [step, setStep] = useState<Step>("idle");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const client = usePublicClient({ chainId: sepolia.id });
 
   // Restores an in-flight commitment (this account, this browser) on mount/reconnect —
   // see PersistedCommitment's doc comment.
@@ -58,6 +61,7 @@ export default function EnsV2AlphaRegisterPage() {
       setLabel(persisted.label);
       setDurationDays(persisted.durationDays);
       setSecret(persisted.secret);
+      setCommitment(persisted.commitment);
       setStep("waiting");
     } catch {
       sessionStorage.removeItem(storageKey(address));
@@ -87,25 +91,13 @@ export default function EnsV2AlphaRegisterPage() {
   });
   const totalPrice = priceData ? priceData[0] + priceData[1] : undefined;
 
-  const { data: commitmentPreview } = useReadContract({
-    address: ENSV2_ALPHA_ETH_REGISTRAR,
-    abi: ethRegistrarAbi,
-    functionName: "makeCommitment",
-    args:
-      label && address && secret && durationSeconds !== undefined
-        ? [label, address, secret, zeroAddress, zeroAddress, durationSeconds, zeroHash]
-        : undefined,
-    chainId: sepolia.id,
-    query: { enabled: Boolean(label && address && secret && durationSeconds !== undefined) },
-  });
-
   const { data: commitTime, refetch: refetchCommitTime } = useReadContract({
     address: ENSV2_ALPHA_ETH_REGISTRAR,
     abi: ethRegistrarAbi,
     functionName: "commitmentAt",
-    args: commitmentPreview ? [commitmentPreview] : undefined,
+    args: commitment ? [commitment] : undefined,
     chainId: sepolia.id,
-    query: { enabled: Boolean(commitmentPreview) && step === "waiting", refetchInterval: 5000 },
+    query: { enabled: Boolean(commitment) && step === "waiting", refetchInterval: 5000 },
   });
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -171,17 +163,32 @@ export default function EnsV2AlphaRegisterPage() {
 
   const busy = isPending || isConfirming || step === "committing" || step === "approving" || step === "registering";
 
-  const startCommit = () => {
+  const startCommit = async () => {
     if (!isConnected) {
       openConnectModal?.();
       return;
     }
-    if (!address || !label || durationSeconds === undefined || !commitmentPreview) return;
+    if (!address || !label || durationSeconds === undefined || !client) return;
     const newSecret = secret ?? toHex(crypto.getRandomValues(new Uint8Array(32)));
+    // Computed imperatively (an actual RPC call at click-time), not via a reactive
+    // useReadContract — that read would only ever fire once `secret` was already in
+    // state, but `secret` doesn't exist until this very function generates it, so it
+    // could never resolve before this point was reached (the button silently did
+    // nothing on every first attempt).
+    const newCommitment = await client.readContract({
+      address: ENSV2_ALPHA_ETH_REGISTRAR,
+      abi: ethRegistrarAbi,
+      functionName: "makeCommitment",
+      args: [label, address, newSecret, zeroAddress, zeroAddress, durationSeconds, zeroHash],
+    });
     setSecret(newSecret);
-    sessionStorage.setItem(storageKey(address), JSON.stringify({ label, durationDays, secret: newSecret } satisfies PersistedCommitment));
+    setCommitment(newCommitment);
+    sessionStorage.setItem(
+      storageKey(address),
+      JSON.stringify({ label, durationDays, secret: newSecret, commitment: newCommitment } satisfies PersistedCommitment),
+    );
     setStep("committing");
-    writeContract({ address: ENSV2_ALPHA_ETH_REGISTRAR, abi: ethRegistrarAbi, functionName: "commit", args: [commitmentPreview], chainId: sepolia.id });
+    writeContract({ address: ENSV2_ALPHA_ETH_REGISTRAR, abi: ethRegistrarAbi, functionName: "commit", args: [newCommitment], chainId: sepolia.id });
   };
 
   const continueAfterWait = () => {
@@ -214,6 +221,7 @@ export default function EnsV2AlphaRegisterPage() {
   const cancelCommitment = () => {
     if (address) sessionStorage.removeItem(storageKey(address));
     setSecret(undefined);
+    setCommitment(undefined);
     setStep("idle");
   };
 
