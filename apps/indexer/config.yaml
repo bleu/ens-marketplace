@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: ensv2-marketplace-indexer
+description: Indexes ENSv2 marketplace registry/order/lease events for the demo app
+# transaction.hash isn't selected by default — DomainActivity's id/txHash need it on every event.
+field_selection:
+  transaction_fields:
+    - hash
+contracts:
+  - name: Registry
+    events:
+      - event: "Registered(uint256 indexed canonicalId, string name, address indexed owner)"
+      - event: "SubnameRegistered(uint256 indexed parentId, uint256 indexed canonicalId, string label, address indexed owner)"
+      - event: "OwnerChanged(uint256 indexed canonicalId, address indexed newOwner, uint96 newVersion)"
+      - event: "ResolverChanged(uint256 indexed canonicalId, address indexed newResolver, uint96 newVersion)"
+  - name: OrderManager
+    events:
+      - event: "Listed(uint256 indexed canonicalId, address indexed seller, uint256 price, bytes32 pinnedHash)"
+      - event: "Relisted(uint256 indexed canonicalId, uint256 newPrice, bytes32 pinnedHash)"
+      - event: "Cancelled(uint256 indexed canonicalId)"
+      - event: "Filled(uint256 indexed canonicalId, address indexed buyer, uint256 price)"
+      - event: "OrderSuspended(uint256 indexed canonicalId, bytes32 pinnedHash, bytes32 liveHash)"
+      - event: "Refilled(uint256 indexed canonicalId, address indexed buyer, uint256 price)"
+  - name: LeaseVault
+    events:
+      - event: "Announced(uint256 indexed canonicalId, address indexed parent, uint256 pricePerTerm, uint256 termSeconds)"
+      - event: "Withdrawn(uint256 indexed canonicalId)"
+      - event: "LeaseStarted(uint256 indexed canonicalId, address indexed tenant, uint256 activeUntil)"
+      - event: "LeasedResolverSet(uint256 indexed canonicalId, address indexed tenant, address newResolver)"
+      - event: "LeaseReclaimed(uint256 indexed canonicalId, address indexed parent)"
+chains:
+  # Anvil: HyperSync doesn't cover local chains, so RPC is the only (and primary) source here.
+  - id: 31337
+    start_block: 0
+    rpc: http://127.0.0.1:8545
+    contracts:
+      - name: Registry
+        address: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+      - name: OrderManager
+        address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+      - name: LeaseVault
+        address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+  # Sepolia: HyperSync covers this chain natively — no RPC needed, and no rate-limit
+  # concerns like the frontend's own eth_getLogs scanning has hit against public RPCs.
+  - id: 11155111
+    start_block: 11371094
+    contracts:
+      - name: Registry
+        address: "0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2"
+      - name: OrderManager
+        address: "0xdF913A7a34A232C934A09FE7FF322926CeF14812"
+      - name: LeaseVault
+        address: "0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f"

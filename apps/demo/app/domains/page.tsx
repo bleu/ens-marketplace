@@ -4,9 +4,8 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
-import { useReadContracts } from "wagmi";
-import { useKnownDomainIds, useLastSale } from "@/lib/events";
-import { OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
+import { useDomainSearch, useLastSale } from "@/lib/events";
+import { OrderStatus } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
@@ -16,8 +15,7 @@ import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
 import { shortAddr, shortId } from "@/lib/format";
-
-type Order = readonly [`0x${string}`, bigint, `0x${string}`, `0x${string}`, `0x${string}`, number];
+import type { DomainOrderRow } from "@/lib/events";
 
 const TABS: TabItem[] = [
   { id: "names", label: "Names" },
@@ -77,8 +75,7 @@ export default function DomainsPage() {
 function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
-  const { registry, orderManager } = useContractAddresses();
-  const { ids, isError: idsError, refetch: refetchIds } = useKnownDomainIds();
+  const [ensv2Page, setEnsv2Page] = useState(1);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -195,37 +192,22 @@ function DomainsPageInner() {
   const active = source === "grails" ? grails : opensea;
   const ensv1Listings = active.listings.filter((l) => matchesFilters(l, { priceInput, lengthInput, patternInput }));
 
-  const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
-    contracts: ids.flatMap((id) => [
-      { address: orderManager, abi: orderManagerAbi, functionName: "orders", args: [id] } as const,
-      { address: registry, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
-    ]),
-    query: { enabled: ids.length > 0 && networkMode === "ensv2", refetchInterval: 3000 },
-  });
+  const search = useDomainSearch(tab === "listings" ? "listings" : "names", ensv2Page);
+  const { rows, isLoading, isError, refetch: retry, total, totalPages } = search;
 
-  const isError = idsError || readsError;
-  const retry = () => {
-    refetchIds();
-    refetchReads();
+  const changeTab = (t: string) => {
+    setTab(t);
+    setEnsv2Page(1);
   };
-
-  const rows = ids
-    .map((id, i) => ({
-      id,
-      order: data?.[i * 2]?.result as Order | undefined,
-      name: data?.[i * 2 + 1]?.result as string | undefined,
-    }))
-    .filter((r) => r.order)
-    .filter((r) => (tab === "listings" ? r.order![5] === OrderStatus.Active || r.order![5] === OrderStatus.Suspended : true));
 
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-8" style={{ borderColor: "var(--line)" }}>
         {networkMode === "ensv2" ? (
           <>
-            <Tabs items={TABS} active={tab} onChange={setTab} />
+            <Tabs items={TABS} active={tab} onChange={changeTab} />
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              {rows.length} names
+              {total} names
             </span>
           </>
         ) : (
@@ -280,7 +262,7 @@ function DomainsPageInner() {
                 </span>
               </div>
               <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                {ids.length}
+                {total}
               </span>
             </button>
             <button
@@ -531,7 +513,7 @@ function DomainsPageInner() {
               {isError && (
                 <div className="flex items-center gap-3 py-8">
                   <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-                    Couldn&apos;t load names — the on-chain read failed.
+                    Couldn&apos;t load names — the request failed.
                   </p>
                   <button
                     onClick={retry}
@@ -553,11 +535,35 @@ function DomainsPageInner() {
                 </p>
               )}
 
-              {rows.map(({ id, order, name }) => (
-                <ExploreRow key={id.toString()} id={id} order={order!} name={name} />
+              {rows.map(({ canonicalId, order, name }) => (
+                <ExploreRow key={canonicalId.toString()} id={canonicalId} order={order} name={name ?? undefined} />
               ))}
             </div>
           </ScrollHint>
+
+          {!isError && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-6">
+              <button
+                onClick={() => setEnsv2Page((p) => Math.max(1, p - 1))}
+                disabled={ensv2Page === 1}
+                className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+              >
+                ← Previous
+              </button>
+              <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                Page {ensv2Page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setEnsv2Page((p) => Math.min(totalPages, p + 1))}
+                disabled={ensv2Page >= totalPages}
+                className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
             </>
           )}
         </section>
@@ -774,8 +780,8 @@ function statusBadge(status: number): { label: string; variant: "active" | "susp
   }
 }
 
-function ExploreRow({ id, order, name }: { id: bigint; order: Order; name?: string }) {
-  const [seller, price, , , , status] = order;
+function ExploreRow({ id, order, name }: { id: bigint; order: DomainOrderRow; name?: string }) {
+  const { seller, price, status } = order;
   const lastSale = useLastSale(id);
   const badge = statusBadge(status);
 

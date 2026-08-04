@@ -1,0 +1,49 @@
+type IndexedName {
+  # id is the canonicalId (uint256 as string)
+  id: ID!
+  name: String!
+  # set for subnames — the parent's canonicalId (registry's SubnameRegistered.parentId)
+  parentId: String
+  owner: String!
+  resolver: String!
+  updatedAt: BigInt!
+}
+
+type DomainOrder {
+  # id is the canonicalId
+  id: ID!
+  seller: String!
+  price: BigInt!
+  pinnedHash: String!
+  # matches CanonicalIdOrderManager.Status: 0 None, 1 Active, 2 Suspended, 3 Filled, 4 Cancelled
+  status: Int!
+  updatedAt: BigInt!
+}
+
+type SubnameListing {
+  # id is the canonicalId
+  id: ID!
+  # the address that announced the lease (SubnameLeaseVault.Listing.parent) — an owner
+  # address, not a registry canonicalId, per the contract's own event shape
+  parentAddress: String!
+  pricePerTerm: BigInt!
+  termSeconds: BigInt!
+  active: Boolean!
+  tenant: String
+  leaseActiveUntil: BigInt
+  updatedAt: BigInt!
+}
+
+type DomainActivity {
+  # id is txHash-logIndex
+  id: ID!
+  canonicalId: String!
+  eventName: String!
+  # JSON.stringify'd event params — Envio entities have no native Json scalar; the API
+  # layer re-derives display formatting (color/detail text) the same way the frontend's
+  # own formatActivity() used to
+  argsJson: String!
+  blockNumber: BigInt!
+  txHash: String!
+  occurredAt: BigInt!
+}
