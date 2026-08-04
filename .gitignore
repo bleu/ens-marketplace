@@ -1,6 +1,7 @@
 # Node / pnpm
 node_modules/
 .pnpm-store/
+dist/
 
 # Foundry
 contracts/out/
