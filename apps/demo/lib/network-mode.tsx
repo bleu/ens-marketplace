@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { Network, useCurrentNetwork } from "./contracts";
 
 /// Which name universe the Domains section is currently browsing/searching:
 /// - "ensv2": our own local mock marketplace (MockENSv2Registry + CanonicalIdOrderManager
@@ -17,8 +18,34 @@ export type NetworkMode = "ensv2" | "ensv1" | "ensv2-alpha";
 
 const NetworkModeContext = createContext<[NetworkMode, (mode: NetworkMode) => void] | null>(null);
 
+/// Each chain has exactly one mode that actually works against it (see the Source picker
+/// on /domains, which only ever shows the one option matching the connected chain) —
+/// keeps this map as the single source of truth for that pairing.
+const DEFAULT_MODE_FOR_NETWORK: Record<Network, NetworkMode> = {
+  [Network.Anvil]: "ensv2",
+  [Network.Sepolia]: "ensv2-alpha",
+  [Network.Mainnet]: "ensv1",
+};
+
 export function NetworkModeProvider({ children }: { children: React.ReactNode }) {
   const state = useState<NetworkMode>("ensv2");
+  const [mode, setMode] = state;
+  const currentNetwork = useCurrentNetwork();
+
+  // Keeps `mode` following whichever chain is actually connected — on mount, and on any
+  // later wallet-initiated chain switch — rather than defaulting to (and getting stuck on)
+  // "ensv2" regardless of chain. Only resets when the current mode no longer belongs to
+  // this chain at all, not just when it isn't that chain's default, so switching between
+  // ENSv1/Grails/OpenSea while staying on Mainnet is left alone.
+  useEffect(() => {
+    const belongsToCurrentChain =
+      (currentNetwork === Network.Anvil && mode === "ensv2") ||
+      (currentNetwork === Network.Sepolia && mode === "ensv2-alpha") ||
+      (currentNetwork === Network.Mainnet && mode === "ensv1");
+    if (!belongsToCurrentChain) setMode(DEFAULT_MODE_FOR_NETWORK[currentNetwork]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentNetwork]);
+
   return <NetworkModeContext.Provider value={state}>{children}</NetworkModeContext.Provider>;
 }
 
