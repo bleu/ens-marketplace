@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: connection URL moves to prisma.config.ts (CLI/migrate) and a driver adapter
+// passed to the PrismaClient constructor (runtime) — `url` here is no longer supported.
+datasource db {
+  provider = "postgresql"
+}
+
+/// A snapshot of one real Grails (grails.app) listing — Grails' API is being
+/// discontinued, so this is scraped periodically (see src/scraper) instead of read live.
+/// Fields mirror exactly what's needed to reconstruct apps/demo's EnsV1Listing shape
+/// without any reshaping at read time.
+model GrailsListing {
+  id Int @id @default(autoincrement())
+
+  /// Natural key — a relisted name gets a new order, so this (not `name`) is what scrape
+  /// upserts key off of.
+  orderHash String @unique
+
+  name       String
+  nameLength Int
+  tokenId    String
+
+  /// Wei, as a string in the raw Seaport order. Decimal(78, 0), not BigInt/Postgres
+  /// bigint — bigint tops out around 9.2e18 wei (~9.2 ETH), which real listings exceed
+  /// (confirmed live: a real 40 ETH listing overflowed it during the first scrape run).
+  /// 78 digits covers any uint256 value with room to spare. Kept as a real numeric
+  /// column (not text) so price-range filters stay a plain indexed SQL range query,
+  /// matching Grails' own minPrice/maxPrice API today.
+  priceWei      Decimal @db.Decimal(78, 0)
+  priceCurrency String // "0x0000...0000" for ETH, matches Grails' currency_address field
+
+  protocolAddress String
+  /// The full Seaport order ({ parameters, signature }) — stored as-is rather than
+  /// modeled relationally, since apps/demo only ever needs to pass it through untouched
+  /// to a real Seaport fulfillment call, never to query into its internals.
+  protocolData Json
+
+  sellerAddress String
+  status        String
+
+  scrapedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([priceWei])
+  @@index([nameLength])
+  @@index([name])
+}
