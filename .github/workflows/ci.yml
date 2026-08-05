@@ -77,6 +77,13 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      # actions/setup-node's pnpm cache only covers pnpm's own store, not Cypress's
+      # separate binary cache (~/.cache/Cypress) — a pnpm-store cache hit can skip
+      # re-running cypress's postinstall entirely, silently leaving the binary missing
+      # ("The cypress npm package is installed, but the Cypress binary is missing").
+      # This is a no-op if the binary's already present, so it's safe every run.
+      - name: Ensure the Cypress binary is installed
+        run: pnpm --filter demo exec cypress install
       - name: Start Anvil + deploy local demo contracts
         working-directory: contracts
         run: |
