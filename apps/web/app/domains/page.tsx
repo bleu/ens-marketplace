@@ -270,11 +270,6 @@ function DomainsPageInner() {
                     {alpha.names.length}
                   </span>
                 </button>
-                {networkMode === "ensv2-alpha" && (
-                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
-                    Alpha contracts — may change anytime. Registering costs Sepolia test ETH + USDC.
-                  </p>
-                )}
               </>
             )}
             {currentNetwork === Network.Mainnet && (
@@ -471,7 +466,6 @@ function DomainsPageInner() {
               isLoading={active.isLoading}
               isError={active.isError}
               notConfigured={source === "opensea" ? opensea.notConfigured : false}
-              unresolvedCount={active.unresolvedCount}
               retry={active.refetch}
               page={page}
               grailsTotalPages={source === "grails" ? grails.totalPages : null}
@@ -624,7 +618,6 @@ function EnsV1Table({
   isLoading,
   isError,
   notConfigured,
-  unresolvedCount,
   retry,
   page,
   grailsTotalPages,
@@ -637,7 +630,6 @@ function EnsV1Table({
   isLoading: boolean;
   isError: boolean;
   notConfigured: boolean;
-  unresolvedCount: number;
   retry: () => void;
   page: number;
   grailsTotalPages: number | null;
@@ -706,13 +698,6 @@ function EnsV1Table({
         {listings.map((l) => (
           <EnsV1Row key={l.listing.order_hash} listing={l} />
         ))}
-
-        {unresolvedCount > 0 && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            {unresolvedCount} other active {sourceLabel} listing{unresolvedCount === 1 ? "" : "s"} on this page
-            couldn&apos;t be resolved to a shown row and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
-          </p>
-        )}
       </div>
       </ScrollHint>
       {!notConfigured && !isError && (

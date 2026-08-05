@@ -31,8 +31,7 @@ export function SepoliaRequired() {
           The ENSv2 alpha registry lives on Sepolia
         </div>
         <p className="mb-7 font-mono text-[13px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-          ENS Labs&apos; real ENSv2 alpha contracts are deployed on Sepolia and nowhere
-          else. {isConnected ? "Switch networks to browse and register names." : "Connect a wallet on Sepolia to browse and register names."}
+          {isConnected ? "Switch networks to browse and register names." : "Connect a wallet on Sepolia to browse and register names."}
         </p>
         {isConnected ? (
           <button

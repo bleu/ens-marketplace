@@ -23,10 +23,7 @@ export function ChainGuard() {
       className="flex items-center gap-3 rounded-[var(--radius-2)] border px-4 py-3 text-sm"
       style={{ borderColor: "rgba(var(--danger-rgb),0.4)", background: "rgba(var(--danger-rgb),0.08)" }}
     >
-      <span style={{ color: "var(--accent)" }}>
-        Wrong network — Farol reads ENS names on Ethereum mainnet and the ENSv2 alpha
-        registry on Sepolia.
-      </span>
+      <span style={{ color: "var(--accent)" }}>Wrong network.</span>
       <button
         type="button"
         onClick={() => switchChain({ chainId: mainnet.id })}
