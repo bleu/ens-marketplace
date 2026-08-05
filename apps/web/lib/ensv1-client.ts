@@ -1,78 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { EnsV1Domain, EnsV1Listing } from "./ensv1";
 
 /// Client-side data hooks for real mainnet ENS data — these call our own server-side
 /// proxy routes (app/api/ensv1/*), never the ENS subgraph or OpenSea directly, so the
 /// THEGRAPH_API_KEY/OPENSEA_API_KEY server-only env vars never reach the browser.
 
-export interface EnsV1ListingsResult {
-  listings: EnsV1Listing[];
-  isLoading: boolean;
-  isError: boolean;
-  notConfigured: boolean;
-  unresolvedCount: number;
-  hasNext: boolean;
-  refetch: () => void;
-}
-
-/// Real active OpenSea listings for the ENS collection — this doubles as the ENSv1
-/// Explore-grid data source (see app/api/ensv1/listings): real listings are the
-/// browsable set, no curated/hardcoded name list needed.
-///
-/// OpenSea's pagination is cursor-based (opaque token, forward-only), not page-number
-/// based, so `page` here is a UI-facing concept only — the hook privately remembers
-/// which cursor produced each page number as the user navigates forward, and looks it
-/// up again on Previous rather than needing the caller to track cursors. This only
-/// supports moving one page at a time (no jumping straight to an arbitrary page), which
-/// is fine since the UI only exposes Next/Previous. `enabled` skips fetching entirely
-/// when this source isn't the one currently selected (see useGrailsListings).
-export function useEnsV1Listings(page: number, enabled = true): EnsV1ListingsResult {
-  const [listings, setListings] = useState<EnsV1Listing[]>([]);
-  const [unresolvedCount, setUnresolvedCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [notConfigured, setNotConfigured] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
-  const cursorForPageRef = useRef<Record<number, string | null>>({ 1: null });
-
-  const refresh = useCallback(async () => {
-    if (!enabled) return;
-    setIsLoading(true);
-    setIsError(false);
-    setNotConfigured(false);
-    try {
-      const cursor = cursorForPageRef.current[page] ?? null;
-      const params = new URLSearchParams();
-      if (cursor) params.set("cursor", cursor);
-      const res = await fetch(`/api/ensv1/listings?${params.toString()}`);
-      if (res.status === 501) {
-        setNotConfigured(true);
-        setListings([]);
-        return;
-      }
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const json = await res.json();
-      setListings(json.listings ?? []);
-      setUnresolvedCount(json.unresolvedCount ?? 0);
-      cursorForPageRef.current[page + 1] = json.next ?? null;
-      setHasNext(!!json.next);
-    } catch (err) {
-      console.error("useEnsV1Listings: failed to fetch listings", err);
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, enabled]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    refresh();
-  }, [refresh, enabled]);
-
-  return { listings, isLoading, isError, notConfigured, unresolvedCount, hasNext, refetch: refresh };
-}
+/// There is no OpenSea browse hook. OpenSea's listings endpoint takes no filter params, so a
+/// feed built on it could only ever filter whichever page was already in the browser — set a
+/// price ceiling and you got three rows on "page 1 of many". The Explore feed is Grails-only
+/// (our own Postgres, real server-side filtering), and OpenSea stays where it works: per-name
+/// lookups on the detail page, via useEnsV1ListingForName below. Merging the two back
+/// together needs OpenSea's listings scraped into the same database — see
+/// docs/explore-filters.md.
 
 export interface GrailsListingsResult {
   listings: EnsV1Listing[];
@@ -80,10 +21,10 @@ export interface GrailsListingsResult {
   isError: boolean;
   unresolvedCount: number;
   hasNext: boolean;
-  /** Grails' real total listing count and page count across their whole dataset (not
-   * just this page) — null until the first successful fetch resolves. Exists so the UI
-   * can show "page N of ~totalPages" instead of the per-page resolved count looking like
-   * the entire available dataset. */
+  /** How many listings match the current filters in total, and how many pages that is — not
+   * just this page. Every filter is applied server-side, so this is a real count of the
+   * filtered set rather than a whole-table figure sitting next to a client-side-filtered
+   * page. Null until the first successful fetch resolves. */
   total: number | null;
   totalPages: number | null;
   refetch: () => void;
@@ -98,16 +39,31 @@ export interface GrailsFilters {
   endsWith?: string;
 }
 
-/// Real active Grails-native listings (api.grails.app, no API key required for reads —
-/// see app/api/ensv1/grails-listings) — an independent Explore-grid source, browsed one
-/// at a time with OpenSea's (never merged/cross-resolved — see the Explore page's source
-/// toggle). Filters are applied server-side against Grails' real filter schema (unlike
-/// OpenSea, which has no filter params at all — see the Explore page for how OpenSea-
-/// sourced rows are filtered client-side on whatever's already loaded instead). Grails'
-/// pagination is plain page numbers, so unlike OpenSea's cursor-based hook, `page` is
-/// passed straight through as a query param. `enabled` skips fetching entirely when this
-/// source isn't the one currently selected.
-export function useGrailsListings(filters: GrailsFilters = {}, page = 1, enabled = true): GrailsListingsResult {
+/// Sidebar state to query string, kept separate from the hook so it can be tested without
+/// rendering anything — it's the contract with apps/api's GrailsController, and a filter
+/// dropped here fails silently rather than loudly. Empty values are omitted rather than sent
+/// blank, so an untouched input can't look like an active filter server-side.
+export function grailsSearchParams(filters: GrailsFilters, page: number): string {
+  const params = new URLSearchParams();
+  if (filters.minPrice) params.set("minPrice", filters.minPrice);
+  if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
+  if (filters.minLength) params.set("minLength", filters.minLength);
+  if (filters.maxLength) params.set("maxLength", filters.maxLength);
+  if (filters.startsWith) params.set("startsWith", filters.startsWith);
+  if (filters.endsWith) params.set("endsWith", filters.endsWith);
+  params.set("page", String(page));
+  return params.toString();
+}
+
+/// The Explore feed. Listings come from our own Postgres via app/api/ensv1/grails-listings
+/// (scraped from Grails ahead of their API's discontinuation — see docs/grails-migration.md),
+/// and every filter, the count and the pagination are applied server-side there, so what the
+/// header claims and what the user can page through are the same set.
+///
+/// `filters` is depended on by its serialized form rather than field-by-field — the object is
+/// rebuilt on every render by the caller, so a dependency on the object itself would refetch
+/// forever, and listing each field individually goes stale the moment one is added.
+export function useGrailsListings(filters: GrailsFilters = {}, page = 1): GrailsListingsResult {
   const [listings, setListings] = useState<EnsV1Listing[]>([]);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,22 +71,13 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1, enabled
   const [hasNext, setHasNext] = useState(false);
   const [total, setTotal] = useState<number | null>(null);
   const [totalPages, setTotalPages] = useState<number | null>(null);
-  const { minPrice, maxPrice, minLength, maxLength, startsWith, endsWith } = filters;
+  const search = grailsSearchParams(filters, page);
 
   const refresh = useCallback(async () => {
-    if (!enabled) return;
     setIsLoading(true);
     setIsError(false);
     try {
-      const params = new URLSearchParams();
-      if (minPrice) params.set("minPrice", minPrice);
-      if (maxPrice) params.set("maxPrice", maxPrice);
-      if (minLength) params.set("minLength", minLength);
-      if (maxLength) params.set("maxLength", maxLength);
-      if (startsWith) params.set("startsWith", startsWith);
-      if (endsWith) params.set("endsWith", endsWith);
-      params.set("page", String(page));
-      const res = await fetch(`/api/ensv1/grails-listings?${params.toString()}`);
+      const res = await fetch(`/api/ensv1/grails-listings?${search}`);
       if (!res.ok) throw new Error(`status ${res.status}`);
       const json = await res.json();
       setListings(json.listings ?? []);
@@ -144,12 +91,11 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1, enabled
     } finally {
       setIsLoading(false);
     }
-  }, [minPrice, maxPrice, minLength, maxLength, startsWith, endsWith, page, enabled]);
+  }, [search]);
 
   useEffect(() => {
-    if (!enabled) return;
     refresh();
-  }, [refresh, enabled]);
+  }, [refresh]);
 
   return { listings, isLoading, isError, unresolvedCount, hasNext, total, totalPages, refetch: refresh };
 }
