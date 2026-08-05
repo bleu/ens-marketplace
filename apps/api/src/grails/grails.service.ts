@@ -1,17 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { parseEther } from "viem";
 import { PrismaService } from "../prisma/prisma.service";
+import { listingFilterWhere, type SearchFilters } from "../listings/listing-filters";
 import { currencySymbolFor, SEAPORT_CONTRACT_ADDRESS, type EnsV1Listing } from "./ensv1-types";
 import type { GrailsListing, Prisma } from "@prisma/client";
 
-export interface SearchFilters {
-  minPriceEth?: string;
-  maxPriceEth?: string;
-  minLength?: number;
-  maxLength?: number;
-  startsWith?: string;
-  endsWith?: string;
-}
+export type { SearchFilters };
 
 export interface SearchResult {
   listings: EnsV1Listing[];
@@ -52,41 +45,7 @@ export class GrailsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async search(filters: SearchFilters, page: number): Promise<SearchResult> {
-    const where: Prisma.GrailsListingWhereInput = {};
-
-    // Invalid/unparsable ETH values are silently dropped rather than thrown, matching
-    // the current route's behavior of omitting the filter instead of erroring. Values
-    // passed as strings (not bigint) — priceWei is a Decimal column (see schema.prisma
-    // for why), and Prisma's DecimalFilter takes string | number | Decimal, not bigint.
-    const priceRange: Prisma.DecimalFilter = {};
-    if (filters.minPriceEth) {
-      try {
-        priceRange.gte = parseEther(filters.minPriceEth).toString();
-      } catch {
-        /* invalid input, omit the filter */
-      }
-    }
-    if (filters.maxPriceEth) {
-      try {
-        priceRange.lte = parseEther(filters.maxPriceEth).toString();
-      } catch {
-        /* invalid input, omit the filter */
-      }
-    }
-    if (Object.keys(priceRange).length > 0) where.priceWei = priceRange;
-
-    if (filters.minLength !== undefined || filters.maxLength !== undefined) {
-      where.nameLength = { gte: filters.minLength, lte: filters.maxLength };
-    }
-    // A single StringFilter can carry both startsWith and endsWith at once — Prisma ANDs
-    // them together into one WHERE clause, same net effect as the two separate params.
-    if (filters.startsWith || filters.endsWith) {
-      where.name = {
-        ...(filters.startsWith ? { startsWith: filters.startsWith } : {}),
-        ...(filters.endsWith ? { endsWith: filters.endsWith } : {}),
-        mode: "insensitive",
-      };
-    }
+    const where: Prisma.GrailsListingWhereInput = listingFilterWhere(filters);
 
     const [rows, total] = await Promise.all([
       this.prisma.grailsListing.findMany({
