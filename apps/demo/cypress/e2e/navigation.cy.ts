@@ -15,9 +15,14 @@ describe("top-level navigation", () => {
     cy.contains("button", "Connect wallet").should("be.visible");
   });
 
-  it("navigates to Subnames via the top nav", () => {
+  it("navigates to Subnames via the top nav and stays there", () => {
     cy.visit("/domains");
     cy.contains("a", "Subnames").click();
+    cy.location("pathname").should("eq", "/subnames");
+    // /domains' ENSv1 view mirrors its filters into the URL with router.replace. A redundant
+    // replace fired on mount used to land after this click and bounce straight back to
+    // /domains, so assert we're still here once the page has actually rendered.
+    cy.contains("Sepolia required").should("be.visible");
     cy.location("pathname").should("eq", "/subnames");
   });
 

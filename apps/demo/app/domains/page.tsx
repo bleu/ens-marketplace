@@ -187,8 +187,14 @@ function DomainsPageInner() {
     if (patternInput.startsWith) params.set("startsWith", patternInput.startsWith);
     if (patternInput.endsWith) params.set("endsWith", patternInput.endsWith);
     const qs = params.toString();
+    // Skip a replace that wouldn't change the URL. On a plain /domains visit every value
+    // above is still its default, so this used to fire `replace("/domains")` at the URL it
+    // was already on — harmless-looking, but that in-flight replace lands *after* a quick
+    // click on another nav link and yanks the user straight back to /domains. Never showed
+    // up while ENSv2 was the default mode, since the guard above returned first.
+    if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router]);
+  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router, searchParams]);
 
   useEffect(() => {
     syncUrl();
