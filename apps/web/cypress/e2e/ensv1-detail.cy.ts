@@ -20,9 +20,8 @@ describe("ENSv1 name detail page", () => {
     });
   });
 
-  it("shows the simplified read-only disclaimer without mentioning the subgraph", () => {
-    cy.contains("Real mainnet ENS name — read-only.");
-    cy.contains("genuine on-chain transaction using real ETH");
+  it("warns that buying spends mainnet ETH, without naming our plumbing", () => {
+    cy.contains("Buying this name spends ETH on Ethereum mainnet.");
     cy.contains(/subgraph/i).should("not.exist");
   });
 

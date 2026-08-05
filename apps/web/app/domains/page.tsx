@@ -222,7 +222,7 @@ function DomainsPageInner() {
         {networkMode === "ensv1" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Real listings — {source === "grails" ? "Grails" : "OpenSea"}
+              Listings — {source === "grails" ? "Grails" : "OpenSea"}
             </span>
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
               {ensv1Listings.length} on this page
@@ -233,7 +233,7 @@ function DomainsPageInner() {
         {networkMode === "ensv2-alpha" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Real ENSv2 · Sepolia Alpha
+              ENSv2 · Sepolia Alpha
             </span>
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
               {alpha.names.length} registered
@@ -243,7 +243,7 @@ function DomainsPageInner() {
               className="flex h-9 shrink-0 items-center rounded-[var(--radius-2)] px-4 font-sans text-xs font-semibold"
               style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
             >
-              Register a real name
+              Register a name
             </Link>
           </>
         )}
@@ -754,7 +754,7 @@ function EnsV2AlphaTable({
                   <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
                     {label}
                   </span>
-                  <StatusBadge variant="chain">Real L1</StatusBadge>
+                  <StatusBadge variant="chain">Mainnet</StatusBadge>
                 </div>
               </div>
             </div>
@@ -867,12 +867,12 @@ function EnsV1Table({
         )}
         {!notConfigured && !isError && isLoading && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            Loading real listings from {sourceLabel}…
+            Loading listings from {sourceLabel}…
           </p>
         )}
         {!notConfigured && !isError && !isLoading && listings.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            No real {sourceLabel} listings resolved on this page.
+            No {sourceLabel} listings on this page.
           </p>
         )}
 

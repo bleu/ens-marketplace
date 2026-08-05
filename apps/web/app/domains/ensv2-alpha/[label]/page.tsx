@@ -204,7 +204,7 @@ export default function EnsV2AlphaDetailPage() {
             <div className="font-sans text-3xl font-bold break-all text-white">{label}</div>
           </div>
           <div className="flex items-center justify-between font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-            <span>Real ENSv2 · Sepolia Alpha</span>
+            <span>ENSv2 · Sepolia Alpha</span>
             <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
           </div>
         </div>
@@ -223,14 +223,14 @@ export default function EnsV2AlphaDetailPage() {
           {isUnregistered ? (
             <div className="mb-9 rounded-[var(--radius-3)] border p-8 text-center" style={{ borderColor: "var(--line)" }}>
               <p className="mb-4 font-mono text-sm" style={{ color: "var(--fg-muted)" }}>
-                Not registered on the real ENSv2 alpha yet.
+                Not registered on the ENSv2 alpha yet.
               </p>
               <Link
                 href="/domains/ensv2-alpha/register"
                 className="inline-flex h-11 items-center rounded-[var(--radius-2)] px-5 font-sans text-sm font-semibold"
                 style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
               >
-                Register it for real
+                Register it
               </Link>
             </div>
           ) : (
@@ -251,7 +251,7 @@ export default function EnsV2AlphaDetailPage() {
                 value={subregistry && subregistry !== zeroAddress ? shortAddr(subregistry as `0x${string}`) : "None"}
                 mono
               />
-              <DetailField label="Registry" value="ENS Labs' real ENSv2 alpha (Sepolia)" />
+              <DetailField label="Registry" value="ENS Labs' ENSv2 alpha (Sepolia)" />
             </div>
           )}
 

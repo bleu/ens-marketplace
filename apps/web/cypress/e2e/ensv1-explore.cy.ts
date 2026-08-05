@@ -8,9 +8,9 @@ describe("ENSv1 Explore — Grails and OpenSea as separate, unmixed sources", ()
     cy.visit("/domains?refine=grails");
   });
 
-  it("defaults to Grails and shows its real total-listing count", () => {
+  it("defaults to Grails and shows its total-listing count", () => {
     cy.wait("@grailsPage1");
-    cy.contains("Real listings — Grails");
+    cy.contains("Listings — Grails");
     cy.contains("cyfixture1.eth");
     cy.contains("cyfixture2.eth");
     // Locale-agnostic: toLocaleString()'s grouping separator depends on the runtime's
@@ -28,7 +28,7 @@ describe("ENSv1 Explore — Grails and OpenSea as separate, unmixed sources", ()
   it("switching to OpenSea fetches only OpenSea, never mixes in Grails rows", () => {
     cy.contains("button", "OpenSea").click();
     cy.wait("@openseaPage1");
-    cy.contains("Real listings — OpenSea");
+    cy.contains("Listings — OpenSea");
     cy.contains("cyopensea1.eth");
     cy.contains("cyfixture1.eth").should("not.exist");
     cy.get("@grailsPage1.all").should("have.length", 1); // only the initial mount fetch, not re-fetched on switch

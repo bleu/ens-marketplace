@@ -81,7 +81,7 @@ export default function EnsV1DomainDetailPage() {
             This name isn&apos;t registered.
           </p>
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            &quot;{name}&quot; has no owner on real mainnet ENS.
+            &quot;{name}&quot; has no owner on Ethereum mainnet.
           </p>
         </div>
       </main>
@@ -149,7 +149,7 @@ export default function EnsV1DomainDetailPage() {
               color: "var(--color-sinal-warn)",
             }}
           >
-            Buying this name spends real ETH on Ethereum mainnet.
+            Buying this name spends ETH on Ethereum mainnet.
           </div>
 
           {!notConfigured && listing && (
@@ -233,7 +233,7 @@ export default function EnsV1DomainDetailPage() {
               },
               { k: "Registered", v: domain.registrationDate ? new Date(domain.registrationDate * 1000).toLocaleDateString() : "—" },
               { k: "Expires", v: domain.expiryDate ? new Date(domain.expiryDate * 1000).toLocaleDateString() : "—" },
-              { k: "Network", v: "Ethereum mainnet (ENSv1, real)" },
+              { k: "Network", v: "Ethereum mainnet (ENSv1)" },
             ].map((d) => (
               <div key={d.k} className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
                 <span className="font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
@@ -361,11 +361,11 @@ function BuyBox({
     return (
       <div className="rounded-[var(--radius-3)] border p-[18px]" style={{ borderColor: "var(--accent)", background: "rgba(255,134,104,0.08)" }}>
         <p className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
-          Confirm real purchase
+          Confirm purchase
         </p>
         <p className="mt-1 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-          This spends real ETH on real Ethereum mainnet, buying directly from the
-          seller&apos;s real {listing.source === "grails" ? "Grails" : "OpenSea"} listing.
+          This spends ETH on Ethereum mainnet, buying directly from the seller&apos;s{" "}
+          {listing.source === "grails" ? "Grails" : "OpenSea"} listing.
           This cannot be undone.
         </p>
         <p className="mt-2 font-mono text-lg" style={{ color: "var(--fg)" }}>

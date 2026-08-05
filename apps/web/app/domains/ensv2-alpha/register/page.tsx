@@ -228,10 +228,10 @@ export default function EnsV2AlphaRegisterPage() {
   return (
     <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
       <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
-        Real ENSv2 · Sepolia Alpha
+        ENSv2 · Sepolia Alpha
       </div>
       <h1 className="mb-6 font-[var(--font-display)] text-[56px] font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
-        Register a <span className="font-[var(--font-display-italic)] italic">real</span> ENSv2 name
+        Register an ENSv2 <span className="font-[var(--font-display-italic)] italic">name</span>
       </h1>
 
       <div
@@ -240,8 +240,7 @@ export default function EnsV2AlphaRegisterPage() {
       >
         These are ENS Labs&apos; pre-audit ENSv2 alpha contracts on Sepolia. They are
         unpublished, have already changed once during this alpha, and may change again
-        without notice. Registering spends Sepolia test ETH for gas plus a test USDC token
-        — no real-world value, but a real transaction.
+        without notice. Registering spends Sepolia test ETH for gas plus a test USDC token.
       </div>
 
       <div className="flex flex-1 items-center">
@@ -254,7 +253,7 @@ export default function EnsV2AlphaRegisterPage() {
               value={label}
               onChange={(e) => setLabel(e.target.value.trim().toLowerCase())}
               disabled={step !== "idle"}
-              placeholder="e.g. my-real-test-name"
+              placeholder="e.g. my-test-name"
               aria-label="Name label to register"
               className="input-field mb-9 h-12 w-full rounded-[8px] border px-4 font-mono text-sm outline-none disabled:opacity-60"
               style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
@@ -362,7 +361,7 @@ export default function EnsV2AlphaRegisterPage() {
             </div>
             <div className="mt-4 flex justify-between font-mono text-xs">
               <span style={{ color: "var(--fg-dim)" }}>Settles on</span>
-              <span style={{ color: "var(--brand)" }}>Real Sepolia (ENSv2 alpha)</span>
+              <span style={{ color: "var(--brand)" }}>Sepolia (ENSv2 alpha)</span>
             </div>
 
             {(step === "idle" || step === "committing") && (

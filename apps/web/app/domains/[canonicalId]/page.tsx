@@ -264,11 +264,11 @@ export default function DomainDetailPage() {
                 className="rounded-[5px] border px-2 py-[3px] font-mono text-[10px] tracking-[0.04em] uppercase"
                 style={{ color: "var(--brand)", borderColor: "rgba(var(--brand-rgb),0.4)" }}
               >
-                ENSv2 · real
+                ENSv2
               </span>
             </div>
             <div className="mt-2 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-              Issue and lease subnames — real, working rental contract.{" "}
+              Issue and lease subnames with a fixed price and term.{" "}
               <Link href="/subnames" style={{ color: "var(--brand)" }}>
                 Browse subnames →
               </Link>
@@ -410,7 +410,7 @@ export default function DomainDetailPage() {
                   k: "Registry",
                   v:
                     network === Network.Sepolia
-                      ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
+                      ? "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)"
                       : "Mock ENSv2 registry (local Anvil)",
                 },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },

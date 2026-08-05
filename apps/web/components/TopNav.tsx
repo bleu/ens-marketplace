@@ -106,7 +106,7 @@ export function TopNav() {
           setNotFound(false);
           setSearchError(false);
         }}
-        placeholder={networkMode === "ensv1" ? "Search real ENS names…" : "Search names…"}
+        placeholder="Search names…"
         aria-label="Search names"
         className="flex-1 bg-transparent font-mono text-[13px] tracking-[var(--tracking-tight)] outline-none"
         style={{ color: "var(--fg)" }}

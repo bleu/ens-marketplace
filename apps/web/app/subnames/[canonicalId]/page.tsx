@@ -397,7 +397,7 @@ export default function SubnameDetailPage() {
                 k: "Registry",
                 v:
                   network === Network.Sepolia
-                    ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
+                    ? "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)"
                     : "Mock ENSv2 registry (local Anvil)",
               },
               { k: "Lease vault", v: <AddressLink address={leaseVault} network={network} /> },
