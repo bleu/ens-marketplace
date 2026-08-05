@@ -79,8 +79,13 @@ export function toGrailsFilters(state: ExploreFilterState): GrailsFilters {
   };
 }
 
-const INPUT_CLASS = "input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none";
-const INPUT_STYLE = { borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" };
+const INPUT_CLASS =
+  "input-field filter-input h-10 w-full min-w-0 rounded-[var(--radius-2)] border px-3 font-mono text-[13px] tabular-nums outline-none";
+
+/// Same size and tracking as the table's column headers, so a label in the sidebar and a
+/// label over a column read as the same kind of thing.
+const LABEL_CLASS = "mb-2 font-mono text-[11px] tracking-[0.08em] uppercase";
+const LABEL_STYLE = { color: "var(--fg-dim)" };
 
 export function ExploreFilters({
   state,
@@ -93,9 +98,9 @@ export function ExploreFilters({
   const set = <K extends keyof ExploreFilterState>(key: K, value: ExploreFilterState[K]) => onChange({ ...state, [key]: value });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+        <div className={LABEL_CLASS} style={LABEL_STYLE}>
           Price (ETH)
         </div>
         <div className="flex gap-2">
@@ -106,7 +111,6 @@ export function ExploreFilters({
             aria-label="Minimum price in ETH"
             inputMode="decimal"
             className={INPUT_CLASS}
-            style={INPUT_STYLE}
           />
           <input
             value={state.priceMax}
@@ -115,13 +119,12 @@ export function ExploreFilters({
             aria-label="Maximum price in ETH"
             inputMode="decimal"
             className={INPUT_CLASS}
-            style={INPUT_STYLE}
           />
         </div>
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+        <div className={LABEL_CLASS} style={LABEL_STYLE}>
           Length (chars)
         </div>
         <div className="flex gap-2">
@@ -132,7 +135,6 @@ export function ExploreFilters({
             aria-label="Minimum name length"
             inputMode="numeric"
             className={INPUT_CLASS}
-            style={INPUT_STYLE}
           />
           <input
             value={state.lengthMax}
@@ -141,13 +143,12 @@ export function ExploreFilters({
             aria-label="Maximum name length"
             inputMode="numeric"
             className={INPUT_CLASS}
-            style={INPUT_STYLE}
           />
         </div>
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+        <div className={LABEL_CLASS} style={LABEL_STYLE}>
           Starts with
         </div>
         <input
@@ -156,12 +157,11 @@ export function ExploreFilters({
           placeholder="e.g. sun"
           aria-label="Name starts with"
           className={INPUT_CLASS}
-          style={INPUT_STYLE}
         />
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+        <div className={LABEL_CLASS} style={LABEL_STYLE}>
           Ends with
         </div>
         <input
@@ -170,20 +170,28 @@ export function ExploreFilters({
           placeholder="e.g. dao"
           aria-label="Name ends with"
           className={INPUT_CLASS}
-          style={INPUT_STYLE}
         />
       </div>
 
       {summary.length > 0 && (
-        <div className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--line)" }}>
-          <div className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-            {summary.join(" · ")}
+        <div className="flex flex-col items-start gap-3 border-t pt-5" style={{ borderColor: "var(--line)" }}>
+          {/* One chip per active filter rather than a run-on sentence — with six inputs
+              feeding one feed, a stray value needs to be visible at a glance. */}
+          <div className="flex flex-wrap gap-1.5">
+            {summary.map((part) => (
+              <span
+                key={part}
+                className="rounded-full px-2.5 py-1 font-mono text-[11px] leading-[1.4]"
+                style={{ background: "rgba(var(--brand-rgb),0.12)", color: "var(--brand)" }}
+              >
+                {part}
+              </span>
+            ))}
           </div>
           <button
             type="button"
             onClick={() => onChange(EMPTY_FILTERS)}
-            className="self-start font-sans text-xs font-medium underline"
-            style={{ color: "var(--fg-muted)" }}
+            className="btn-outline h-8 rounded-[var(--radius-2)] border px-3 font-sans text-xs font-medium"
           >
             Clear all
           </button>

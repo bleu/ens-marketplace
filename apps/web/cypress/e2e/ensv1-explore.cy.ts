@@ -88,6 +88,18 @@ describe("ENSv1 Explore", () => {
     cy.contains("on this page").should("not.exist");
   });
 
+  // The exact figure is still reachable through the cell's title attribute; what must not
+  // survive is a column of prices no two of which line up.
+  it("trims a long price instead of printing every decimal", () => {
+    cy.intercept("GET", "/api/ensv1/grails-listings*", {
+      body: { listings: [listing("dusty.eth", "0.043912830000000001", 0)], unresolvedCount: 0, next: null, total: 1, totalPages: 1 },
+    }).as("feed");
+    cy.visit("/domains");
+    cy.wait("@feed");
+    cy.contains("0.04391283").should("not.exist");
+    cy.contains("0.0439").should("be.visible");
+  });
+
   it("asks the server for a price ceiling rather than filtering in the browser", () => {
     cy.get("input[aria-label='Maximum price in ETH']").type("5");
     cy.wait("@feed");
@@ -146,7 +158,9 @@ describe("ENSv1 Explore filters on a narrow viewport", () => {
 
   it("keeps the filters in a drawer so the table stays above the fold", () => {
     cy.get("input[aria-label='Maximum price in ETH']").should("not.be.visible");
-    cy.contains("button", "Filters").click();
+    cy.contains("button", "Show").click();
     cy.get("input[aria-label='Maximum price in ETH']").should("be.visible");
+    cy.contains("button", "Hide").click();
+    cy.get("input[aria-label='Maximum price in ETH']").should("not.be.visible");
   });
 });
