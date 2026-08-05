@@ -4,11 +4,10 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { sepolia } from "wagmi/chains";
 import { useAccount, useSwitchChain } from "wagmi";
 
-/// Shown in place of any ENSv2 surface when the current chain has no marketplace
-/// deployment (see lib/contracts.ts's `getContractAddresses`). Mainnet is the chain wagmi
-/// reports before a wallet connects, so the disconnected branch is the common case, not an
-/// edge one — `useSwitchChain` alone would leave a wallet-less visitor with a button that
-/// can't do anything.
+/// Shown in place of the ENSv2 alpha surface when the current chain isn't Sepolia.
+/// Mainnet is the chain wagmi reports before a wallet connects, so the disconnected
+/// branch is the common case, not an edge one — `useSwitchChain` alone would leave a
+/// wallet-less visitor with a button that can't do anything.
 export function SepoliaRequired() {
   const { isConnected } = useAccount();
   const { switchChain, isPending } = useSwitchChain();
@@ -29,11 +28,11 @@ export function SepoliaRequired() {
           className="mb-3 font-[var(--font-display)] text-2xl font-light tracking-[var(--tracking-snug)]"
           style={{ color: "var(--fg)" }}
         >
-          Our ENSv2 marketplace lives on Sepolia
+          The ENSv2 alpha registry lives on Sepolia
         </div>
         <p className="mb-7 font-mono text-[13px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-          These are our own mock ENSv2 contracts, deployed on Sepolia and nowhere
-          else. {isConnected ? "Switch networks to browse and trade them." : "Connect a wallet on Sepolia to browse and trade them."}
+          ENS Labs&apos; real ENSv2 alpha contracts are deployed on Sepolia and nowhere
+          else. {isConnected ? "Switch networks to browse and register names." : "Connect a wallet on Sepolia to browse and register names."}
         </p>
         {isConnected ? (
           <button

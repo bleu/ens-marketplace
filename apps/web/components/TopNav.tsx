@@ -4,28 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { usePublicClient } from "wagmi";
 import { Mark } from "@/components/Mark";
-import { registryAbi, useContractAddresses } from "@/lib/contracts";
-import { nameToCanonicalId } from "@/lib/canonicalId";
-import { isZeroAddress } from "@/lib/format";
 import { useNetworkMode } from "@/lib/network-mode";
 
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const publicClient = usePublicClient();
-  const addresses = useContractAddresses();
   const [networkMode] = useNetworkMode();
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [searchError, setSearchError] = useState(false);
-  const [needsSepolia, setNeedsSepolia] = useState(false);
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isExplore = pathname.startsWith("/domains") && !pathname.endsWith("/list");
-  const isSubnames = pathname.startsWith("/subnames");
 
   async function onSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,61 +30,27 @@ export function TopNav() {
     // Reading straight from the DOM at submit time sidesteps that entirely.
     const query = String(new FormData(e.currentTarget).get("q") ?? "").trim();
     if (!query) return;
+    // Only the ENSv1 (mainnet) view has a by-name lookup wired up today — the ENSv2
+    // alpha registry has no search of its own yet, so the form is a no-op there.
+    if (networkMode !== "ensv1") return;
+
     setSearching(true);
     setNotFound(false);
     setSearchError(false);
-    setNeedsSepolia(false);
 
-    if (networkMode === "ensv1") {
-      // Real mainnet lookup via the ENS subgraph proxy (see app/api/ensv1/search) —
-      // no on-chain read needed, and no local canonicalId scheme applies to real names.
-      try {
-        const res = await fetch(`/api/ensv1/search?name=${encodeURIComponent(query)}`);
-        if (res.status === 404) {
-          setNotFound(true);
-        } else if (!res.ok) {
-          throw new Error(`status ${res.status}`);
-        } else {
-          setMobileOpen(false);
-          router.push(`/domains/ensv1/${encodeURIComponent(query)}`);
-        }
-      } catch (err) {
-        console.error("ENSv1 name search failed:", err);
-        setSearchError(true);
-      } finally {
-        setSearching(false);
-      }
-      return;
-    }
-
-    // ENSv2 search is a direct registry read, so it needs a chain that actually has one.
-    // The ENSv2 pages answer this with <SepoliaRequired />; the nav has no room for a
-    // panel, so it says the same thing inline where "Not found" would go.
-    if (!addresses) {
-      setNeedsSepolia(true);
-      setSearching(false);
-      return;
-    }
-    if (!publicClient) {
-      setSearching(false);
-      return;
-    }
+    // Real mainnet lookup via the ENS subgraph proxy (see app/api/ensv1/search).
     try {
-      const id = nameToCanonicalId(query);
-      const owner = await publicClient.readContract({
-        address: addresses.registry,
-        abi: registryAbi,
-        functionName: "ownerOf",
-        args: [id],
-      });
-      if (isZeroAddress(owner as `0x${string}`)) {
+      const res = await fetch(`/api/ensv1/search?name=${encodeURIComponent(query)}`);
+      if (res.status === 404) {
         setNotFound(true);
+      } else if (!res.ok) {
+        throw new Error(`status ${res.status}`);
       } else {
         setMobileOpen(false);
-        router.push(`/domains/${id.toString()}`);
+        router.push(`/domains/ensv1/${encodeURIComponent(query)}`);
       }
     } catch (err) {
-      console.error("Name search failed:", err);
+      console.error("ENSv1 name search failed:", err);
       setSearchError(true);
     } finally {
       setSearching(false);
@@ -115,7 +73,6 @@ export function TopNav() {
         onChange={() => {
           setNotFound(false);
           setSearchError(false);
-          setNeedsSepolia(false);
         }}
         placeholder="Search names…"
         aria-label="Search names"
@@ -125,7 +82,6 @@ export function TopNav() {
       {searching && <span className="font-mono text-[10px] text-[var(--fg-dim)]">…</span>}
       <span role="status" aria-live="polite" className="contents">
         {notFound && <span className="font-mono text-[10px] text-[var(--accent)]">Not found</span>}
-        {needsSepolia && <span className="font-mono text-[10px] text-[var(--accent)]">Switch to Sepolia to search</span>}
         {searchError && (
           <span className="font-mono text-[10px]" style={{ color: "var(--color-sinal-danger)" }}>
             Search failed — try again
@@ -143,13 +99,6 @@ export function TopNav() {
         onClick={() => setMobileOpen(false)}
       >
         Explore
-      </Link>
-      <Link
-        href="/subnames"
-        className={`nav-link cursor-pointer border-b-2 pb-1 ${isSubnames ? "nav-link-active" : ""}`}
-        onClick={() => setMobileOpen(false)}
-      >
-        Subnames
       </Link>
       <span className="cursor-not-allowed" style={{ color: "var(--fg-muted)" }} title="Coming soon">
         Premium
@@ -253,15 +202,7 @@ export function TopNav() {
 
         <nav className="hidden items-center gap-6 font-sans text-sm font-medium lg:flex">{navLinks}</nav>
 
-        <div className="ml-auto hidden items-center gap-4 lg:flex">
-          <Link
-            href="/domains/list"
-            className="btn-outline flex h-[42px] items-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
-          >
-            List a name
-          </Link>
-          {connectButton}
-        </div>
+        <div className="ml-auto hidden items-center gap-4 lg:flex">{connectButton}</div>
 
         <button
           type="button"
@@ -289,16 +230,7 @@ export function TopNav() {
         <div className="flex flex-col gap-5 border-t pb-5 pt-4 lg:hidden" style={{ borderColor: "var(--line)" }}>
           {searchForm}
           <nav className="flex flex-col items-start gap-4 font-sans text-sm font-medium">{navLinks}</nav>
-          <div className="flex flex-col items-stretch gap-3">
-            <Link
-              href="/domains/list"
-              onClick={() => setMobileOpen(false)}
-              className="btn-outline flex h-[42px] items-center justify-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
-            >
-              List a name
-            </Link>
-            {connectButton}
-          </div>
+          <div className="flex flex-col items-stretch gap-3">{connectButton}</div>
         </div>
       )}
     </header>

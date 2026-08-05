@@ -25,7 +25,7 @@ const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] :
 /// connects. That's deliberate: mainnet is the one chain with data a wallet-less visitor
 /// can actually see (the read-only ENSv1 view — see lib/network-mode.tsx), so the landing
 /// view renders live listings instead of reading a chain nobody is on. Sepolia is where
-/// our own ENSv2 mock marketplace lives (see lib/contracts.ts); ENSv2 mainnet doesn't
+/// the real ENSv2 alpha registry lives (see lib/ensv2-alpha.ts); ENSv2 mainnet doesn't
 /// exist yet.
 ///
 /// http()'s URL arg is optional and falls back to the chain's public default RPC when

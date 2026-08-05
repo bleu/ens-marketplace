@@ -20,30 +20,14 @@ Open `http://localhost:3000`. It works with no configuration and no wallet: main
 | `OPENSEA_API_KEY` | OpenSea listings and the Seaport buy flow | The OpenSea source reports itself as not configured; Grails still works |
 | `NEXT_PUBLIC_SEPOLIA_RPC_URL` | Sepolia reads | Falls back to a public archive node. The chain-default endpoint is deliberately not trusted — it fails under the ENSv2 alpha activity scan's concurrent `eth_getLogs` |
 | `NEXT_PUBLIC_MAINNET_RPC_URL` | Mainnet reads | Falls back to the chain default |
-| `DOMAINS_API_URL` | The ENSv2 mock marketplace's indexed data, via apps/api | Defaults to `http://localhost:3001`. See `docs/ensv2-indexer.md` for the full local stack |
 | `GRAILS_API_URL` | Grails listings | Defaults to the public Grails API |
 
-## The three sources
+## The two sources
 
-`/domains` browses three genuinely different name universes, picked from the Source list in the sidebar rather than merged into one feed. Which ones are offered depends on the connected chain.
+`/domains` browses two genuinely different name universes, picked from the Source list in the sidebar rather than merged into one feed. Which one is offered depends on the connected chain.
 
 - **ENSv1 · Grails · OpenSea** (mainnet) — live ENS names, read-only ownership, active listings, and a Seaport buy flow that spends mainnet ETH. The default, and the only one that needs no wallet.
-- **ENSv2 mock** (Sepolia) — our own `MockENSv2Registry` + marketplace contracts. The full read/write feature set: list, buy, relist, cancel, suspend/diff/accept-refill, and subname announce/rent/reclaim. Needs a wallet on Sepolia; every ENSv2 page shows a "Switch to Sepolia" panel otherwise.
-- **ENSv2 alpha** (Sepolia) — ENS Labs' own ENSv2 alpha contracts, not our mock. Commit-reveal registration paid in an ERC-20. Pre-audit and unofficial; the addresses can change without notice.
-
-### Seed data on the ENSv2 mock
-
-`contracts/script/DeployV2Sepolia.s.sol` seeds these when it deploys, so there's something to click through immediately. Every one is owned by the single deployer address (see that script for why it isn't one key per actor).
-
-| Name | State |
-|---|---|
-| `alice.eth` | Listed for sale, 0.5 ETH |
-| `bob.xyz` | Listed at 0.05 ETH, then mutated post-listing — **already shows as Suspended with a state diff on first load** |
-| `charlie.eth` | Unlisted — available for a live "list your domain" walkthrough |
-| `shop.alice.eth` | Subname, announced for rent at 0.1 ETH / 30 days |
-| `blog.alice.eth` | Subname, already leased with a ~5 minute term — lets you demo expiry + `reclaim()` without a long wait |
-
-This state is live and shared, so a walkthrough can leave it changed. Re-running the deploy script produces a fresh instance at new addresses, which then have to be updated in `lib/contracts.ts`, `apps/indexer/config.yaml`, and the root README.
+- **ENSv2 alpha** (Sepolia) — ENS Labs' own ENSv2 alpha contracts. Commit-reveal registration paid in an ERC-20. Pre-audit and unofficial; the addresses can change without notice. See `docs/ensv2-alpha-integration.md`.
 
 ## Tests
 
@@ -53,8 +37,8 @@ pnpm cypress:open      # interactive runner
 pnpm e2e               # builds a production bundle, serves it, runs the suite — this is what CI runs
 ```
 
-Every spec is read-only and stubs its data at the `/api/ensv1/*` boundary with `cy.intercept`, so they need no chain, no backend, and no API keys. There used to be write-flow specs driving transactions against a local chain; they went with the local chain itself, so the list/buy/rent flows currently have no automated coverage beyond the Foundry tests.
+Every spec is read-only and stubs its data at the `/api/ensv1/*` boundary with `cy.intercept`, so they need no chain, no backend, and no API keys.
 
 ## Scope
 
-Per the product definition this is a beta, not a finished product. Live today: Explore and detail pages for both the ENSv2 mock marketplace and mainnet ENSv1 data, listing and buying, subname leasing, and ENSv2 alpha registration. Offers, categories, valuation, and collection bids are deliberately inert placeholders — visibly labelled "Coming soon" rather than controls that silently do nothing. See `docs/slice-1.md`, `docs/slice-2.md`, and `docs/roadmap.md`.
+Per the product definition this is a beta, not a finished product. Live today: Explore and detail pages for mainnet ENSv1 data (listing and buying) and ENSv2 alpha registration. Offers, categories, valuation, and collection bids are deliberately inert placeholders — visibly labelled "Coming soon" rather than controls that silently do nothing. See `docs/slice-1.md`, `docs/slice-2.md`, and `docs/roadmap.md`.

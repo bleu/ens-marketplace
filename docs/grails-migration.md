@@ -83,8 +83,8 @@ every 6 hours, for as long as Grails' API stays up:
 ```
 0 */6 * * * cd /home/bleu/ens-marketplace && docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm api pnpm run scrape:grails >> /home/bleu/ens-marketplace/scrape-grails.log 2>&1
 ```
-This runs inside the same Docker Compose network as `apps/api` (see "Production hosting"
-in `docs/ensv2-indexer.md`) so it can reach `api-postgres`, which isn't exposed to the
+This runs inside the same Docker Compose network as `apps/api` (see
+`deploy/docker-compose.yml`) so it can reach `api-postgres`, which isn't exposed to the
 internet. A GitHub Actions version of this job isn't viable here — Actions runners have no
 network path into that private database.
 

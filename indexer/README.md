@@ -1,10 +1,11 @@
 # indexer — grant-scope, not in the beta
 
-The beta indexes only its own ENSv2 marketplace contracts, via `apps/indexer` (Envio
-HyperIndex) read through `apps/api` — see `../docs/ensv2-indexer.md`. The full indexer this
-folder marks is a wider job: all ENS name state, market state across marketplaces, search,
-portfolio, and alerts. That's grant-scope work, sequenced after the beta — see
-`../docs/roadmap.md`.
+The beta briefly had a scoped Envio HyperIndex indexer (`apps/indexer`) over its own mock
+ENSv2 marketplace contracts, read through `apps/api`; both were removed once the beta
+moved to integrating directly with ENS Labs' real ENSv2 alpha registry instead — see
+`../docs/ensv2-alpha-integration.md`. The full indexer this folder marks is a wider job:
+all ENS name state, market state across marketplaces, search, portfolio, and alerts.
+That's grant-scope work, sequenced after the beta — see `../docs/roadmap.md`.
 
 Reference architecture worth studying when this is built: a Fastify API + Viem-based
 blockchain indexer + Postgres (WAL-based CDC) + Redis + Elasticsearch microservice split,

@@ -2,11 +2,10 @@ import { ens_normalize as normalize } from "@adraffy/ens-normalize";
 import { concat, keccak256, toBytes, toHex, zeroHash } from "viem";
 
 /// Real ENS (mainnet, "ENSv1") integration — read-only name/ownership lookups via the
-/// official ENS subgraph, plus real OpenSea listing data, kept separate from the
-/// ENSv2 mock marketplace (lib/contracts.ts, lib/events.ts) which is entirely local/fake.
-/// See docs/roadmap.md for why these two data models don't share code: ENSv2's
-/// canonical-ID/regeneration scheme doesn't exist on mainnet, so ENSv1 names are
-/// necessarily a different (read-mostly) code path.
+/// official ENS subgraph, plus real OpenSea listing data, kept separate from the ENSv2
+/// alpha integration (lib/ensv2-alpha.ts). See docs/roadmap.md for why these two data
+/// models don't share code: ENSv2's canonical-ID/regeneration scheme doesn't exist on
+/// mainnet, so ENSv1 names are necessarily a different (read-mostly) code path.
 
 export const ENS_REGISTRY_ADDRESS = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e" as const;
 /// Legacy unwrapped .eth 2LD names, ERC-721, tokenId = uint256(labelhash(label)).
