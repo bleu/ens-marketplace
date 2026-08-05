@@ -1,6 +1,5 @@
-# Production image for apps/api (NestJS). Build context is the monorepo root — neither
-# this package nor apps/indexer has its own lockfile, both rely on the root
-# pnpm-workspace.yaml + pnpm-lock.yaml:
+# Production image for apps/api (NestJS). Build context is the monorepo root — this
+# package has no own lockfile, it relies on the root pnpm-workspace.yaml + pnpm-lock.yaml:
 #   docker build -f apps/api/Dockerfile .
 FROM node:22-slim AS base
 
@@ -17,7 +16,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # pnpm needs every workspace member's package.json present to resolve the lockfile
 # consistently, even though --filter only installs api's own dependencies.
 COPY apps/web/package.json apps/web/package.json
-COPY apps/indexer/package.json apps/indexer/package.json
 # The full apps/api/ tree (not just package.json) has to be in place before install —
 # its postinstall (`prisma generate`) needs prisma/schema.prisma to already exist.
 COPY apps/api/ apps/api/

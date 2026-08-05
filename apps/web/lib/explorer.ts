@@ -1,7 +1,6 @@
-import { Network } from "./contracts";
+import { Network } from "./network";
 
-/// Both chains we link out to are real public ones Etherscan indexes directly — our
-/// Sepolia contracts are Etherscan-verified, see lib/contracts.ts.
+/// Both chains we link out to are real public ones Etherscan indexes directly.
 const EXPLORER_BASE_URL: Record<Network, string> = {
   [Network.Sepolia]: "https://sepolia.etherscan.io",
   [Network.Mainnet]: "https://etherscan.io",

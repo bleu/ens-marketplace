@@ -32,7 +32,7 @@ aggregation/portfolio/offers, then the v2 track (v2-native orders at production
 hardness, migration center, rental policy engine + auctions) keyed off ENSv2 mainnet
 availability rather than calendar dates.
 
-`indexer/` and `sdk/` are stubs and get built out here. The product definition originally scoped the beta to "no indexer, no search, no polish" — reading chain state directly — but that didn't survive contact with real RPC rate limits, so the beta now has a scoped indexer over its own contracts (`apps/indexer` + `apps/api`, see `docs/ensv2-indexer.md`). What `indexer/` still marks is the wider job: all ENS name state, cross-marketplace state, search, portfolio, alerts. `contracts/src/market/` (the Seaport-based v1 core) is grant-scope for the same reason.
+`indexer/` and `sdk/` are stubs and get built out here — the wider job: all ENS name state, cross-marketplace state, search, portfolio, alerts. (The beta briefly had a scoped Envio indexer, `apps/indexer`, over its own mock ENSv2 contracts; both were removed once the beta moved to integrating directly with ENS Labs' real ENSv2 alpha registry instead — see `docs/ensv2-alpha-integration.md`.) `contracts/src/market/` (the Seaport-based v1 core) is grant-scope for the same reason.
 
 ## Open items requiring external research/confirmation
 

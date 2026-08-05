@@ -10,7 +10,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useEnsV1Domain, useEnsV1ListingForName } from "@/lib/ensv1-client";
 import { ensAppUrl, grailsUrl, namehash, openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { fulfillListing, isInsufficientBalanceError, useEthersSigner } from "@/lib/seaport";
-import { Network } from "@/lib/contracts";
+import { Network } from "@/lib/network";
 import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
 

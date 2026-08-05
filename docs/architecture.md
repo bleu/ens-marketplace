@@ -5,6 +5,13 @@ Marketplace RFP. Two design decisions distinguish this marketplace from static
 Seaport/OpenSea-style listings, and are load-bearing enough to document here rather than
 leave implicit in code comments.
 
+**Note:** `CanonicalIdOrderManager` and `SubnameLeaseVault` (our own mock ENSv2
+marketplace contracts, referenced below) have been removed from `contracts/` — the beta
+now integrates directly with ENS Labs' real ENSv2 alpha registry instead (see
+`docs/ensv2-alpha-integration.md`). This document is kept as the design record for these
+two invariants, which still apply to any real order/lease contract built against ENSv2
+later.
+
 ## Regeneration-aware order validation (`contracts/src/v2`)
 
 ENSv2 deliberately mutates a name's token ID whenever its role or resolver state changes —

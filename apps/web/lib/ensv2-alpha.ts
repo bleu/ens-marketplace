@@ -94,16 +94,23 @@ export interface EnsV2AlphaName {
 
 /// Real registered names on the alpha, discovered via LabelRegistered event history — no
 /// indexer, same discover-via-events pattern as lib/events.ts's useKnownDomainIds etc.
-export function useEnsV2AlphaRegisteredNames(): { names: EnsV2AlphaName[]; isError: boolean; refetch: () => void } {
+export function useEnsV2AlphaRegisteredNames(): {
+  names: EnsV2AlphaName[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+} {
   // Explicit chainId — this integration is always Sepolia regardless of which chain the
   // connected wallet is on (mainnet, the app's default before any wallet connects, has none
   // of these contracts and would otherwise silently return empty/error results).
   const client = usePublicClient({ chainId: sepolia.id });
   const [names, setNames] = useState<EnsV2AlphaName[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!client) return;
+    setIsLoading(true);
     try {
       const logs = await getContractEventsChunked(client, {
         address: ENSV2_ALPHA_ETH_REGISTRY,
@@ -121,6 +128,8 @@ export function useEnsV2AlphaRegisteredNames(): { names: EnsV2AlphaName[]; isErr
     } catch (err) {
       console.error("useEnsV2AlphaRegisteredNames: failed to scan LabelRegistered events", err);
       setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
   }, [client]);
 
@@ -136,5 +145,5 @@ export function useEnsV2AlphaRegisteredNames(): { names: EnsV2AlphaName[]; isErr
     onLogs: refresh,
   });
 
-  return { names, isError, refetch: refresh };
+  return { names, isLoading, isError, refetch: refresh };
 }

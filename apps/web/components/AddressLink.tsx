@@ -2,7 +2,7 @@
 
 import type { Address } from "viem";
 import { useDisplayName } from "@/components/AddressLabel";
-import { Network } from "@/lib/contracts";
+import { Network } from "@/lib/network";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { shortAddr } from "@/lib/format";
 

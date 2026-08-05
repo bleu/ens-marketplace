@@ -3,9 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { formatEther, formatUnits } from "viem";
-import { useDomainSearch, useLastSale } from "@/lib/events";
-import { Network, OrderStatus, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
+import { formatUnits } from "viem";
+import { Network, useCurrentNetwork } from "@/lib/network";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
@@ -13,21 +12,9 @@ import { useEnsV2AlphaRegisteredNames, type EnsV2AlphaName } from "@/lib/ensv2-a
 import { AddressLabel } from "@/components/AddressLabel";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Tabs, type TabItem } from "@/components/Tabs";
-import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
 import { Spinner } from "@/components/Spinner";
-import { SepoliaRequired } from "@/components/SepoliaRequired";
 import { shortId } from "@/lib/format";
-import type { DomainOrderRow } from "@/lib/events";
-
-const TABS: TabItem[] = [
-  { id: "names", label: "Names" },
-  { id: "listings", label: "Listings" },
-  { id: "premium", label: "Premium", disabled: true },
-  { id: "available", label: "Available", disabled: true },
-  { id: "activity", label: "Activity", disabled: true },
-];
 
 interface EnsV1FilterCriteria {
   priceInput: { min: string; max: string };
@@ -77,17 +64,13 @@ export default function DomainsPage() {
 }
 
 function DomainsPageInner() {
-  const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
   // Which source options are even relevant to show — the ENSv2 alpha only exists on
   // Sepolia and ENSv1/Grails/OpenSea are all Ethereum mainnet data, so those gate on the
   // connected chain rather than offering options that would need a chain switch just to be
-  // meaningful. Our own ENSv2 mock is the exception: it always shows, because SepoliaRequired
-  // below is a better answer than hiding the section this whole beta is about.
+  // meaningful.
   const currentNetwork = useCurrentNetwork();
-  const addresses = useContractAddresses();
   const alpha = useEnsV2AlphaRegisteredNames();
-  const [ensv2Page, setEnsv2Page] = useState(1);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -210,25 +193,9 @@ function DomainsPageInner() {
   const active = source === "grails" ? grails : opensea;
   const ensv1Listings = active.listings.filter((l) => matchesFilters(l, { priceInput, lengthInput, patternInput }));
 
-  const search = useDomainSearch(tab === "listings" ? "listings" : "names", ensv2Page);
-  const { rows, isLoading, isError, refetch: retry, total, totalPages } = search;
-
-  const changeTab = (t: string) => {
-    setTab(t);
-    setEnsv2Page(1);
-  };
-
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
       <div className="flex h-[60px] items-center gap-2 border-b px-4 lg:px-8" style={{ borderColor: "var(--line)" }}>
-        {networkMode === "ensv2" && (
-          <>
-            <Tabs items={TABS} active={tab} onChange={changeTab} />
-            <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              {total} names
-            </span>
-          </>
-        )}
         {networkMode === "ensv1" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
@@ -275,32 +242,6 @@ function DomainsPageInner() {
             Source
           </div>
           <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setNetworkMode("ensv2")}
-              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-              style={
-                networkMode === "ensv2"
-                  ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
-                  : { borderColor: "var(--line)" }
-              }
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--fg-dim)" }}
-                />
-                <span
-                  className="font-sans text-[13px] font-medium"
-                  style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
-                >
-                  ENSv2 mock
-                </span>
-              </div>
-              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                {total}
-              </span>
-            </button>
             {currentNetwork === Network.Sepolia && (
               <>
                 <button
@@ -329,12 +270,6 @@ function DomainsPageInner() {
                     {alpha.names.length}
                   </span>
                 </button>
-                {networkMode === "ensv2-alpha" && (
-                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
-                    Pre-audit alpha contracts that can change without notice. Registering
-                    spends Sepolia test ETH and USDC.
-                  </p>
-                )}
               </>
             )}
             {currentNetwork === Network.Mainnet && (
@@ -434,7 +369,7 @@ function DomainsPageInner() {
             <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
               No filters yet.
             </p>
-          ) : networkMode === "ensv1" ? (
+          ) : (
             <div className="flex flex-col gap-4">
               <div>
                 <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
@@ -517,40 +452,20 @@ function DomainsPageInner() {
               </div>
 
             </div>
-          ) : (
-            <ComingSoon>
-              <div className="flex flex-col">
-                {["Categories", "Status", "Has offers", "Has last sale", "Price range", "Marketplace"].map((label) => (
-                  <div
-                    key={label}
-                    className="flex h-11 items-center justify-between border-b"
-                    style={{ borderColor: "var(--line)" }}
-                  >
-                    <span className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-                      {label}
-                    </span>
-                    <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-                      Any
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </ComingSoon>
           )}
         </aside>
 
         {/* table */}
         <section className="px-4 pb-20 lg:px-8">
           {networkMode === "ensv2-alpha" ? (
-            <EnsV2AlphaTable names={alpha.names} isError={alpha.isError} retry={alpha.refetch} />
-          ) : networkMode === "ensv1" ? (
+            <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
+          ) : (
             <EnsV1Table
               source={source}
               listings={ensv1Listings}
               isLoading={active.isLoading}
               isError={active.isError}
               notConfigured={source === "opensea" ? opensea.notConfigured : false}
-              unresolvedCount={active.unresolvedCount}
               retry={active.refetch}
               page={page}
               grailsTotalPages={source === "grails" ? grails.totalPages : null}
@@ -558,130 +473,6 @@ function DomainsPageInner() {
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
               onNext={() => setPage((p) => p + 1)}
             />
-          ) : !addresses ? (
-            <SepoliaRequired />
-          ) : (
-            <>
-          <ComingSoon className="my-6">
-            <div
-              className="flex items-center gap-5 rounded-[var(--radius-3)] border p-5"
-              style={{ borderColor: "var(--line)", background: "linear-gradient(90deg,rgba(var(--brand-rgb),0.09),rgba(17,25,42,0.4))" }}
-            >
-              <div className="flex-1">
-                <div
-                  className="mb-1.5 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
-                  style={{ color: "var(--brand)" }}
-                >
-                  Collection bid
-                </div>
-                <div
-                  className="font-[var(--font-display)] text-[26px] font-light tracking-[var(--tracking-snug)]"
-                  style={{ color: "var(--fg)" }}
-                >
-                  Bid on an entire collection
-                </div>
-                <div className="mt-1.5 font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-                  One offer, every name in a category. Fills the moment any holder accepts.
-                </div>
-              </div>
-              <button
-                className="h-11 rounded-[var(--radius-2)] border px-6 font-sans text-sm font-semibold"
-                style={{ borderColor: "var(--brand)", color: "var(--brand)" }}
-              >
-                Place collection bid
-              </button>
-            </div>
-          </ComingSoon>
-
-          {/* This row grid has several fixed-width columns (price/owner/last
-              sale/highest offer/select), so below a certain viewport it can't
-              compress further without truncating illegibly. Rather than let
-              that blow out the whole page's width (pushing the sidebar and
-              top nav off-screen too), the horizontal scroll is contained to
-              just this table via its own overflow-x-auto wrapper. */}
-          <ScrollHint className="no-scrollbar" arrowAlign="top">
-            <div
-              className="min-w-[1058px] transition-opacity duration-150"
-              style={{ opacity: isLoading && rows.length > 0 ? 0.5 : 1 }}
-            >
-              <div
-                className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b pr-4 pb-3.5"
-                style={{ borderColor: "var(--line-strong)" }}
-              >
-                {["Name", "Price", "Owner", "Last sale", "Highest offer", ""].map((h, i) => (
-                  <span
-                    key={h}
-                    className={
-                      i === 0
-                        ? "sticky left-0 z-10 self-stretch pl-4 font-mono text-[11px] tracking-[0.04em] uppercase"
-                        : "font-mono text-[11px] tracking-[0.04em] uppercase"
-                    }
-                    style={{ color: "var(--fg-dim)", ...(i === 0 ? { background: "var(--bg)" } : {}) }}
-                  >
-                    {h}
-                  </span>
-                ))}
-              </div>
-
-              {isError && (
-                <div className="flex items-center gap-3 py-8">
-                  <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-                    Couldn&apos;t load names.
-                  </p>
-                  <button
-                    onClick={retry}
-                    className="h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
-                    style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-              {!isError && isLoading && rows.length === 0 && (
-                <div className="flex items-center gap-2.5 py-8">
-                  <Spinner />
-                  <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-                    Loading…
-                  </p>
-                </div>
-              )}
-              {!isError && !isLoading && rows.length === 0 && (
-                <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-                  No names to show in this tab yet.
-                </p>
-              )}
-
-              {rows.map(({ canonicalId, order, name }) => (
-                <ExploreRow key={canonicalId.toString()} id={canonicalId} order={order} name={name ?? undefined} />
-              ))}
-            </div>
-          </ScrollHint>
-
-          {!isError && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 py-6">
-              <button
-                onClick={() => setEnsv2Page((p) => Math.max(1, p - 1))}
-                disabled={ensv2Page === 1 || isLoading}
-                className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
-                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
-              >
-                ← Previous
-              </button>
-              <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-                {isLoading && <Spinner size={12} />}
-                Page {ensv2Page} of {totalPages}
-              </span>
-              <button
-                onClick={() => setEnsv2Page((p) => Math.min(totalPages, p + 1))}
-                disabled={ensv2Page >= totalPages || isLoading}
-                className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
-                style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
-              >
-                Next →
-              </button>
-            </div>
-          )}
-            </>
           )}
         </section>
       </div>
@@ -692,18 +483,19 @@ function DomainsPageInner() {
 const ENSV2_ALPHA_PAGE_SIZE = 20;
 
 /// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
-/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table/the
-/// ensv2 mock table: this alpha has no price/seller/order concept, just a registered label
-/// + tokenId. Pagination here is a client-side slice, not a paginated API call like
-/// Grails/OpenSea — the full list is already in hand from the event scan
-/// (useEnsV2AlphaRegisteredNames), so "next page" just moves the slice window rather than
-/// fetching anything new.
+/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table:
+/// this alpha has no price/seller/order concept, just a registered label + tokenId.
+/// Pagination here is a client-side slice, not a paginated API call like Grails/OpenSea —
+/// the full list is already in hand from the event scan (useEnsV2AlphaRegisteredNames),
+/// so "next page" just moves the slice window rather than fetching anything new.
 function EnsV2AlphaTable({
   names,
+  isLoading,
   isError,
   retry,
 }: {
   names: EnsV2AlphaName[];
+  isLoading: boolean;
   isError: boolean;
   retry: () => void;
 }) {
@@ -717,7 +509,7 @@ function EnsV2AlphaTable({
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[520px]">
+      <div className="min-w-[520px] transition-opacity duration-150" style={{ opacity: isLoading && names.length > 0 ? 0.5 : 1 }}>
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
@@ -751,7 +543,15 @@ function EnsV2AlphaTable({
             </button>
           </div>
         )}
-        {!isError && names.length === 0 && (
+        {!isError && isLoading && names.length === 0 && (
+          <div className="flex items-center gap-2.5 py-8">
+            <Spinner />
+            <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+              Loading registrations…
+            </p>
+          </div>
+        )}
+        {!isError && !isLoading && names.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
             No names registered on this alpha deployment yet — be the first.
           </p>
@@ -788,18 +588,19 @@ function EnsV2AlphaTable({
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={clampedPage === 1}
+            disabled={clampedPage === 1 || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
             ← Previous
           </button>
-          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+          <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            {isLoading && <Spinner size={12} />}
             Page {clampedPage} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={clampedPage === totalPages}
+            disabled={clampedPage === totalPages || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
@@ -817,7 +618,6 @@ function EnsV1Table({
   isLoading,
   isError,
   notConfigured,
-  unresolvedCount,
   retry,
   page,
   grailsTotalPages,
@@ -830,7 +630,6 @@ function EnsV1Table({
   isLoading: boolean;
   isError: boolean;
   notConfigured: boolean;
-  unresolvedCount: number;
   retry: () => void;
   page: number;
   grailsTotalPages: number | null;
@@ -899,13 +698,6 @@ function EnsV1Table({
         {listings.map((l) => (
           <EnsV1Row key={l.listing.order_hash} listing={l} />
         ))}
-
-        {unresolvedCount > 0 && (
-          <p className="py-3 font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-            {unresolvedCount} other active {sourceLabel} listing{unresolvedCount === 1 ? "" : "s"} on this page
-            couldn&apos;t be resolved to a shown row and {unresolvedCount === 1 ? "isn't" : "aren't"} shown.
-          </p>
-        )}
       </div>
       </ScrollHint>
       {!notConfigured && !isError && (
@@ -1008,82 +800,3 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
   );
 }
 
-/// Maps the on-chain OrderStatus (None/Active/Suspended/Filled/Cancelled) to a badge —
-/// the Names tab shows every row with an order regardless of status (unlike the
-/// Listings tab, which filters to Active/Suspended), so a sold or cancelled order
-/// must read as such here rather than falling back to a buyable-looking "Active".
-function statusBadge(status: number): { label: string; variant: "active" | "suspended" | "neutral" } {
-  switch (status) {
-    case OrderStatus.Suspended:
-      return { label: "Suspended", variant: "suspended" };
-    case OrderStatus.Filled:
-      return { label: "Sold", variant: "neutral" };
-    case OrderStatus.Cancelled:
-      return { label: "Cancelled", variant: "neutral" };
-    default:
-      return { label: "Active", variant: "active" };
-  }
-}
-
-function ExploreRow({ id, order, name }: { id: bigint; order: DomainOrderRow; name?: string }) {
-  const { seller, price, status } = order;
-  const lastSale = useLastSale(id);
-  const badge = statusBadge(status);
-
-  return (
-    <Link
-      href={`/domains/${id.toString()}`}
-      className="explore-row grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b pr-4 py-3.5"
-      style={{ borderColor: "var(--line)" }}
-    >
-      <div
-        className="sticky left-0 z-10 flex min-w-0 items-center gap-3.5 self-stretch pl-4"
-        style={{ background: "var(--bg)" }}
-      >
-        <NameCard canonicalId={id} />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
-              {name ?? id.toString()}
-            </span>
-            <StatusBadge variant="chain">L2</StatusBadge>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div className="font-mono text-[15px] font-medium" style={{ color: "var(--fg)" }}>
-          {formatEther(price)} ETH
-        </div>
-        <div className="mt-0.5">
-          <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
-        </div>
-      </div>
-      <div>
-        <span
-          className="inline-flex max-w-full items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
-          style={{ background: "rgba(242,244,241,0.05)" }}
-        >
-          <span className="h-5 w-5 shrink-0 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
-          {/* An ENS name has no length limit, unlike the 13 chars shortAddr always
-              produced — without this the pill outgrows its grid column. */}
-          <span className="min-w-0 truncate font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-            <AddressLabel address={seller} />
-          </span>
-        </span>
-      </div>
-      <div className="font-mono text-[13px]" style={{ color: lastSale ? "var(--fg-muted)" : "var(--fg-dim)" }}>
-        {lastSale ? `${formatEther(lastSale.price)} ETH` : "—"}
-      </div>
-      <ComingSoon>
-        <div className="font-mono text-[13px]" style={{ color: "var(--fg-dim)" }}>
-          —
-        </div>
-      </ComingSoon>
-      <div className="justify-self-end">
-        <span className="select-pill h-9 rounded-[var(--radius-2)] border px-4 py-2 font-sans text-[13px] font-medium">
-          Select
-        </span>
-      </div>
-    </Link>
-  );
-}
