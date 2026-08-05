@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "lint": "pnpm --filter demo lint",
-    "build": "pnpm --filter demo build"
+    "build": "pnpm --filter demo build",
+    "test": "pnpm --filter demo test"
   },
   "pnpm": {
     "overrides": {

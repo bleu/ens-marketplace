@@ -227,7 +227,13 @@ export default function EnsV1DomainDetailPage() {
               },
               {
                 k: "Resolved address",
-                v: domain.resolvedAddress ? <AddressLink address={domain.resolvedAddress} network={Network.Mainnet} /> : "—",
+                // Hex, not a name — this is the page for a name already, so "Resolved
+                // address: nick.eth" would be circular and hide the one thing the row shows.
+                v: domain.resolvedAddress ? (
+                  <AddressLink address={domain.resolvedAddress} network={Network.Mainnet} showName={false} />
+                ) : (
+                  "—"
+                ),
               },
               { k: "Registered", v: domain.registrationDate ? new Date(domain.registrationDate * 1000).toLocaleDateString() : "—" },
               { k: "Expires", v: domain.expiryDate ? new Date(domain.expiryDate * 1000).toLocaleDateString() : "—" },
