@@ -8,7 +8,7 @@ export default defineConfig({
     // connected wallet — the surviving specs are read-only and stub at /api/ensv1/*.
     supportFile: false,
     // Cypress's default (1000px) is narrower than the top nav's `lg:` breakpoint
-    // (1024px) — below that, search/nav-links/List-a-name are legitimately hidden in
+    // (1024px) — below that, the search box and nav links are legitimately hidden in
     // favor of a mobile menu (see BLEUDEV-235). Use a real desktop width so tests
     // exercise the desktop nav these specs assume.
     viewportWidth: 1280,
