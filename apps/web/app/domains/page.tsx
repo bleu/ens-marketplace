@@ -4,9 +4,15 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatUnits } from "viem";
-import { Network, useCurrentNetwork } from "@/lib/network";
 import { useNetworkMode } from "@/lib/network-mode";
-import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
+import { cacheListingForNavigation, useGrailsListings } from "@/lib/ensv1-client";
+import {
+  ExploreFilters,
+  exploreFiltersFromQuery,
+  exploreFiltersToQuery,
+  toGrailsFilters,
+  type ExploreFilterState,
+} from "@/components/ExploreFilters";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { useEnsV2AlphaRegisteredNames, type EnsV2AlphaName } from "@/lib/ensv2-alpha";
 import { AddressLabel } from "@/components/AddressLabel";
@@ -16,40 +22,15 @@ import { ScrollHint } from "@/components/ScrollHint";
 import { Spinner } from "@/components/Spinner";
 import { shortId } from "@/lib/format";
 
-interface EnsV1FilterCriteria {
-  priceInput: { min: string; max: string };
-  lengthInput: { min: string; max: string };
-  patternInput: { startsWith: string; endsWith: string };
-}
+/// Nothing filters listings in the browser. The feed is Grails-only (our own Postgres — see
+/// useGrailsListings), so every filter and the count are real server-side queries, and the
+/// header's total is a count of the same set the user can page through. The client-side
+/// re-filter this replaces existed for OpenSea, whose listings endpoint takes no filter params
+/// at all; OpenSea now stays on the detail page, where per-name lookups work fine. See
+/// docs/explore-filters.md.
 
-/// Applied to every ENSv1 row — for Grails this is redundant with the real server-side
-/// filter (harmless, just a no-op re-check), but for OpenSea it's the only filtering that
-/// happens at all, since OpenSea's listings endpoint has no filter params — see
-/// useGrailsListings' doc comment. Grails and OpenSea are independent, mutually exclusive
-/// sources (see the Refine source toggle below) rather than a merged/crossed set, so
-/// there's no source field to check here — whichever hook is enabled already determines
-/// the source of everything being filtered.
-function matchesFilters(l: EnsV1Listing, f: EnsV1FilterCriteria): boolean {
-  const priceEth = Number(formatUnits(BigInt(l.price.value), l.price.decimals));
-  if (f.priceInput.min && priceEth < Number(f.priceInput.min)) return false;
-  if (f.priceInput.max && priceEth > Number(f.priceInput.max)) return false;
-
-  // A listing with no resolved name (see EnsV1Listing.name) has no label to check
-  // length/pattern against — kept in the results (per the price check above) as long as
-  // no length/pattern filter is actually active, rather than dropped outright.
-  if (l.name === null) {
-    return !f.lengthInput.min && !f.lengthInput.max && !f.patternInput.startsWith && !f.patternInput.endsWith;
-  }
-
-  const label = l.name.replace(/\.eth$/i, "");
-  if (f.lengthInput.min && label.length < Number(f.lengthInput.min)) return false;
-  if (f.lengthInput.max && label.length > Number(f.lengthInput.max)) return false;
-
-  if (f.patternInput.startsWith && !label.toLowerCase().startsWith(f.patternInput.startsWith.toLowerCase())) return false;
-  if (f.patternInput.endsWith && !label.toLowerCase().endsWith(f.patternInput.endsWith.toLowerCase())) return false;
-
-  return true;
-}
+/// How long a keystroke waits before it becomes a query.
+const FILTER_DEBOUNCE_MS = 400;
 
 /// useSearchParams() requires an ancestor Suspense boundary (Next.js App Router build
 /// requirement, not just a dev-mode nicety) — the default export below provides it so
@@ -64,134 +45,57 @@ export default function DomainsPage() {
 }
 
 function DomainsPageInner() {
-  const [networkMode, setNetworkMode] = useNetworkMode();
-  // Which source options are even relevant to show — the ENSv2 alpha only exists on
-  // Sepolia and ENSv1/Grails/OpenSea are all Ethereum mainnet data, so those gate on the
-  // connected chain rather than offering options that would need a chain switch just to be
-  // meaningful.
-  const currentNetwork = useCurrentNetwork();
+  const [networkMode] = useNetworkMode();
   const alpha = useEnsV2AlphaRegisteredNames();
 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Any of these params only make sense in ENSv1 mode — if a shared/bookmarked link
-  // carries one, switch to that view on load rather than leaving the visible mode as
-  // the ENSv2 default while the URL (silently, to the user) already reflects ENSv1 state.
-  // Runs once on mount only (via the ref guard) — syncUrl below deliberately leaves
-  // these params in the URL when switching back to ENSv2 mode (so re-entering ENSv1
-  // restores them), and if this effect re-ran on every searchParams change it would
-  // immediately force the user back into ENSv1 mode the moment they tried to leave it.
-  const hasAppliedUrlMode = useRef(false);
-  useEffect(() => {
-    if (hasAppliedUrlMode.current) return;
-    hasAppliedUrlMode.current = true;
-    const hasEnsV1Params = ["page", "refine", "priceMin", "priceMax", "lengthMin", "lengthMax", "startsWith", "endsWith"].some(
-      (key) => searchParams.has(key),
-    );
-    if (hasEnsV1Params) setNetworkMode("ensv1");
-  }, [searchParams, setNetworkMode]);
-
-  // Real filters for the ENSv1 view. Grails has an actual server-side filter schema, so
-  // its query is re-run (debounced, to avoid hammering their API per keystroke) whenever
-  // these change. OpenSea's listings endpoint has no filter params at all — the exact
-  // same criteria are instead applied client-side to whatever page is already loaded,
-  // via matchesFilters below, so at least the OpenSea rows on screen still narrow down
-  // even though the underlying fetch can't be filtered server-side.
-  //
-  // Page and every filter are seeded from the URL query string on first render (below)
-  // and kept in sync with it (see the syncUrl effect further down) — this makes the
-  // current view shareable/bookmarkable/restorable on refresh, e.g.
-  // ?page=2&refine=opensea&priceMin=1&priceMax=5.
-  const [source, setSource] = useState<"grails" | "opensea">(() => (searchParams.get("refine") === "opensea" ? "opensea" : "grails"));
-  const [priceInput, setPriceInput] = useState({
-    min: searchParams.get("priceMin") ?? "",
-    max: searchParams.get("priceMax") ?? "",
-  });
-  const [lengthInput, setLengthInput] = useState({
-    min: searchParams.get("lengthMin") ?? "",
-    max: searchParams.get("lengthMax") ?? "",
-  });
-  const [patternInput, setPatternInput] = useState({
-    startsWith: searchParams.get("startsWith") ?? "",
-    endsWith: searchParams.get("endsWith") ?? "",
-  });
-  const [grailsFilters, setGrailsFilters] = useState({
-    minPrice: searchParams.get("priceMin") ?? "",
-    maxPrice: searchParams.get("priceMax") ?? "",
-    minLength: searchParams.get("lengthMin") ?? "",
-    maxLength: searchParams.get("lengthMax") ?? "",
-    startsWith: searchParams.get("startsWith") ?? "",
-    endsWith: searchParams.get("endsWith") ?? "",
-  });
-
-  // Pagination is a single "page" concept shared across both sources, even though
-  // Grails paginates by plain page number and OpenSea by opaque cursor — see
-  // useEnsV1Listings' doc comment for how the OpenSea side maps a page number back to
-  // the right cursor. Reset to page 1 whenever the server-side (Grails) filters change,
-  // since page 2 of a stale filter set doesn't mean anything once the filter changes.
+  // Seeded from the URL on first render and kept in sync with it (see the syncUrl effect
+  // below), so a filtered view is shareable, bookmarkable and survives a refresh.
+  const [filters, setFilters] = useState<ExploreFilterState>(() => exploreFiltersFromQuery(searchParams));
+  const [appliedFilters, setAppliedFilters] = useState(filters);
   const [page, setPage] = useState(() => {
     const fromUrl = Number(searchParams.get("page"));
     return Number.isFinite(fromUrl) && fromUrl >= 1 ? fromUrl : 1;
   });
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Skips the debounce's own recompute + page reset on the very first run — grailsFilters
-  // and page are already correctly seeded straight from the URL above, so re-deriving
-  // them from priceInput/lengthInput/patternInput on mount would just be redundant, and
-  // resetting page to 1 on mount would stomp a `?page=3` from a shared/refreshed URL.
+  // Debounced so a query doesn't fire per keystroke. Skipped on the first run: appliedFilters
+  // is already seeded from the same URL, and resetting page here would stomp a shared `?page=3`.
   const isFirstFilterSync = useRef(true);
   useEffect(() => {
     if (isFirstFilterSync.current) {
       isFirstFilterSync.current = false;
       return;
     }
-    const t = setTimeout(() => {
-      setGrailsFilters({
-        minPrice: priceInput.min,
-        maxPrice: priceInput.max,
-        minLength: lengthInput.min,
-        maxLength: lengthInput.max,
-        startsWith: patternInput.startsWith,
-        endsWith: patternInput.endsWith,
-      });
+    const timer = setTimeout(() => {
+      setAppliedFilters(filters);
+      // Page 2 of a filter set that no longer applies means nothing.
       setPage(1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [priceInput, lengthInput, patternInput]);
+    }, FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [filters]);
 
   const syncUrl = useCallback(() => {
     if (networkMode !== "ensv1") return;
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(exploreFiltersToQuery(appliedFilters));
     if (page > 1) params.set("page", String(page));
-    if (source !== "grails") params.set("refine", source);
-    if (priceInput.min) params.set("priceMin", priceInput.min);
-    if (priceInput.max) params.set("priceMax", priceInput.max);
-    if (lengthInput.min) params.set("lengthMin", lengthInput.min);
-    if (lengthInput.max) params.set("lengthMax", lengthInput.max);
-    if (patternInput.startsWith) params.set("startsWith", patternInput.startsWith);
-    if (patternInput.endsWith) params.set("endsWith", patternInput.endsWith);
     const qs = params.toString();
-    // Skip a replace that wouldn't change the URL. On a plain /domains visit every value
-    // above is still its default, so this used to fire `replace("/domains")` at the URL it
-    // was already on — harmless-looking, but that in-flight replace lands *after* a quick
-    // click on another nav link and yanks the user straight back to /domains. Never showed
-    // up while ENSv2 was the default mode, since the guard above returned first.
+    // Skip a replace that wouldn't change the URL. On a plain /domains visit every value is
+    // still its default, so this would otherwise fire `replace("/domains")` at the URL it was
+    // already on — harmless-looking, but that in-flight replace lands *after* a quick click on
+    // another nav link and yanks the user straight back to /domains.
     if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router, searchParams]);
+  }, [networkMode, appliedFilters, page, pathname, router, searchParams]);
 
   useEffect(() => {
     syncUrl();
   }, [syncUrl]);
 
-  // Grails and OpenSea are strictly separate, mutually exclusive browsing modes — only
-  // the currently-selected source's hook actually fetches (via `enabled`), and its
-  // listings are shown as-is, never merged or cross-resolved with the other source.
-  const opensea = useEnsV1Listings(page, source === "opensea");
-  const grails = useGrailsListings(grailsFilters, page, source === "grails");
-  const active = source === "grails" ? grails : opensea;
-  const ensv1Listings = active.listings.filter((l) => matchesFilters(l, { priceInput, lengthInput, patternInput }));
+  const grails = useGrailsListings(toGrailsFilters(appliedFilters), page);
 
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
@@ -199,11 +103,12 @@ function DomainsPageInner() {
         {networkMode === "ensv1" && (
           <>
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Listings — {source === "grails" ? "Grails" : "OpenSea"}
+              Listings
             </span>
+            {/* A real count of the filtered set, not of this page — every filter is applied
+                server-side, so this is the number of rows the user can actually reach. */}
             <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
-              {ensv1Listings.length} on this page
-              {source === "grails" && grails.total !== null && <> · Grails has {grails.total.toLocaleString()} listings total</>}
+              {grails.total !== null && <>{grails.total.toLocaleString()} listings</>}
             </span>
           </>
         )}
@@ -227,232 +132,33 @@ function DomainsPageInner() {
       </div>
 
       <div className="grid grid-cols-1 items-start lg:grid-cols-[280px_1fr]">
-        {/* filters */}
+        {/* filters — on a narrow viewport these collapse into a drawer, so a tall filter
+            column doesn't push the table below the fold. */}
         <aside className="border-b p-6 lg:sticky lg:top-[76px] lg:border-b-0 lg:border-r" style={{ borderColor: "var(--line)" }}>
           <div className="mb-5 flex items-center gap-2">
             <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
               Filters
             </span>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen((open) => !open)}
+              aria-expanded={drawerOpen}
+              className="ml-auto h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs lg:hidden"
+              style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+            >
+              {drawerOpen ? "Hide" : "Filters"}
+            </button>
           </div>
 
-          <div
-            className="mb-6 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
-            style={{ color: "var(--fg-kicker)" }}
-          >
-            Source
-          </div>
-          <div className="flex flex-col gap-2">
-            {currentNetwork === Network.Sepolia && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setNetworkMode("ensv2-alpha")}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-                  style={
-                    networkMode === "ensv2-alpha"
-                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
-                      : { borderColor: "var(--line)" }
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--fg-dim)" }}
-                    />
-                    <span
-                      className="font-sans text-[13px] font-medium"
-                      style={{ color: networkMode === "ensv2-alpha" ? "var(--fg)" : "var(--fg-muted)" }}
-                    >
-                      ENSv2
-                    </span>
-                  </div>
-                  <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                    {alpha.names.length}
-                  </span>
-                </button>
-              </>
-            )}
-            {currentNetwork === Network.Mainnet && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setNetworkMode("ensv1")}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-                  style={
-                    networkMode === "ensv1"
-                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
-                      : { borderColor: "var(--line)" }
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--fg-dim)" }}
-                    />
-                    <span
-                      className="font-sans text-[13px] font-medium"
-                      style={{ color: networkMode === "ensv1" ? "var(--fg)" : "var(--fg-muted)" }}
-                    >
-                      ENSv1
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNetworkMode("ensv1");
-                    setSource("grails");
-                    setPage(1);
-                  }}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-                  style={
-                    networkMode === "ensv1" && source === "grails"
-                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
-                      : { borderColor: "var(--line)" }
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{
-                        background: networkMode === "ensv1" && source === "grails" ? "var(--brand)" : "var(--fg-dim)",
-                      }}
-                    />
-                    <span
-                      className="font-sans text-[13px] font-medium"
-                      style={{ color: networkMode === "ensv1" && source === "grails" ? "var(--fg)" : "var(--fg-muted)" }}
-                    >
-                      Grails
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNetworkMode("ensv1");
-                    setSource("opensea");
-                    setPage(1);
-                  }}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-                  style={
-                    networkMode === "ensv1" && source === "opensea"
-                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
-                      : { borderColor: "var(--line)" }
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{
-                        background: networkMode === "ensv1" && source === "opensea" ? "var(--brand)" : "var(--fg-dim)",
-                      }}
-                    />
-                    <span
-                      className="font-sans text-[13px] font-medium"
-                      style={{ color: networkMode === "ensv1" && source === "opensea" ? "var(--fg)" : "var(--fg-muted)" }}
-                    >
-                      OpenSea
-                    </span>
-                  </div>
-                </button>
-              </>
+          <div className={drawerOpen ? "block" : "hidden lg:block"}>
+            {networkMode === "ensv2-alpha" ? (
+              <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                No filters yet.
+              </p>
+            ) : (
+              <ExploreFilters state={filters} onChange={setFilters} />
             )}
           </div>
-
-          <div
-            className="mb-3 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
-            style={{ color: "var(--fg-kicker)" }}
-          >
-            Refine
-          </div>
-          {networkMode === "ensv2-alpha" ? (
-            <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-              No filters yet.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-                  Price (ETH)
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={priceInput.min}
-                    onChange={(e) => setPriceInput((p) => ({ ...p, min: e.target.value }))}
-                    placeholder="Min"
-                    aria-label="Minimum price in ETH"
-                    inputMode="decimal"
-                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                  />
-                  <input
-                    value={priceInput.max}
-                    onChange={(e) => setPriceInput((p) => ({ ...p, max: e.target.value }))}
-                    placeholder="Max"
-                    aria-label="Maximum price in ETH"
-                    inputMode="decimal"
-                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-                  Length (chars)
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={lengthInput.min}
-                    onChange={(e) => setLengthInput((p) => ({ ...p, min: e.target.value }))}
-                    placeholder="Min"
-                    aria-label="Minimum name length"
-                    inputMode="numeric"
-                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                  />
-                  <input
-                    value={lengthInput.max}
-                    onChange={(e) => setLengthInput((p) => ({ ...p, max: e.target.value }))}
-                    placeholder="Max"
-                    aria-label="Maximum name length"
-                    inputMode="numeric"
-                    className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                    style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-                  Starts with
-                </div>
-                <input
-                  value={patternInput.startsWith}
-                  onChange={(e) => setPatternInput((p) => ({ ...p, startsWith: e.target.value }))}
-                  placeholder="e.g. sun"
-                  aria-label="Name starts with"
-                  className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                />
-              </div>
-
-              <div>
-                <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-                  Ends with
-                </div>
-                <input
-                  value={patternInput.endsWith}
-                  onChange={(e) => setPatternInput((p) => ({ ...p, endsWith: e.target.value }))}
-                  placeholder="e.g. dao"
-                  aria-label="Name ends with"
-                  className="input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none"
-                  style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" }}
-                />
-              </div>
-
-            </div>
-          )}
         </aside>
 
         {/* table */}
@@ -461,15 +167,13 @@ function DomainsPageInner() {
             <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
           ) : (
             <EnsV1Table
-              source={source}
-              listings={ensv1Listings}
-              isLoading={active.isLoading}
-              isError={active.isError}
-              notConfigured={source === "opensea" ? opensea.notConfigured : false}
-              retry={active.refetch}
+              listings={grails.listings}
+              isLoading={grails.isLoading}
+              isError={grails.isError}
+              retry={grails.refetch}
               page={page}
-              grailsTotalPages={source === "grails" ? grails.totalPages : null}
-              hasNext={active.hasNext}
+              totalPages={grails.totalPages}
+              hasNext={grails.hasNext}
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
               onNext={() => setPage((p) => p + 1)}
             />
@@ -613,31 +317,26 @@ function EnsV2AlphaTable({
 }
 
 function EnsV1Table({
-  source,
   listings,
   isLoading,
   isError,
-  notConfigured,
   retry,
   page,
-  grailsTotalPages,
+  totalPages,
   hasNext,
   onPrev,
   onNext,
 }: {
-  source: "grails" | "opensea";
   listings: EnsV1Listing[];
   isLoading: boolean;
   isError: boolean;
-  notConfigured: boolean;
   retry: () => void;
   page: number;
-  grailsTotalPages: number | null;
+  totalPages: number | null;
   hasNext: boolean;
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const sourceLabel = source === "grails" ? "Grails" : "OpenSea";
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
@@ -661,16 +360,10 @@ function EnsV1Table({
           ))}
         </div>
 
-        {notConfigured && (
-          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            OpenSea listings aren&apos;t configured — set <code style={{ color: "var(--fg)" }}>OPENSEA_API_KEY</code>{" "}
-            in <code style={{ color: "var(--fg)" }}>apps/web/.env.local</code> to browse them.
-          </p>
-        )}
-        {!notConfigured && isError && (
+        {isError && (
           <div className="flex items-center gap-3 py-8">
             <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-              Couldn&apos;t load {sourceLabel} listings.
+              Couldn&apos;t load listings.
             </p>
             <button
               onClick={retry}
@@ -681,17 +374,19 @@ function EnsV1Table({
             </button>
           </div>
         )}
-        {!notConfigured && !isError && isLoading && listings.length === 0 && (
+        {!isError && isLoading && listings.length === 0 && (
           <div className="flex items-center gap-2.5 py-8">
             <Spinner />
             <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-              Loading listings from {sourceLabel}…
+              Loading listings…
             </p>
           </div>
         )}
-        {!notConfigured && !isError && !isLoading && listings.length === 0 && (
+        {/* "No listings match these filters", not "none on this page" — filtering is entirely
+            server-side, so an empty result really is empty, not just empty here. */}
+        {!isError && !isLoading && listings.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            No {sourceLabel} listings on this page.
+            No listings match these filters.
           </p>
         )}
 
@@ -700,7 +395,7 @@ function EnsV1Table({
         ))}
       </div>
       </ScrollHint>
-      {!notConfigured && !isError && (
+      {!isError && (
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={onPrev}
@@ -710,10 +405,12 @@ function EnsV1Table({
           >
             ← Previous
           </button>
+          {/* An exact page count, not "~N" — the count comes from the same filtered query
+              that produced these rows. */}
           <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
             {isLoading && <Spinner size={12} />}
             Page {page}
-            {grailsTotalPages !== null && <> of ~{grailsTotalPages.toLocaleString()} (Grails)</>}
+            {totalPages !== null && <> of {totalPages.toLocaleString()}</>}
           </span>
           <button
             onClick={onNext}
