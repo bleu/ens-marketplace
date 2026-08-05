@@ -7,26 +7,24 @@ import {MockENSv2Registry} from "../src/mock/MockENSv2Registry.sol";
 import {CanonicalIdOrderManager} from "../src/v2/CanonicalIdOrderManager.sol";
 import {SubnameLeaseVault} from "../src/v2/SubnameLeaseVault.sol";
 
-/// @notice Sepolia counterpart to DeployLocal.s.sol — same mock registry + marketplace
-/// contracts and the same demo data (alice.eth/bob.xyz/charlie.eth + subnames), so a
-/// Vercel-hosted frontend has real, persistent, publicly-reachable contract state to read
-/// instead of depending on a local Anvil process (which nothing on the internet can reach).
+/// @notice Deploys the mock registry + both marketplace contracts and seeds demo data
+/// (alice.eth/bob.xyz/charlie.eth + subnames), so a Vercel-hosted frontend has real,
+/// persistent, publicly-reachable contract state to read. This is the only deploy target
+/// for these contracts — there is no local-chain variant.
 ///
 /// This is NOT the real ENSv2 Sepolia registry — that integration is still blocked on ENS
 /// Labs confirming exact Registry/PermissionedRegistry/RegistryDatastore addresses (see
-/// docs/roadmap.md's open items). This deploys our own MockENSv2Registry to Sepolia, the
-/// same contract Anvil runs today, just on a real public testnet so the demo works without
-/// anyone needing to run a chain themselves.
+/// docs/roadmap.md's open items). This deploys our own MockENSv2Registry to a real public
+/// testnet so the demo works without anyone needing to run a chain themselves.
 ///
 /// Every seed action (register/list/mutate/self-buy/announce/self-rent) runs under the
-/// single DEPLOYER_PRIVATE_KEY, not per-actor keys like DeployLocal's Anvil well-known
-/// test keys — committing separate throwaway private keys to a public repo isn't good
-/// practice even for worthless testnet keys, and neither buy() nor rent() forbid the
-/// caller from also being the seller/parent (verified in CanonicalIdOrderManager.buy and
-/// SubnameLeaseVault.rent — no msg.sender != seller/parent check), so a single funded
-/// address can safely play every role. The one cosmetic cost: every seed listing's
-/// "Seller" column shows the same address, unlike the local Anvil demo's distinct
-/// alice/bob/charlie addresses.
+/// single DEPLOYER_PRIVATE_KEY rather than one throwaway key per actor — committing
+/// separate private keys to a public repo isn't good practice even for worthless testnet
+/// keys, and neither buy() nor rent() forbid the caller from also being the seller/parent
+/// (verified in CanonicalIdOrderManager.buy and SubnameLeaseVault.rent — no
+/// msg.sender != seller/parent check), so a single funded address can safely play every
+/// role. The one cosmetic cost: every seed listing's "Seller" column shows the same
+/// address.
 ///
 /// Run with:
 ///   cd contracts
@@ -51,13 +49,14 @@ contract DeployV2Sepolia is Script {
         registry.approveTransfer(aliceId, address(orderManager));
         orderManager.list(aliceId, 0.5 ether);
 
-        // bob.xyz - listed at 0.05 ETH, then mutated post-listing so it's already
-        // Suspended-with-diff on first load (see DeployLocal.s.sol for why: a revert
-        // inside buy() would undo the Suspended write too, so it's only ever persisted by
-        // an actual fill attempt against mismatched state, never proactively). Priced far
-        // below DeployLocal's 1 ETH: this is a real self-buy against a real funded Sepolia
-        // key, not an Anvil test account with 10,000 ETH, so the deployer only needs to
-        // hold this amount momentarily (it's refunded in full within the same call).
+        // bob.xyz - listed, then mutated post-listing so it's already Suspended-with-diff
+        // on first load. The order's on-chain `status` only flips Active -> Suspended
+        // reactively, inside a buy() attempt (see CanonicalIdOrderManager.buy: a revert
+        // would undo that write, so it's only ever persisted by an actual fill attempt
+        // against mismatched state, never proactively) — hence the throwaway self-buy
+        // below. Priced low because this is a real self-buy against a real funded key, so
+        // the deployer only needs to hold this much momentarily (refunded in full within
+        // the same call).
         uint256 bobId = registry.register("bob.xyz", deployer);
         registry.approveTransfer(bobId, address(orderManager));
         orderManager.list(bobId, 0.05 ether);

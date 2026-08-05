@@ -19,8 +19,8 @@ type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
 /// 1000", confirmed live while scanning the real ENSv2 alpha registry — see
 /// lib/ensv2-alpha.ts). Scanning in windows under that cap, starting at `fromBlock` (the
 /// network's actual deploy block — see lib/contracts.ts's `fromBlock`, threaded in via
-/// `useContractAddresses()`) rather than block 0, is what makes event scanning work on a
-/// real chain instead of just Anvil's tiny local chain.
+/// `useContractAddresses()`) rather than block 0, is what makes event scanning work at all
+/// against a real chain's block height.
 ///
 /// Still used by lib/ensv2-alpha.ts (the real ENSv2 Sepolia alpha registry — a separate
 /// concern from this file's indexed mock-marketplace hooks below, with no indexer of its

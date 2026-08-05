@@ -6,8 +6,7 @@ import { Network } from "@/lib/contracts";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { shortAddr } from "@/lib/format";
 
-/// Renders an address as a link out to the right block explorer for `network` —
-/// Etherscan for Sepolia/Mainnet, self-hosted Otterscan for local Anvil (see lib/explorer).
+/// Renders an address as a link out to the right Etherscan for `network` (see lib/explorer).
 /// Shows the owner's primary ENS name when they have one, short hex otherwise; the link
 /// target is always the address either way, so a name never sends you somewhere else.
 /// `stopPropagation` is for the rare case this ends up nested inside a clickable row

@@ -96,7 +96,7 @@ export interface EnsV2AlphaName {
 /// indexer, same discover-via-events pattern as lib/events.ts's useKnownDomainIds etc.
 export function useEnsV2AlphaRegisteredNames(): { names: EnsV2AlphaName[]; isError: boolean; refetch: () => void } {
   // Explicit chainId — this integration is always Sepolia regardless of which chain the
-  // connected wallet is on (Anvil, the app's default before any wallet connects, has none
+  // connected wallet is on (mainnet, the app's default before any wallet connects, has none
   // of these contracts and would otherwise silently return empty/error results).
   const client = usePublicClient({ chainId: sepolia.id });
   const [names, setNames] = useState<EnsV2AlphaName[]>([]);

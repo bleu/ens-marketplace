@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEther, formatUnits } from "viem";
 import { useDomainSearch, useLastSale } from "@/lib/events";
-import { Network, OrderStatus, useCurrentNetwork } from "@/lib/contracts";
+import { Network, OrderStatus, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
 import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 import { shortId } from "@/lib/format";
 import type { DomainOrderRow } from "@/lib/events";
 
@@ -77,12 +78,13 @@ export default function DomainsPage() {
 function DomainsPageInner() {
   const [tab, setTab] = useState("names");
   const [networkMode, setNetworkMode] = useNetworkMode();
-  // Which source options are even relevant to show — each source only makes sense
-  // against one specific chain (Local's mock contracts only exist on Anvil, the real
-  // ENSv2 alpha only exists on Sepolia, ENSv1/Grails/OpenSea are all Ethereum mainnet
-  // data), so this gates which buttons render rather than showing options that would
-  // require a chain switch just to be meaningful.
+  // Which source options are even relevant to show — the real ENSv2 alpha only exists on
+  // Sepolia and ENSv1/Grails/OpenSea are all Ethereum mainnet data, so those gate on the
+  // connected chain rather than offering options that would need a chain switch just to be
+  // meaningful. Our own ENSv2 mock is the exception: it always shows, because SepoliaRequired
+  // below is a better answer than hiding the section this whole PoC is about.
   const currentNetwork = useCurrentNetwork();
+  const addresses = useContractAddresses();
   const alpha = useEnsV2AlphaRegisteredNames();
   const [ensv2Page, setEnsv2Page] = useState(1);
 
@@ -186,8 +188,14 @@ function DomainsPageInner() {
     if (patternInput.startsWith) params.set("startsWith", patternInput.startsWith);
     if (patternInput.endsWith) params.set("endsWith", patternInput.endsWith);
     const qs = params.toString();
+    // Skip a replace that wouldn't change the URL. On a plain /domains visit every value
+    // above is still its default, so this used to fire `replace("/domains")` at the URL it
+    // was already on — harmless-looking, but that in-flight replace lands *after* a quick
+    // click on another nav link and yanks the user straight back to /domains. Never showed
+    // up while ENSv2 was the default mode, since the guard above returned first.
+    if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router]);
+  }, [networkMode, page, source, priceInput, lengthInput, patternInput, pathname, router, searchParams]);
 
   useEffect(() => {
     syncUrl();
@@ -266,34 +274,32 @@ function DomainsPageInner() {
             Source
           </div>
           <div className="flex flex-col gap-2">
-            {currentNetwork === Network.Anvil && (
-              <button
-                type="button"
-                onClick={() => setNetworkMode("ensv2")}
-                className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
-                style={
-                  networkMode === "ensv2"
-                    ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
-                    : { borderColor: "var(--line)" }
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
-                  />
-                  <span
-                    className="font-sans text-[13px] font-medium"
-                    style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
-                  >
-                    Local
-                  </span>
-                </div>
-                <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
-                  {total}
+            <button
+              type="button"
+              onClick={() => setNetworkMode("ensv2")}
+              className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
+              style={
+                networkMode === "ensv2"
+                  ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                  : { borderColor: "var(--line)" }
+              }
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                />
+                <span
+                  className="font-sans text-[13px] font-medium"
+                  style={{ color: networkMode === "ensv2" ? "var(--fg)" : "var(--fg-muted)" }}
+                >
+                  ENSv2 mock
                 </span>
-              </button>
-            )}
+              </div>
+              <span className="font-mono text-[11px]" style={{ color: "var(--fg-dim)" }}>
+                {total}
+              </span>
+            </button>
             {currentNetwork === Network.Sepolia && (
               <>
                 <button
@@ -563,6 +569,8 @@ function DomainsPageInner() {
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
               onNext={() => setPage((p) => p + 1)}
             />
+          ) : !addresses ? (
+            <SepoliaRequired />
           ) : (
             <>
           <ComingSoon className="my-6">

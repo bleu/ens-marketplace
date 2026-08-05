@@ -5,22 +5,30 @@ import { useRouter } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
+import { type ContractAddresses, Network, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { nameToCanonicalId } from "@/lib/canonicalId";
 import { isPositiveNumber, isZeroAddress } from "@/lib/format";
 import { useOwnedNames } from "@/lib/events";
 import { NameCard, gradientFor } from "@/components/NameCard";
 import { AddressLink } from "@/components/AddressLink";
 import { ComingSoon } from "@/components/ComingSoon";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 type Step = "idle" | "registering" | "approving" | "listing";
 
 export default function ListDomainPage() {
+  const addresses = useContractAddresses();
+  if (!addresses) return <SepoliaRequired />;
+  return <ListDomain addresses={addresses} />;
+}
+
+function ListDomain({ addresses }: { addresses: ContractAddresses }) {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { registry, orderManager } = useContractAddresses();
-  const network = useCurrentNetwork();
+  const { registry, orderManager } = addresses;
+  // Sepolia is the only chain with a deployment, so reaching this component means Sepolia.
+  const network = Network.Sepolia;
   const owned = useOwnedNames(address);
 
   const [selectedId, setSelectedId] = useState<bigint | undefined>();
