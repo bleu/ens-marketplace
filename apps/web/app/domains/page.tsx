@@ -272,8 +272,7 @@ function DomainsPageInner() {
                 </button>
                 {networkMode === "ensv2-alpha" && (
                   <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
-                    Pre-audit alpha contracts that can change without notice. Registering
-                    spends Sepolia test ETH and USDC.
+                    Alpha contracts — may change anytime. Registering costs Sepolia test ETH + USDC.
                   </p>
                 )}
               </>
