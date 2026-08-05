@@ -78,13 +78,29 @@ at https://envio.dev/app/api-tokens, set `ENVIO_API_TOKEN`, and drop the Sepolia
 
 ## Production hosting
 
-Self-hosted via Docker Compose, following the same pattern as
-[`enviodev/local-docker-example`](https://github.com/enviodev/local-docker-example): three
-services (Postgres, Hasura, the indexer process), independently configurable via env vars.
-This is a separate Postgres instance from `apps/api`'s own Grails database — Envio owns and
-migrates its own schema; `apps/api` is only ever a GraphQL client of it. Not covered here:
-deploying `apps/api`/`apps/indexer` to real infrastructure — a follow-up decision, not
-blocking this migration.
+Self-hosted via Docker Compose (`deploy/docker-compose.yml`), following the same pattern as
+[`enviodev/local-docker-example`](https://github.com/enviodev/local-docker-example): five
+services — `indexer-postgres` + `graphql-engine` (Hasura) + `indexer` for the Envio side,
+and `api-postgres` + `api` for apps/api's own Grails database (a separate Postgres — Envio
+owns and migrates its own schema; apps/api is only ever a GraphQL client of it). Only `api`
+is published to the host; everything else talks over the compose's own internal network by
+service name, never reachable from outside.
+
+Deployed on Bleu's shared `bleu-generic-1` host, following that server's existing
+per-project convention (own directory, own `docker-compose.yml`, Caddy reverse-proxying a
+`<project>.bleu.blue` subdomain to the app's published port):
+
+```bash
+# On the server, inside the cloned repo:
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+```
+
+`deploy/.env` (not committed — see `deploy/.env.example` for the required keys) holds the
+generated Postgres/Hasura passwords and the real `ENVIO_API_TOKEN`. Public URL:
+`https://ens-marketplace-api.bleu.blue` (Caddy → `127.0.0.1:${API_EXPOSED_PORT:-41000}`),
+set as `DOMAINS_API_URL`/`GRAILS_API_URL` in the Vercel-deployed frontend's production
+environment. The indexer's own config here (`config.production.yaml`) only indexes
+Sepolia — Anvil is a local, ephemeral dev chain that never exists on this server.
 
 ## What this does NOT change
 

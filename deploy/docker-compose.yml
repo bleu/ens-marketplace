@@ -1,0 +1,118 @@
+# Production deployment for apps/api + apps/indexer (the ENSv2 marketplace backend).
+# apps/web (the Next.js frontend) is deployed separately, to Vercel — see
+# docs/ensv2-indexer.md. Run from the repo root:
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+#
+# Only `api` is published to the host — Caddy reverse-proxies to it (see
+# docs/ensv2-indexer.md's "Production hosting" section). Everything else (both
+# Postgres instances, Hasura) talks over this compose's own internal network only,
+# by service name — never reachable from outside this host.
+services:
+  indexer-postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${ENVIO_PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${ENVIO_PG_PASSWORD:?error}
+      POSTGRES_DB: ${ENVIO_PG_DATABASE:-envio}
+    volumes:
+      - indexer-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ENVIO_PG_USER:-postgres} -d ${ENVIO_PG_DATABASE:-envio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  graphql-engine:
+    image: hasura/graphql-engine:v2.43.0
+    restart: unless-stopped
+    depends_on:
+      indexer-postgres:
+        condition: service_healthy
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${ENVIO_PG_USER:-postgres}:${ENVIO_PG_PASSWORD:?error}@indexer-postgres:5432/${ENVIO_PG_DATABASE:-envio}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "false"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:?error}
+      HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
+      PORT: 8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 2s
+      retries: 50
+      start_period: 5s
+
+  indexer:
+    image: ens-marketplace-indexer:${APP_REVISION:-latest}
+    build:
+      context: ..
+      dockerfile: apps/indexer/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      graphql-engine:
+        condition: service_healthy
+    environment:
+      ENVIO_PG_HOST: indexer-postgres
+      ENVIO_PG_PORT: 5432
+      ENVIO_PG_USER: ${ENVIO_PG_USER:-postgres}
+      ENVIO_PG_PASSWORD: ${ENVIO_PG_PASSWORD:?error}
+      ENVIO_PG_DATABASE: ${ENVIO_PG_DATABASE:-envio}
+      ENVIO_API_TOKEN: ${ENVIO_API_TOKEN:?error}
+      HASURA_GRAPHQL_ENDPOINT: http://graphql-engine:8080/v1/metadata
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:?error}
+      HASURA_SERVICE_HOST: graphql-engine
+      HASURA_SERVICE_PORT: 8080
+      TUI_OFF: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  api-postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${API_PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${API_PG_PASSWORD:?error}
+      POSTGRES_DB: ${API_PG_DATABASE:-ens_marketplace_api}
+    volumes:
+      - api-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${API_PG_USER:-postgres} -d ${API_PG_DATABASE:-ens_marketplace_api}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ens-marketplace-api:${APP_REVISION:-latest}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api-postgres:
+        condition: service_healthy
+      graphql-engine:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${API_PG_USER:-postgres}:${API_PG_PASSWORD:?error}@api-postgres:5432/${API_PG_DATABASE:-ens_marketplace_api}
+      INDEXER_GRAPHQL_URL: http://graphql-engine:8080/v1/graphql
+      INDEXER_HASURA_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:?error}
+      PORT: 3001
+    command: sh -c "pnpm exec prisma migrate deploy && pnpm run start"
+    ports:
+      - "${API_EXPOSED_PORT:-41000}:3001"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  indexer-postgres-data:
+    name: ens-marketplace-indexer-postgres-data
+  api-postgres-data:
+    name: ens-marketplace-api-postgres-data
