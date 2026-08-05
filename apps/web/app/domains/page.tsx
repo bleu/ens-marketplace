@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatUnits } from "viem";
@@ -61,6 +61,11 @@ function DomainsPageInner() {
     return Number.isFinite(fromUrl) && fromUrl >= 1 ? fromUrl : 1;
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Alpha has no price/order data (registration only), so length + pattern are the only
+  // filters that apply — no server to push them to, so this filters the already-loaded
+  // `alpha.names` client-side (see EnsV2AlphaTable).
+  const [alphaFilters, setAlphaFilters] = useState<AlphaFilterState>(EMPTY_ALPHA_FILTERS);
 
   // Debounced so a query doesn't fire per keystroke. Skipped on the first run: appliedFilters
   // is already seeded from the same URL, and resetting page here would stomp a shared `?page=3`.
@@ -152,9 +157,7 @@ function DomainsPageInner() {
 
           <div className={drawerOpen ? "block" : "hidden lg:block"}>
             {networkMode === "ensv2-alpha" ? (
-              <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                No filters yet.
-              </p>
+              <AlphaFilters state={alphaFilters} onChange={setAlphaFilters} />
             ) : (
               <ExploreFilters state={filters} onChange={setFilters} />
             )}
@@ -164,7 +167,13 @@ function DomainsPageInner() {
         {/* table */}
         <section className="px-4 pb-20 pt-6 lg:px-8">
           {networkMode === "ensv2-alpha" ? (
-            <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
+            <EnsV2AlphaTable
+              names={alpha.names}
+              isLoading={alpha.isLoading}
+              isError={alpha.isError}
+              retry={alpha.refetch}
+              filters={alphaFilters}
+            />
           ) : (
             <EnsV1Table
               listings={grails.listings}
@@ -186,10 +195,109 @@ function DomainsPageInner() {
 
 const ENSV2_ALPHA_PAGE_SIZE = 20;
 
-/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
-/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table:
-/// this alpha has no price/seller/order concept, just a registered label + tokenId.
-/// Pagination here is a client-side slice, not a paginated API call like Grails/OpenSea —
+/// Alpha has no price/order data (registration only), so length + pattern are the only
+/// filters that apply to it — see the sidebar note in EnsV2AlphaTable.
+interface AlphaFilterState {
+  lengthMin: string;
+  lengthMax: string;
+  startsWith: string;
+  endsWith: string;
+}
+
+const EMPTY_ALPHA_FILTERS: AlphaFilterState = { lengthMin: "", lengthMax: "", startsWith: "", endsWith: "" };
+
+function matchesAlphaFilters(name: EnsV2AlphaName, f: AlphaFilterState): boolean {
+  const len = name.label.length;
+  if (f.lengthMin && len < Number(f.lengthMin)) return false;
+  if (f.lengthMax && len > Number(f.lengthMax)) return false;
+  if (f.startsWith && !name.label.toLowerCase().startsWith(f.startsWith.toLowerCase())) return false;
+  if (f.endsWith && !name.label.toLowerCase().endsWith(f.endsWith.toLowerCase())) return false;
+  return true;
+}
+
+const ALPHA_INPUT_CLASS = "input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none";
+const ALPHA_INPUT_STYLE = { borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" };
+
+function AlphaFilters({ state, onChange }: { state: AlphaFilterState; onChange: (next: AlphaFilterState) => void }) {
+  const set = <K extends keyof AlphaFilterState>(key: K, value: AlphaFilterState[K]) => onChange({ ...state, [key]: value });
+  const hasActive = state.lengthMin || state.lengthMax || state.startsWith || state.endsWith;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+          Length (chars)
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={state.lengthMin}
+            onChange={(e) => set("lengthMin", e.target.value)}
+            placeholder="Min"
+            aria-label="Minimum name length"
+            inputMode="numeric"
+            className={ALPHA_INPUT_CLASS}
+            style={ALPHA_INPUT_STYLE}
+          />
+          <input
+            value={state.lengthMax}
+            onChange={(e) => set("lengthMax", e.target.value)}
+            placeholder="Max"
+            aria-label="Maximum name length"
+            inputMode="numeric"
+            className={ALPHA_INPUT_CLASS}
+            style={ALPHA_INPUT_STYLE}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+          Starts with
+        </div>
+        <input
+          value={state.startsWith}
+          onChange={(e) => set("startsWith", e.target.value)}
+          placeholder="e.g. sun"
+          aria-label="Name starts with"
+          className={ALPHA_INPUT_CLASS}
+          style={ALPHA_INPUT_STYLE}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+          Ends with
+        </div>
+        <input
+          value={state.endsWith}
+          onChange={(e) => set("endsWith", e.target.value)}
+          placeholder="e.g. dao"
+          aria-label="Name ends with"
+          className={ALPHA_INPUT_CLASS}
+          style={ALPHA_INPUT_STYLE}
+        />
+      </div>
+
+      {hasActive ? (
+        <button
+          type="button"
+          onClick={() => onChange(EMPTY_ALPHA_FILTERS)}
+          className="self-start font-sans text-xs font-medium underline"
+          style={{ color: "var(--fg-muted)" }}
+        >
+          Clear all
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment. Deliberately
+/// simple compared to EnsV1Table: this alpha has no price/seller/order concept, just a
+/// registered label + tokenId, so length/pattern (AlphaFilterState) are the only filters
+/// that apply — filtered client-side since the full list is already in hand from the event
+/// scan, not paginated server-side like Grails.
+/// Pagination here is a client-side slice, not a paginated API call like Grails —
 /// the full list is already in hand from the event scan (useEnsV2AlphaRegisteredNames),
 /// so "next page" just moves the slice window rather than fetching anything new.
 function EnsV2AlphaTable({
@@ -197,23 +305,30 @@ function EnsV2AlphaTable({
   isLoading,
   isError,
   retry,
+  filters,
 }: {
   names: EnsV2AlphaName[];
   isLoading: boolean;
   isError: boolean;
   retry: () => void;
+  filters: AlphaFilterState;
 }) {
+  const filteredNames = useMemo(() => names.filter((n) => matchesAlphaFilters(n, filters)), [names, filters]);
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(names.length / ENSV2_ALPHA_PAGE_SIZE));
+  // Page 2 of a filter set that no longer applies means nothing.
+  useEffect(() => {
+    setPage(1);
+  }, [filters.lengthMin, filters.lengthMax, filters.startsWith, filters.endsWith]);
+  const totalPages = Math.max(1, Math.ceil(filteredNames.length / ENSV2_ALPHA_PAGE_SIZE));
   // Clamps down if the list shrinks (a page reload with fewer results) rather than
   // stranding the view on a now-nonexistent page with nothing to show.
   const clampedPage = Math.min(page, totalPages);
-  const pageNames = names.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
+  const pageNames = filteredNames.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
 
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[520px] transition-opacity duration-150" style={{ opacity: isLoading && names.length > 0 ? 0.5 : 1 }}>
+      <div className="min-w-[520px] transition-opacity duration-150" style={{ opacity: isLoading && filteredNames.length > 0 ? 0.5 : 1 }}>
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
@@ -260,6 +375,11 @@ function EnsV2AlphaTable({
             No names registered on this alpha deployment yet — be the first.
           </p>
         )}
+        {!isError && !isLoading && names.length > 0 && filteredNames.length === 0 && (
+          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+            No names match these filters.
+          </p>
+        )}
 
         {pageNames.map(({ tokenId, label }) => (
           <Link
@@ -288,7 +408,7 @@ function EnsV2AlphaTable({
         ))}
       </div>
       </ScrollHint>
-      {!isError && names.length > ENSV2_ALPHA_PAGE_SIZE && (
+      {!isError && filteredNames.length > ENSV2_ALPHA_PAGE_SIZE && (
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
