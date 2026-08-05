@@ -79,8 +79,45 @@ export function toGrailsFilters(state: ExploreFilterState): GrailsFilters {
   };
 }
 
-const INPUT_CLASS = "input-field h-9 w-full rounded-[6px] border px-2.5 font-mono text-xs outline-none";
-const INPUT_STYLE = { borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg)" };
+/// Exported so the ENSv2 alpha sidebar (AlphaFilters, in the Explore page) dresses its own
+/// controls identically — the two sidebars swap in and out of the same slot, so any drift
+/// between them shows up as the panel changing shape when the chain changes.
+export const FILTER_INPUT_CLASS =
+  "input-field filter-input h-10 w-full min-w-0 rounded-[var(--radius-2)] border px-3 font-mono text-[13px] tabular-nums outline-none";
+
+/// Same size and tracking as the table's column headers, so a label in the sidebar and a
+/// label over a column read as the same kind of thing.
+export function FilterLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2 font-mono text-[11px] tracking-[0.08em] uppercase" style={{ color: "var(--fg-dim)" }}>
+      {children}
+    </div>
+  );
+}
+
+/// One chip per active filter plus the way out. Chips rather than a run-on sentence because
+/// with several inputs feeding one feed, a stray value needs to be visible at a glance.
+export function FilterSummary({ chips, onClear }: { chips: string[]; onClear: () => void }) {
+  if (chips.length === 0) return null;
+  return (
+    <div className="flex flex-col items-start gap-3 border-t pt-5" style={{ borderColor: "var(--line)" }}>
+      <div className="flex flex-wrap gap-1.5">
+        {chips.map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full px-2.5 py-1 font-mono text-[11px] leading-[1.4]"
+            style={{ background: "rgba(var(--brand-rgb),0.12)", color: "var(--brand)" }}
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+      <button type="button" onClick={onClear} className="btn-outline h-8 rounded-[var(--radius-2)] border px-3 font-sans text-xs font-medium">
+        Clear all
+      </button>
+    </div>
+  );
+}
 
 export function ExploreFilters({
   state,
@@ -93,11 +130,9 @@ export function ExploreFilters({
   const set = <K extends keyof ExploreFilterState>(key: K, value: ExploreFilterState[K]) => onChange({ ...state, [key]: value });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-          Price (ETH)
-        </div>
+        <FilterLabel>Price (ETH)</FilterLabel>
         <div className="flex gap-2">
           <input
             value={state.priceMin}
@@ -105,8 +140,7 @@ export function ExploreFilters({
             placeholder="Min"
             aria-label="Minimum price in ETH"
             inputMode="decimal"
-            className={INPUT_CLASS}
-            style={INPUT_STYLE}
+            className={FILTER_INPUT_CLASS}
           />
           <input
             value={state.priceMax}
@@ -114,16 +148,13 @@ export function ExploreFilters({
             placeholder="Max"
             aria-label="Maximum price in ETH"
             inputMode="decimal"
-            className={INPUT_CLASS}
-            style={INPUT_STYLE}
+            className={FILTER_INPUT_CLASS}
           />
         </div>
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-          Length (chars)
-        </div>
+        <FilterLabel>Length (chars)</FilterLabel>
         <div className="flex gap-2">
           <input
             value={state.lengthMin}
@@ -131,8 +162,7 @@ export function ExploreFilters({
             placeholder="Min"
             aria-label="Minimum name length"
             inputMode="numeric"
-            className={INPUT_CLASS}
-            style={INPUT_STYLE}
+            className={FILTER_INPUT_CLASS}
           />
           <input
             value={state.lengthMax}
@@ -140,55 +170,34 @@ export function ExploreFilters({
             placeholder="Max"
             aria-label="Maximum name length"
             inputMode="numeric"
-            className={INPUT_CLASS}
-            style={INPUT_STYLE}
+            className={FILTER_INPUT_CLASS}
           />
         </div>
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-          Starts with
-        </div>
+        <FilterLabel>Starts with</FilterLabel>
         <input
           value={state.startsWith}
           onChange={(e) => set("startsWith", e.target.value)}
           placeholder="e.g. sun"
           aria-label="Name starts with"
-          className={INPUT_CLASS}
-          style={INPUT_STYLE}
+          className={FILTER_INPUT_CLASS}
         />
       </div>
 
       <div>
-        <div className="mb-1.5 font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
-          Ends with
-        </div>
+        <FilterLabel>Ends with</FilterLabel>
         <input
           value={state.endsWith}
           onChange={(e) => set("endsWith", e.target.value)}
           placeholder="e.g. dao"
           aria-label="Name ends with"
-          className={INPUT_CLASS}
-          style={INPUT_STYLE}
+          className={FILTER_INPUT_CLASS}
         />
       </div>
 
-      {summary.length > 0 && (
-        <div className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--line)" }}>
-          <div className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-            {summary.join(" · ")}
-          </div>
-          <button
-            type="button"
-            onClick={() => onChange(EMPTY_FILTERS)}
-            className="self-start font-sans text-xs font-medium underline"
-            style={{ color: "var(--fg-muted)" }}
-          >
-            Clear all
-          </button>
-        </div>
-      )}
+      <FilterSummary chips={summary} onClear={() => onChange(EMPTY_FILTERS)} />
     </div>
   );
 }

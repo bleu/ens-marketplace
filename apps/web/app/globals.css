@@ -48,6 +48,9 @@
   --bg: var(--color-ink-900);
   --bg-deep: var(--color-ink-950);
   --bg-raised: #11192a;
+  /* --bg lifted by ~4% white. Opaque rather than a tint because the explore table's
+     sticky name column has to match the hovered row exactly. */
+  --bg-row-hover: #181c29;
   --fg: var(--color-papel-100);
   --fg-muted: rgba(242, 244, 241, 0.72);
   --fg-dim: rgba(242, 244, 241, 0.48);
@@ -189,9 +192,17 @@ a:hover {
     background var(--dur-1) var(--ease-out),
     border-color var(--dur-1) var(--ease-out);
 }
-.btn-outline:hover {
+/* :not(:disabled) so a spent pagination arrow doesn't light up on hover and
+   promise a page that isn't there. */
+.btn-outline:hover:not(:disabled) {
   background: rgba(242, 244, 241, 0.06);
   border-color: var(--brand);
+}
+.btn-outline:not(:disabled) {
+  cursor: pointer;
+}
+.btn-outline:disabled {
+  cursor: not-allowed;
 }
 
 .btn-cta {
@@ -207,7 +218,28 @@ a:hover {
   transition: background var(--dur-1) var(--ease-out);
 }
 .explore-row:hover {
-  background: rgba(242, 244, 241, 0.035);
+  background: var(--bg-row-hover);
+}
+/* The name column is sticky and paints an opaque background so it stays readable
+   over the columns scrolling underneath it — which also means it would sit out of
+   the row hover tint unless it's repainted. Opaque, not an rgba tint, so both
+   halves of the row land on exactly the same color. The resting background lives
+   here rather than inline for the reason given at the top of this section: an
+   inline `style` would beat the :hover rule below and the tint would never land. */
+.explore-row-sticky,
+.explore-table-head-sticky {
+  background: var(--bg);
+}
+.explore-row:hover .explore-row-sticky {
+  background: var(--bg-row-hover);
+}
+
+.seller-pill {
+  background: rgba(242, 244, 241, 0.05);
+  transition: background var(--dur-1) var(--ease-out);
+}
+.explore-row:hover .seller-pill {
+  background: rgba(242, 244, 241, 0.09);
 }
 .select-pill {
   border-color: var(--line-strong);
@@ -230,6 +262,23 @@ a:hover {
    resting or error border color and needs no JS changes. */
 .input-field:focus {
   box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.25);
+}
+/* The explore sidebar's inputs, which have no per-instance validation state — so unlike
+   the .input-field call sites above they can take their resting colors from a class and
+   get a real :hover out of it. */
+.filter-input {
+  border-color: var(--line);
+  background: rgba(242, 244, 241, 0.04);
+  color: var(--fg);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+.filter-input:hover {
+  border-color: var(--line-strong);
+}
+.filter-input::placeholder {
+  color: var(--fg-dim);
 }
 .search-form {
   border-color: var(--line);

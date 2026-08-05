@@ -1,5 +1,5 @@
 import { ens_normalize as normalize } from "@adraffy/ens-normalize";
-import type { Address } from "viem";
+import { formatUnits, type Address } from "viem";
 
 export function shortAddr(address: Address | undefined): string {
   if (!address) return "";
@@ -32,6 +32,24 @@ export function displayableEnsName(raw: string | null): string | null {
 export function shortId(id: string, keep = 6): string {
   if (id.length <= keep * 2 + 1) return id;
   return `${id.slice(0, keep)}…${id.slice(-4)}`;
+}
+
+/// A token amount trimmed to digits a person can actually compare. `formatUnits` returns
+/// the exact on-chain value, which for an 18-decimal token means list rows like
+/// "0.043912830000000001 ETH" — the tail is noise, and it makes a column of prices
+/// impossible to scan. Precision scales with size: sub-1 amounts keep four decimals so
+/// near-identical prices stay distinguishable, whole-ETH amounts keep three, and anything
+/// over a thousand drops the fraction entirely and gets thousands separators.
+///
+/// Display only. Pair it with `title={formatUnits(...)}` wherever the exact figure matters,
+/// and never feed the result back into a transaction.
+export function formatTokenAmount(value: bigint, decimals: number): string {
+  const n = Number(formatUnits(value, decimals));
+  if (n === 0) return "0";
+  // Rounding these to four decimals would print "0.0000", which reads as free.
+  if (n < 0.0001) return "<0.0001";
+  const maxFraction = n >= 1000 ? 0 : n >= 1 ? 3 : 4;
+  return n.toLocaleString("en-US", { maximumFractionDigits: maxFraction });
 }
 
 /// Validates free-text numeric inputs (ETH price fields, day-count fields) before

@@ -1,6 +1,36 @@
 import { describe, expect, it } from "vitest";
 
-import { displayableEnsName } from "./format";
+import { formatTokenAmount, displayableEnsName } from "./format";
+
+describe("formatTokenAmount", () => {
+  const eth = (value: bigint) => formatTokenAmount(value, 18);
+
+  it("drops the dust tail an 18-decimal price carries", () => {
+    expect(eth(43912830000000001n)).toBe("0.0439");
+  });
+
+  it("keeps three decimals once past 1 ETH, and no trailing zeros", () => {
+    expect(eth(1500000000000000000n)).toBe("1.5");
+    expect(eth(12345600000000000000n)).toBe("12.346");
+  });
+
+  it("separates thousands and drops the fraction on big numbers", () => {
+    expect(eth(1234500000000000000000n)).toBe("1,235");
+  });
+
+  /// Rounding to four decimals would print "0.0000", which reads as free.
+  it("marks an amount too small to show rather than rounding it to zero", () => {
+    expect(eth(1000000000n)).toBe("<0.0001");
+  });
+
+  it("shows a plain zero for zero", () => {
+    expect(eth(0n)).toBe("0");
+  });
+
+  it("respects the token's own decimals", () => {
+    expect(formatTokenAmount(2500000n, 6)).toBe("2.5");
+  });
+});
 
 describe("displayableEnsName", () => {
   it("shows a name that is already in normalized form", () => {
