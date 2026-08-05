@@ -4,13 +4,21 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ANVIL_ENABLED } from "@/lib/wagmi";
 
+/// The Anvil (local) source only makes sense for local development (see lib/wagmi.ts's
+/// ANVIL_ENABLED) — advertising it as a real option on the live production landing page
+/// would be misleading, since a visitor there has no local chain to connect to.
 const SOURCES = [
-  {
-    chain: "Anvil (local)",
-    label: "Local",
-    description: "Our own mock ENSv2 registry + order manager — full read/write, list/buy/relist/cancel.",
-  },
+  ...(ANVIL_ENABLED
+    ? [
+        {
+          chain: "Anvil (local)",
+          label: "Local",
+          description: "Our own mock ENSv2 registry + order manager — full read/write, list/buy/relist/cancel.",
+        },
+      ]
+    : []),
   {
     chain: "Sepolia",
     label: "ENSv2",
@@ -54,7 +62,7 @@ export default function Home() {
         <ConnectButton />
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={`grid w-full grid-cols-1 gap-3 ${SOURCES.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         {SOURCES.map((s) => (
           <div key={s.chain} className="rounded-[var(--radius-3)] border p-4 text-left" style={{ borderColor: "var(--line)" }}>
             <div className="mb-1.5 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--brand)" }}>

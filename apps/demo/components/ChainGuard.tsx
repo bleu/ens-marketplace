@@ -2,8 +2,9 @@
 
 import { foundry, mainnet, sepolia } from "wagmi/chains";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { ANVIL_ENABLED } from "@/lib/wagmi";
 
-const SUPPORTED_CHAIN_IDS: readonly number[] = [foundry.id, sepolia.id, mainnet.id];
+const SUPPORTED_CHAIN_IDS: readonly number[] = ANVIL_ENABLED ? [foundry.id, sepolia.id, mainnet.id] : [sepolia.id, mainnet.id];
 
 /// Warns when a connected wallet is on a chain with no deployed marketplace contracts or
 /// real-data source. Supported today: local Anvil (see docs/local-demo.md), Sepolia (see
@@ -24,18 +25,21 @@ export function ChainGuard() {
       style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}
     >
       <span style={{ color: "var(--accent)" }}>
-        Wrong network — this demo runs on local Anvil, Sepolia, or Mainnet. See
-        docs/local-demo.md to start Anvil, or switch networks.
+        {ANVIL_ENABLED
+          ? "Wrong network — this demo runs on local Anvil, Sepolia, or Mainnet. See docs/local-demo.md to start Anvil, or switch networks."
+          : "Wrong network — this demo runs on Sepolia or Mainnet. Switch networks to continue."}
       </span>
-      <button
-        type="button"
-        onClick={() => switchChain({ chainId: foundry.id })}
-        disabled={isPending}
-        className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
-        style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
-      >
-        {isPending ? "Switching…" : "Switch to Anvil"}
-      </button>
+      {ANVIL_ENABLED && (
+        <button
+          type="button"
+          onClick={() => switchChain({ chainId: foundry.id })}
+          disabled={isPending}
+          className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
+          style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
+        >
+          {isPending ? "Switching…" : "Switch to Anvil"}
+        </button>
+      )}
       <button
         type="button"
         onClick={() => switchChain({ chainId: sepolia.id })}

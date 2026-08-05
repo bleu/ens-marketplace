@@ -21,8 +21,16 @@ const projectId = /^[0-9a-f]{32}$/i.test(rawProjectId) ? rawProjectId : "";
 // anyway.
 const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] : []), safe()];
 
-/// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain,
-/// since /domains defaults to the ENSv2 mock-marketplace view against it (see
+/// Foundry (local Anvil) only makes sense for local development — a real visitor to the
+/// live site has no local chain to connect to, so offering it as a switchable network
+/// there is just confusing dead weight (and was showing up as a literal "Foundry" option
+/// in wallets on the production deployment). Vercel auto-populates NEXT_PUBLIC_VERCEL_ENV
+/// for every deployment with no setup needed — this is undefined for local `pnpm dev`, so
+/// Anvil stays available for local development by default.
+export const ANVIL_ENABLED = process.env.NEXT_PUBLIC_VERCEL_ENV !== "production";
+
+/// `foundry` (chainId 31337, local Anvil) is listed first when enabled — it's the default
+/// demo chain, since /domains defaults to the ENSv2 mock-marketplace view against it (see
 /// docs/local-demo.md). The ENSv2 mock marketplace is also deployed to Sepolia (README
 /// "Deployed addresses"); real ENSv2 mainnet doesn't exist yet.
 ///
@@ -57,14 +65,25 @@ const MAINNET_FALLBACK_RPC_URL = "https://ethereum-rpc.publicnode.com";
 /// same tick) is the knob if the batch window turns out too tight to collect them all.
 const MAINNET_BATCHING = { [mainnet.id]: { multicall: true } } as const;
 
-export const wagmiConfig = createConfig({
-  connectors,
-  chains: [foundry, sepolia, mainnet],
-  transports: {
-    [foundry.id]: http(),
-    [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
-    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || MAINNET_FALLBACK_RPC_URL),
-  },
-  batch: MAINNET_BATCHING,
-  ssr: true,
-});
+export const wagmiConfig = ANVIL_ENABLED
+  ? createConfig({
+      connectors,
+      chains: [foundry, sepolia, mainnet],
+      transports: {
+        [foundry.id]: http(),
+        [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
+        [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || MAINNET_FALLBACK_RPC_URL),
+      },
+      batch: MAINNET_BATCHING,
+      ssr: true,
+    })
+  : createConfig({
+      connectors,
+      chains: [sepolia, mainnet],
+      transports: {
+        [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
+        [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || MAINNET_FALLBACK_RPC_URL),
+      },
+      batch: MAINNET_BATCHING,
+      ssr: true,
+    });
