@@ -16,9 +16,10 @@ export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get("name");
   const path = name ? "/grails/by-name" : "/grails/search";
   const url = new URL(`${GRAILS_API_URL}${path}`);
-  // Every incoming param is forwarded as-is — apps/api's GrailsController accepts the
-  // exact same param names (page, minPrice, maxPrice, minLength, maxLength, startsWith,
-  // endsWith, name) this route has always taken from the client.
+  // Every incoming param is forwarded as-is, so adding a filter needs no change here —
+  // apps/api's GrailsController accepts the same param names the client sends (page, q,
+  // lengths, lengthAtLeast, sort, includeOutliers, minPrice, maxPrice, minLength,
+  // maxLength, startsWith, endsWith, name).
   req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
 
   try {

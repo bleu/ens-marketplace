@@ -2,9 +2,17 @@
 /// cy.intercept rather than hitting the real backend, so these tests are deterministic and
 /// don't depend on a scraped database being present.
 ///
-/// These specs assert the outgoing query params and the rendering, not which rows a filter
-/// picks: filtering is entirely server-side now, so a stub that reimplemented it would only be
-/// testing the stub. See docs/explore-filters.md.
+/// The split of responsibility is deliberate. That a filter actually selects the right rows
+/// is proved against a real Postgres in apps/api/src/grails/grails.service.spec.ts. What's
+/// left to prove here is that the sidebar asks for the right thing and renders what comes
+/// back — so these specs assert on the outgoing query params and the DOM, and the stub
+/// replies with a fixed set rather than reimplementing the filtering.
+
+interface StubOptions {
+  total?: number;
+  lengthCounts?: Record<string, number>;
+  names?: string[];
+}
 
 function listing(name: string, priceEth: string, index: number) {
   const wei = (Number(priceEth) * 1e18).toLocaleString("fullwide", { useGrouping: false });
@@ -27,22 +35,30 @@ function listing(name: string, priceEth: string, index: number) {
   };
 }
 
-const NAMES = ["cyfixture1.eth", "cyfixture2.eth"];
+const DEFAULT_NAMES = ["cyfixture1.eth", "cyfixture2.eth"];
 
-function stubFeed(total = NAMES.length) {
+function stubFeed(options: StubOptions = {}) {
+  const names = options.names ?? DEFAULT_NAMES;
   cy.intercept("GET", "/api/ensv1/grails-listings*", (req) => {
     req.reply({
-      listings: NAMES.map((name, i) => listing(name, String(i + 1), i)),
+      listings: names.map((name, i) => listing(name, String(i + 1), i)),
       unresolvedCount: 0,
       next: null,
-      total,
+      total: options.total ?? names.length,
       totalPages: 1,
+      lengthCounts: options.lengthCounts ?? { "3": 12, "4": 340, "5": 900, "6+": 4000 },
     });
   }).as("feed");
 }
 
-/// Every request the page has made so far, as parsed query params — the sidebar refetches on
-/// each change, so assertions target the most recent one.
+/// Chips are addressed by aria-label, not visible text: a chip reads "4" next to its count,
+/// and "4" also appears inside the neighbouring chips' counts.
+function chip(label: string) {
+  return cy.get(`button[aria-label="${label}"]`);
+}
+
+/// Every request the page has made so far, as parsed query params — the sidebar refetches
+/// on each change, so assertions target the most recent one.
 function lastQuery(): Cypress.Chainable<URLSearchParams> {
   return cy.get("@feed.all").then((calls) => {
     const interceptions = calls as unknown as { request: { url: string } }[];
@@ -50,7 +66,7 @@ function lastQuery(): Cypress.Chainable<URLSearchParams> {
   });
 }
 
-describe("ENSv1 Explore", () => {
+describe("ENSv1 Explore sidebar", () => {
   beforeEach(() => {
     stubFeed();
     cy.visit("/domains");
@@ -63,8 +79,6 @@ describe("ENSv1 Explore", () => {
     cy.contains("cyfixture2.eth");
   });
 
-  // The universe/mode picker is the chain selector in the top nav — mode follows the connected
-  // chain, so a second copy of it in the filter sidebar was three no-op buttons.
   it("has no source or mode picker in the filters", () => {
     cy.contains("button", "OpenSea").should("not.exist");
     cy.contains("button", "Grails").should("not.exist");
@@ -81,58 +95,137 @@ describe("ENSv1 Explore", () => {
   // Locale-agnostic: toLocaleString()'s grouping separator depends on the runtime's default
   // locale (e.g. "9,199" vs "9.199"), so match the digits loosely rather than a separator.
   it("shows the real filtered total, not a per-page count", () => {
-    stubFeed(9199);
+    stubFeed({ total: 9199 });
     cy.visit("/domains");
     cy.wait("@feed");
     cy.contains(/9.199 listings/);
     cy.contains("on this page").should("not.exist");
   });
 
-  it("asks the server for a price ceiling rather than filtering in the browser", () => {
-    cy.get("input[aria-label='Maximum price in ETH']").type("5");
+  it("asks for the selected length chip", () => {
+    chip("4 characters").click();
     cy.wait("@feed");
     lastQuery().should((q) => {
-      expect(q.get("maxPrice")).to.equal("5");
+      expect(q.get("lengths")).to.equal("4");
     });
   });
 
-  it("asks the server for a name prefix", () => {
-    cy.get("input[aria-label='Name starts with']").type("sun");
+  it("asks for the open-ended chip separately from exact lengths", () => {
+    chip("6+ characters").click();
     cy.wait("@feed");
     lastQuery().should((q) => {
-      expect(q.get("startsWith")).to.equal("sun");
+      expect(q.get("lengthAtLeast")).to.equal("6");
+      expect(q.get("lengths")).to.equal(null);
     });
+  });
+
+  it("ORs multiple chips in one group", () => {
+    chip("3 characters").click();
+    cy.wait("@feed");
+    chip("4 characters").click();
+    cy.wait("@feed");
+    lastQuery().should((q) => {
+      expect(q.get("lengths")).to.equal("3,4");
+    });
+  });
+
+  it("shows each chip's count so no chip is a dead end", () => {
+    chip("3 characters").should("contain.text", "12");
+    chip("6+ characters").should("contain.text", "4,000");
+  });
+
+  it("reads a chip with no matches as empty and refuses the click", () => {
+    stubFeed({ lengthCounts: { "3": 0, "4": 340, "5": 900, "6+": 4000 } });
+    cy.visit("/domains");
+    cy.wait("@feed");
+    chip("3 characters").should("be.disabled");
+  });
+
+  it("asks for the chosen sort order", () => {
+    cy.get("select[aria-label='Sort listings']").select("Price ↓");
+    cy.wait("@feed");
+    lastQuery().should((q) => {
+      expect(q.get("sort")).to.equal("price-desc");
+    });
+  });
+
+  it("defaults to cheapest first without asking for it explicitly", () => {
+    lastQuery().should((q) => {
+      expect(q.get("sort")).to.be.oneOf([null, "price-asc"]);
+    });
+  });
+
+  it("sends a typo'd search query for the server to match fuzzily", () => {
+    cy.get("input[aria-label='Search listed names']").type("vitalikk");
+    cy.wait("@feed");
+    lastQuery().should((q) => {
+      expect(q.get("q")).to.equal("vitalikk");
+    });
+  });
+
+  it("keeps the price sanity band on until it's switched off", () => {
+    lastQuery().should((q) => {
+      expect(q.get("includeOutliers")).to.equal(null);
+    });
+    cy.contains("label", "Include outliers").click();
+    cy.wait("@feed");
+    lastQuery().should((q) => {
+      expect(q.get("includeOutliers")).to.equal("true");
+    });
+  });
+
+  it("hides the numeric ranges behind Advanced", () => {
+    cy.get("input[aria-label='Minimum price in ETH']").should("not.exist");
+    cy.contains("Advanced").click();
+    cy.get("input[aria-label='Minimum price in ETH']").should("be.visible");
   });
 
   it("puts the active filters in the URL so a view can be shared", () => {
-    cy.get("input[aria-label='Minimum price in ETH']").type("0.5");
+    chip("4 characters").click();
+    cy.wait("@feed");
+    cy.get("select[aria-label='Sort listings']").select("Name A-Z");
     cy.wait("@feed");
     cy.location("search").should((search) => {
-      expect(new URLSearchParams(search).get("priceMin")).to.equal("0.5");
+      const params = new URLSearchParams(search);
+      expect(params.get("lengths")).to.equal("4");
+      expect(params.get("sort")).to.equal("name-asc");
     });
   });
 
-  it("restores the filters from a shared URL", () => {
-    cy.visit("/domains?priceMin=0.5&lengthMax=4");
+  it("restores chips and sort from a shared URL", () => {
+    cy.visit("/domains?lengths=3,5&sort=recent");
     cy.wait("@feed");
-    cy.get("input[aria-label='Minimum price in ETH']").should("have.value", "0.5");
-    cy.get("input[aria-label='Maximum name length']").should("have.value", "4");
     lastQuery().should((q) => {
-      expect(q.get("minPrice")).to.equal("0.5");
-      expect(q.get("maxLength")).to.equal("4");
+      expect(q.get("lengths")).to.equal("3,5");
+      expect(q.get("sort")).to.equal("recent");
     });
+    chip("3 characters").should("have.attr", "aria-pressed", "true");
   });
 
   it("summarises the active filters and clears them all at once", () => {
-    cy.get("input[aria-label='Maximum price in ETH']").type("5");
+    chip("4 characters").click();
     cy.wait("@feed");
-    cy.contains("up to 5 ETH").should("be.visible");
+    cy.contains("4 characters").should("be.visible");
     cy.contains("button", "Clear all").click();
     cy.wait("@feed");
     lastQuery().should((q) => {
-      expect(q.get("maxPrice")).to.equal(null);
+      expect(q.get("lengths")).to.equal(null);
     });
-    cy.location("search").should("not.contain", "priceMax");
+    cy.location("search").should("not.contain", "lengths");
+  });
+
+  it("says the result set is empty, not just this page", () => {
+    cy.intercept("GET", "/api/ensv1/grails-listings*", {
+      listings: [],
+      unresolvedCount: 0,
+      next: null,
+      total: 0,
+      totalPages: 1,
+      lengthCounts: { "3": 0, "4": 0, "5": 0, "6+": 0 },
+    }).as("feed");
+    cy.visit("/domains");
+    cy.wait("@feed");
+    cy.contains("No listings match these filters");
   });
 });
 
@@ -145,8 +238,8 @@ describe("ENSv1 Explore filters on a narrow viewport", () => {
   });
 
   it("keeps the filters in a drawer so the table stays above the fold", () => {
-    cy.get("input[aria-label='Maximum price in ETH']").should("not.be.visible");
+    chip("4 characters").should("not.be.visible");
     cy.contains("button", "Filters").click();
-    cy.get("input[aria-label='Maximum price in ETH']").should("be.visible");
+    chip("4 characters").should("be.visible");
   });
 });
