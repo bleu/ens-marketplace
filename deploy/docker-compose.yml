@@ -7,6 +7,7 @@
 # docs/ensv2-indexer.md's "Production hosting" section). Everything else (both
 # Postgres instances, Hasura) talks over this compose's own internal network only,
 # by service name — never reachable from outside this host.
+name: ens-marketplace
 services:
   indexer-postgres:
     image: postgres:17

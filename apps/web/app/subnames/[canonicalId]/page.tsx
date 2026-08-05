@@ -7,19 +7,26 @@ import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import {
+  type ContractAddresses,
   Network,
   SUBNAME_ADMIN_ROLE,
   leaseVaultAbi,
   registryAbi,
   useContractAddresses,
-  useCurrentNetwork,
 } from "@/lib/contracts";
 import { formatDuration, isPositiveInteger, isPositiveNumber, isZeroAddress, shortId } from "@/lib/format";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { gradientFor } from "@/components/NameCard";
 import { AddressLink } from "@/components/AddressLink";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 export default function SubnameDetailPage() {
+  const addresses = useContractAddresses();
+  if (!addresses) return <SepoliaRequired />;
+  return <SubnameDetail addresses={addresses} />;
+}
+
+function SubnameDetail({ addresses }: { addresses: ContractAddresses }) {
   const params = useParams<{ canonicalId: string }>();
   const parsedCanonicalId = parseCanonicalId(params.canonicalId);
   // Hooks below must run unconditionally (rules of hooks), so an invalid id falls back
@@ -29,8 +36,9 @@ export default function SubnameDetailPage() {
   const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { registry, leaseVault } = useContractAddresses();
-  const network = useCurrentNetwork();
+  const { registry, leaseVault } = addresses;
+  // Sepolia is the only chain with a deployment, so reaching this component means Sepolia.
+  const network = Network.Sepolia;
   const [resolver, setResolver] = useState("");
   const [announcePrice, setAnnouncePrice] = useState("");
   const [announceDays, setAnnounceDays] = useState("");
@@ -393,13 +401,7 @@ export default function SubnameDetailPage() {
           <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {[
               { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
-              {
-                k: "Registry",
-                v:
-                  network === Network.Sepolia
-                    ? "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)"
-                    : "Mock ENSv2 registry (local Anvil)",
-              },
+              { k: "Registry", v: "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)" },
               { k: "Lease vault", v: <AddressLink address={leaseVault} network={network} /> },
               {
                 k: "Tenant",

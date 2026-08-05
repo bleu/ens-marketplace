@@ -28,17 +28,6 @@ contracts:
       - event: "LeasedResolverSet(uint256 indexed canonicalId, address indexed tenant, address newResolver)"
       - event: "LeaseReclaimed(uint256 indexed canonicalId, address indexed parent)"
 chains:
-  # Anvil: HyperSync doesn't cover local chains, so RPC is the only (and primary) source here.
-  - id: 31337
-    start_block: 0
-    rpc: http://127.0.0.1:8545
-    contracts:
-      - name: Registry
-        address: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-      - name: OrderManager
-        address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
-      - name: LeaseVault
-        address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
   # Sepolia: `for: sync` forces RPC to be the primary data-source for both historical
   # and real-time indexing (a plain `rpc: <url>` string alone only becomes a *fallback*
   # for chains HyperSync natively covers — HyperSync itself would still be tried first

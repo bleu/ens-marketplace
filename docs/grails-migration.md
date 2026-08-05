@@ -78,9 +78,15 @@ pnpm exec prisma migrate dev --name init
 pnpm run scrape:grails
 ```
 
-**Scheduled re-scraping:** `.github/workflows/scrape-grails.yml` runs the same script every
-6 hours (plus a manual `workflow_dispatch` trigger) for as long as Grails' API stays up.
-Needs a `DATABASE_URL` repo secret pointing at a real, network-reachable Postgres instance.
+**Scheduled re-scraping (production):** a cron job on `bleu-generic-1` runs the scraper
+every 6 hours, for as long as Grails' API stays up:
+```
+0 */6 * * * cd /home/bleu/ens-marketplace && docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm api pnpm run scrape:grails >> /home/bleu/ens-marketplace/scrape-grails.log 2>&1
+```
+This runs inside the same Docker Compose network as `apps/api` (see "Production hosting"
+in `docs/ensv2-indexer.md`) so it can reach `api-postgres`, which isn't exposed to the
+internet. A GitHub Actions version of this job isn't viable here — Actions runners have no
+network path into that private database.
 
 **Serving it to the Next.js app:** start `apps/api` (`pnpm --filter api run start:dev`,
 listens on port 3001 by default) and point `apps/web/.env.local`'s `GRAILS_API_URL` at it

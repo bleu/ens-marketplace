@@ -43,85 +43,42 @@ jobs:
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
 
-  # The e2e job (Cypress against a full local Anvil + indexer + apps/api stack) is
-  # disabled for now — two pre-existing failures (navigation.cy.ts, ensv1-explore.cy.ts)
-  # trace back to qa's own "pick default Source by connected chain, add a landing page
-  # when disconnected" commit conflicting with older specs written for the previous
-  # always-redirect-to-/domains behavior — unrelated to the ENSv2 indexer work in this
-  # job, and never actually caught before since pushes to qa don't trigger this workflow
-  # (only pushes to main / pull_request do). The spec files themselves are untouched
-  # (apps/web/cypress/) — re-enable this job once those two specs are fixed for the new
-  # landing-page behavior.
-  # e2e:
-  #   needs: [frontend]
-  #   runs-on: ubuntu-latest
-  #   services:
-  #     postgres:
-  #       image: postgres:16
-  #       env:
-  #         POSTGRES_PASSWORD: postgres
-  #       ports:
-  #         - 5432:5432
-  #       options: >-
-  #         --health-cmd pg_isready
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
-  #     - uses: foundry-rs/foundry-toolchain@v1
-  #     - uses: pnpm/action-setup@v4
-  #       with:
-  #         version: 10
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
-  #         cache: pnpm
-  #     - name: Install
-  #       run: pnpm install --frozen-lockfile
-  #     - name: Ensure the Cypress binary is installed
-  #       run: pnpm --filter web exec cypress install
-  #     - name: Start Anvil + deploy local demo contracts
-  #       working-directory: contracts
-  #       run: |
-  #         anvil > /tmp/anvil.log 2>&1 &
-  #         npx --yes wait-port 127.0.0.1:8545
-  #         forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
-  #     - name: Start the ENSv2 indexer (Envio HyperIndex)
-  #       working-directory: apps/indexer
-  #       run: |
-  #         pnpm dev > /tmp/indexer.log 2>&1 &
-  #         npx --yes wait-port 127.0.0.1:8080
-  #     - name: Start apps/api
-  #       working-directory: apps/api
-  #       env:
-  #         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-  #       run: |
-  #         pnpm exec prisma migrate deploy
-  #         pnpm run build
-  #         pnpm run start > /tmp/api.log 2>&1 &
-  #         npx --yes wait-port 127.0.0.1:3001
-  #     - name: Build + run Cypress against a production build
-  #       run: pnpm --filter web e2e
-  #       env:
-  #         NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
-  #         DOMAINS_API_URL: http://localhost:3001
-  #     - name: Upload Cypress screenshots on failure
-  #       if: failure()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: cypress-screenshots
-  #         path: apps/web/cypress/screenshots
-  #     - name: Upload indexer/api logs on failure
-  #       if: failure()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: backend-logs
-  #         path: |
-  #           /tmp/indexer.log
-  #           /tmp/api.log
+  # Re-enabled: this job was commented out because navigation.cy.ts and ensv1-explore.cy.ts
+  # both failed against the "landing page when disconnected" change. Both are fixed here —
+  # `/` redirects unconditionally again, and ENSv1 is the default mode, which is what those
+  # two specs were written for.
+  #
+  # No chain and no backend any more either. This job used to start Anvil, deploy
+  # DeployLocal.s.sol, and bring up the indexer + apps/api + a Postgres, all so the ENSv2
+  # write-flow specs could make real transactions against a local chain. The app no longer
+  # supports a local chain, so those specs are gone, and every surviving spec is read-only
+  # and stubs at the /api/ensv1/* boundary with cy.intercept.
+  e2e:
+    needs: [frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Ensure the Cypress binary is installed
+        run: pnpm --filter web exec cypress install
+      - name: Build + run Cypress against a production build
+        run: pnpm --filter web e2e
+        env:
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: apps/web/cypress/screenshots
 
   api:
     runs-on: ubuntu-latest

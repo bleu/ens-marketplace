@@ -24,10 +24,6 @@ to prevent.
 
 ## Status
 
-Implemented and deployed — `CanonicalIdOrderManager` and `SubnameLeaseVault` are live on
-Sepolia (addresses in the root `README.md`) and on local Anvil for demo purposes, with the
-full script above (list → buy → mutate → suspend → diff → accept-refill, plus subname
-rent/reclaim) working end-to-end and covered by the Cypress suite (`apps/web/cypress/`).
-This is our own `MockENSv2Registry`, not the real ENSv2 protocol — see `docs/roadmap.md`'s
-open items for why real ENSv2 Sepolia addresses/events/roles are still unconfirmed
-upstream.
+Implemented and deployed — `CanonicalIdOrderManager` and `SubnameLeaseVault` are live on Sepolia (addresses in the root `README.md`), with the full script above (list → buy → mutate → suspend → diff → accept-refill, plus subname rent/reclaim) working end-to-end and covered by the Foundry test suite. It used to have Cypress coverage too, driving transactions against a local chain; those specs went with the local chain itself and haven't been ported to Sepolia.
+
+This is our own `MockENSv2Registry`, not ENSv2 itself — see `docs/roadmap.md`'s open items for why ENSv2's Sepolia addresses, events, and roles are still unconfirmed upstream.

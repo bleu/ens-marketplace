@@ -6,15 +6,16 @@ import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
+import { type ContractAddresses, Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
-import { isPositiveNumber, shortId } from "@/lib/format";
+import { isPositiveNumber, isZeroAddress, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
 import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoonPanel } from "@/components/ComingSoon";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 const DETAIL_TABS: TabItem[] = [
   { id: "market", label: "Market" },
@@ -24,6 +25,16 @@ const DETAIL_TABS: TabItem[] = [
 ];
 
 export default function DomainDetailPage() {
+  const addresses = useContractAddresses();
+  // Everything below this page reads and writes lives on one chain, so there's nothing
+  // partial to render without a deployment — the whole page is the gate. Splitting it in
+  // two also keeps the inner component's hooks unconditional (rules of hooks) and resets
+  // its form state on a chain switch, which is what you want anyway.
+  if (!addresses) return <SepoliaRequired />;
+  return <DomainDetail addresses={addresses} />;
+}
+
+function DomainDetail({ addresses }: { addresses: ContractAddresses }) {
   const params = useParams<{ canonicalId: string }>();
   const parsedCanonicalId = parseCanonicalId(params.canonicalId);
   // Hooks below must run unconditionally (rules of hooks), so an invalid id falls back
@@ -33,8 +44,9 @@ export default function DomainDetailPage() {
   const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { registry, orderManager } = useContractAddresses();
-  const network = useCurrentNetwork();
+  const { registry, orderManager } = addresses;
+  // Sepolia is the only chain with a deployment, so reaching this component means Sepolia.
+  const network = Network.Sepolia;
   const [relistPrice, setRelistPrice] = useState("");
   const [tab, setTab] = useState("market");
 
@@ -406,15 +418,14 @@ export default function DomainDetailPage() {
             <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
-                {
-                  k: "Registry",
-                  v:
-                    network === Network.Sepolia
-                      ? "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)"
-                      : "Mock ENSv2 registry (local Anvil)",
-                },
+                { k: "Registry", v: "Mock ENSv2 registry (Sepolia testnet — not ENSv2 itself)" },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
-                { k: "Resolver", v: resolver ? <AddressLink address={resolver as `0x${string}`} network={network} /> : "—" },
+                {
+                  k: "Resolver",
+                  // A contract read of a name with no resolver returns address(0), which is
+                  // a truthy string — guarding on truthiness alone printed "0x0000…0000".
+                  v: isZeroAddress(resolver as `0x${string}`) ? "—" : <AddressLink address={resolver as `0x${string}`} network={network} />,
+                },
                 { k: "Subnames", v: `${subnameCount} issued` },
                 { k: "Category", v: "—" },
               ].map((d) => (
@@ -495,11 +506,14 @@ function DiffRow({
           {label}
         </span>
       </td>
+      {/* Hex on both sides, no ENS names: this row exists to let you compare a before and
+          after value, and two readable names are harder to diff at a glance than two
+          addresses — worse still if only one side happens to have a name. */}
       <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-muted)", textDecoration: "line-through" } : undefined}>
-        <AddressLink address={before as `0x${string}`} network={network} />
+        <AddressLink address={before as `0x${string}`} network={network} showName={false} />
       </td>
       <td className="py-1.5" style={changed ? { color: "var(--accent)", fontWeight: 600 } : undefined}>
-        <AddressLink address={after as `0x${string}`} network={network} />
+        <AddressLink address={after as `0x${string}`} network={network} showName={false} />
       </td>
     </tr>
   );

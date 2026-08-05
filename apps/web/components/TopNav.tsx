@@ -15,11 +15,12 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const publicClient = usePublicClient();
-  const { registry } = useContractAddresses();
+  const addresses = useContractAddresses();
   const [networkMode] = useNetworkMode();
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [searchError, setSearchError] = useState(false);
+  const [needsSepolia, setNeedsSepolia] = useState(false);
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -40,6 +41,7 @@ export function TopNav() {
     setSearching(true);
     setNotFound(false);
     setSearchError(false);
+    setNeedsSepolia(false);
 
     if (networkMode === "ensv1") {
       // Real mainnet lookup via the ENS subgraph proxy (see app/api/ensv1/search) —
@@ -63,6 +65,14 @@ export function TopNav() {
       return;
     }
 
+    // ENSv2 search is a direct registry read, so it needs a chain that actually has one.
+    // The ENSv2 pages answer this with <SepoliaRequired />; the nav has no room for a
+    // panel, so it says the same thing inline where "Not found" would go.
+    if (!addresses) {
+      setNeedsSepolia(true);
+      setSearching(false);
+      return;
+    }
     if (!publicClient) {
       setSearching(false);
       return;
@@ -70,7 +80,7 @@ export function TopNav() {
     try {
       const id = nameToCanonicalId(query);
       const owner = await publicClient.readContract({
-        address: registry,
+        address: addresses.registry,
         abi: registryAbi,
         functionName: "ownerOf",
         args: [id],
@@ -105,6 +115,7 @@ export function TopNav() {
         onChange={() => {
           setNotFound(false);
           setSearchError(false);
+          setNeedsSepolia(false);
         }}
         placeholder="Search names…"
         aria-label="Search names"
@@ -114,6 +125,7 @@ export function TopNav() {
       {searching && <span className="font-mono text-[10px] text-[var(--fg-dim)]">…</span>}
       <span role="status" aria-live="polite" className="contents">
         {notFound && <span className="font-mono text-[10px] text-[var(--accent)]">Not found</span>}
+        {needsSepolia && <span className="font-mono text-[10px] text-[var(--accent)]">Switch to Sepolia to search</span>}
         {searchError && (
           <span className="font-mono text-[10px]" style={{ color: "var(--color-sinal-danger)" }}>
             Search failed — try again
