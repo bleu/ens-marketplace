@@ -7,6 +7,25 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Mark } from "@/components/Mark";
 import { useNetworkMode } from "@/lib/network-mode";
 
+function Chevron() {
+  return (
+    <svg
+      aria-hidden
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0 opacity-70"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -138,25 +157,37 @@ export function TopNav() {
               <button
                 type="button"
                 onClick={openChainModal}
-                className="h-[42px] rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium"
+                className="btn-cta flex h-[42px] cursor-pointer items-center gap-2 rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium"
                 style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
               >
                 Wrong network
+                <Chevron />
               </button>
             ) : (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={openChainModal}
-                  className="h-[42px] rounded-[var(--radius-2)] border px-3 font-mono text-xs"
-                  style={{ borderColor: "var(--line-strong)", color: "var(--fg-muted)" }}
+                  aria-label={`Network: ${chain.name}. Switch network`}
+                  className="btn-outline flex h-[42px] cursor-pointer items-center gap-2 rounded-[var(--radius-2)] border px-3 font-mono text-xs"
                 >
-                  {chain.name}
+                  {chain.hasIcon && chain.iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- a 18px static SVG; next/image would need dangerouslyAllowSVG
+                    <img src={chain.iconUrl} alt="" width={18} height={18} className="flex-shrink-0 rounded-full" />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="h-[7px] w-[7px] flex-shrink-0 rounded-full"
+                      style={{ background: "var(--color-sinal-success)" }}
+                    />
+                  )}
+                  <span className="whitespace-nowrap">{chain.name}</span>
+                  <Chevron />
                 </button>
                 <button
                   type="button"
                   onClick={openAccountModal}
-                  className="btn-cta h-[42px] rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium"
+                  className="btn-cta h-[42px] flex-1 cursor-pointer rounded-[var(--radius-2)] px-4 font-sans text-sm font-medium lg:flex-none"
                   style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
                 >
                   {account.displayName}
