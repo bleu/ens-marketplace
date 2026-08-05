@@ -7,6 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "pree2e": "next build --turbopack",
@@ -35,6 +36,7 @@
     "eslint-config-next": "15.5.9",
     "start-server-and-test": "^3.0.11",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

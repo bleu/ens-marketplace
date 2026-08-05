@@ -36,13 +36,35 @@ const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] :
 /// scan, which fires several eth_getLogs calls at once.
 const SEPOLIA_FALLBACK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 
+/// Same reasoning as Sepolia above, and now load-bearing rather than precautionary: reverse
+/// resolution (components/AddressLabel) puts a mainnet call behind ordinary page views, so
+/// mainnet's chain default is no longer only the fulfillment path's problem. That default
+/// (viem 2.47.12 points mainnet at eth.merkle.io) answers Cloudflare 1015 / HTTP 429 to an
+/// unauthenticated caller, and a failed lookup is invisible — every address just stays hex,
+/// which is also what "this account has no name" looks like.
+const MAINNET_FALLBACK_RPC_URL = "https://ethereum-rpc.publicnode.com";
+
+/// Reverse ENS lookups (components/AddressLabel) always target mainnet, whatever chain the
+/// wallet is on — a mainnet eth_call firing while connected to Anvil is deliberate, not a
+/// bug. Reverse records only exist on mainnet: most addresses in this app come from the
+/// mock ENSv2 registry on Anvil or Sepolia, so resolving against the connected chain would
+/// make the feature dead everywhere except the two ENSv1 surfaces. Those addresses simply
+/// resolve to nothing and keep showing hex.
+///
+/// Multicall batching, scoped to mainnet so Anvil and Sepolia keep their one-call-per-read
+/// behavior: the Explore grid reverse-resolves every seller at once, and on a shared public
+/// endpoint twenty separate eth_calls is how you get rate-limited. `wait` (default 0ms, i.e.
+/// same tick) is the knob if the batch window turns out too tight to collect them all.
+const MAINNET_BATCHING = { [mainnet.id]: { multicall: true } } as const;
+
 export const wagmiConfig = createConfig({
   connectors,
   chains: [foundry, sepolia, mainnet],
   transports: {
     [foundry.id]: http(),
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
-    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
+    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || MAINNET_FALLBACK_RPC_URL),
   },
+  batch: MAINNET_BATCHING,
   ssr: true,
 });

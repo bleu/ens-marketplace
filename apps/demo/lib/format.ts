@@ -1,3 +1,4 @@
+import { ens_normalize as normalize } from "@adraffy/ens-normalize";
 import type { Address } from "viem";
 
 export function shortAddr(address: Address | undefined): string {
@@ -7,6 +8,23 @@ export function shortAddr(address: Address | undefined): string {
 
 export function isZeroAddress(address: Address | undefined): boolean {
   return !address || address === "0x0000000000000000000000000000000000000000";
+}
+
+/// Gate for showing a reverse-resolved ENS name on screen: returns the name only when it
+/// is already in normalized form, otherwise null so the caller falls back to hex.
+///
+/// Returns `raw` and never the normalized form, even when normalization succeeds. The
+/// on-chain reverse check (viem's reverseWithGateways) proved the *raw* string resolves
+/// back to this address, so a normalized form that differs from it is a name nothing
+/// verified — displaying it would put an unchecked string next to a listing. A resolver
+/// can return anything, including confusable unicode or a right-to-left override.
+export function displayableEnsName(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    return normalize(raw) === raw ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 /// Truncates a long numeric/string id (e.g. an ERC-721 token id) the same way
