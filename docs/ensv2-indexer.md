@@ -15,9 +15,9 @@ pre-joined queries instead.
   chunked historical backfill, and checkpointing are exactly the kind of infrastructure
   not worth reinventing; Envio was chosen over Ponder as the out-of-the-box option here.
   - `config.yaml` — one `Registry`/`OrderManager`/`LeaseVault` contract definition (shared
-    across networks), addresses/`start_block` supplied per chain (Anvil via direct RPC —
-    HyperSync doesn't cover local chains; Sepolia via HyperSync, which needs a real
-    `ENVIO_API_TOKEN` — see below).
+    across networks), addresses/`start_block` supplied per chain. Both Anvil and Sepolia
+    index via plain RPC (`for: sync`, not HyperSync) — see below for why, and how to
+    switch Sepolia to HyperSync once you have a token.
   - `schema.graphql` — `IndexedName`, `DomainOrder`, `SubnameListing`, `DomainActivity`
     entities.
   - `src/handlers/{Registry,OrderManager,LeaseVault}.ts` — one `indexer.onEvent(...)`
@@ -67,10 +67,14 @@ pnpm dev
 ```
 
 **Note on `ENVIO_API_TOKEN`:** HyperIndex itself is fully open-source and self-hostable —
-the token is only for **HyperSync** (Envio's accelerated historical-log service), and only
-matters for the Sepolia chain entry in `config.yaml` (Anvil uses plain RPC, no token
-needed). Get a free token at https://envio.dev/app/api-tokens when you actually need
-Sepolia indexing; local Anvil-only development works without one.
+the token is only for **HyperSync** (Envio's accelerated historical-log service). Both
+Anvil and Sepolia are configured to index via plain RPC (`for: sync` in `config.yaml`)
+instead, so nothing here needs a token out of the box. A plain `rpc:` string alone isn't
+enough for a HyperSync-covered chain like Sepolia — it only becomes a *fallback*, and
+HyperSync (and its token requirement) stays primary; `for: sync` is what actually forces
+RPC to be used instead. Once you want HyperSync's speed edge for Sepolia, get a free token
+at https://envio.dev/app/api-tokens, set `ENVIO_API_TOKEN`, and drop the Sepolia chain's
+`rpc:` override in `config.yaml` (or change `for:` to `fallback`/`realtime`).
 
 ## Production hosting
 

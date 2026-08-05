@@ -39,10 +39,18 @@ chains:
         address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
       - name: LeaseVault
         address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-  # Sepolia: HyperSync covers this chain natively — no RPC needed, and no rate-limit
-  # concerns like the frontend's own eth_getLogs scanning has hit against public RPCs.
+  # Sepolia: `for: sync` forces RPC to be the primary data-source for both historical
+  # and real-time indexing (a plain `rpc: <url>` string alone only becomes a *fallback*
+  # for chains HyperSync natively covers — HyperSync itself would still be tried first
+  # and would still require a real ENVIO_API_TOKEN). Same publicnode endpoint apps/demo's
+  # wagmi.ts already falls back to (see lib/wagmi.ts's SEPOLIA_FALLBACK_RPC_URL). Worth
+  # switching to HyperSync later for its speed edge (free token at
+  # https://envio.dev/app/api-tokens, then set ENVIO_API_TOKEN and drop this override).
   - id: 11155111
     start_block: 11371094
+    rpc:
+      url: https://ethereum-sepolia-rpc.publicnode.com
+      for: sync
     contracts:
       - name: Registry
         address: "0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2"
