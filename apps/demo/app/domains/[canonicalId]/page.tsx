@@ -9,7 +9,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type ContractAddresses, Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
-import { isPositiveNumber, shortId } from "@/lib/format";
+import { isPositiveNumber, isZeroAddress, shortId } from "@/lib/format";
 import { useNameActivity, useSubnameCount } from "@/lib/events";
 import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
@@ -420,7 +420,12 @@ function DomainDetail({ addresses }: { addresses: ContractAddresses }) {
                 { k: "Token standard", v: "ERC-721-style" },
                 { k: "Registry", v: "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)" },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
-                { k: "Resolver", v: resolver ? <AddressLink address={resolver as `0x${string}`} network={network} /> : "—" },
+                {
+                  k: "Resolver",
+                  // A contract read of a name with no resolver returns address(0), which is
+                  // a truthy string — guarding on truthiness alone printed "0x0000…0000".
+                  v: isZeroAddress(resolver as `0x${string}`) ? "—" : <AddressLink address={resolver as `0x${string}`} network={network} />,
+                },
                 { k: "Subnames", v: `${subnameCount} issued` },
                 { k: "Category", v: "—" },
               ].map((d) => (
@@ -501,11 +506,14 @@ function DiffRow({
           {label}
         </span>
       </td>
+      {/* Hex on both sides, no ENS names: this row exists to let you compare a before and
+          after value, and two readable names are harder to diff at a glance than two
+          addresses — worse still if only one side happens to have a name. */}
       <td className="pr-2 py-1.5" style={changed ? { color: "var(--fg-muted)", textDecoration: "line-through" } : undefined}>
-        <AddressLink address={before as `0x${string}`} network={network} />
+        <AddressLink address={before as `0x${string}`} network={network} showName={false} />
       </td>
       <td className="py-1.5" style={changed ? { color: "var(--accent)", fontWeight: 600 } : undefined}>
-        <AddressLink address={after as `0x${string}`} network={network} />
+        <AddressLink address={after as `0x${string}`} network={network} showName={false} />
       </td>
     </tr>
   );
