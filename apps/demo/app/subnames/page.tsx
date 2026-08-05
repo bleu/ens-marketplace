@@ -1,18 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatEther } from "viem";
-import { useReadContracts } from "wagmi";
-import { useKnownSubnameIds } from "@/lib/events";
-import { leaseVaultAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
-import { isZeroAddress } from "@/lib/format";
+import { useSubnameSearch } from "@/lib/events";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ScrollHint } from "@/components/ScrollHint";
 
-function statusOf(activeUntil: bigint, tenant: string): { label: string; variant: "active" | "suspended" | "neutral" } {
+function statusOf(activeUntil: bigint | null, tenant: string | null): { label: string; variant: "active" | "suspended" | "neutral" } {
   const now = BigInt(Math.floor(Date.now() / 1000));
-  if (isZeroAddress(tenant as `0x${string}`) || activeUntil === 0n) {
+  if (!tenant || !activeUntil || activeUntil === 0n) {
     return { label: "Available", variant: "active" };
   }
   if (now < activeUntil) {
@@ -23,34 +21,8 @@ function statusOf(activeUntil: bigint, tenant: string): { label: string; variant
 }
 
 export default function SubnamesPage() {
-  const { registry, leaseVault } = useContractAddresses();
-  const { ids, isError: idsError, refetch: refetchIds } = useKnownSubnameIds();
-
-  const { data, isLoading, isError: readsError, refetch: refetchReads } = useReadContracts({
-    contracts: ids.flatMap((id) => [
-      { address: leaseVault, abi: leaseVaultAbi, functionName: "listings", args: [id] } as const,
-      { address: leaseVault, abi: leaseVaultAbi, functionName: "leaseActiveUntil", args: [id] } as const,
-      { address: leaseVault, abi: leaseVaultAbi, functionName: "tenantOf", args: [id] } as const,
-      { address: registry, abi: registryAbi, functionName: "nameOf", args: [id] } as const,
-    ]),
-    query: { enabled: ids.length > 0, refetchInterval: 3000 },
-  });
-
-  const isError = idsError || readsError;
-  const retry = () => {
-    refetchIds();
-    refetchReads();
-  };
-
-  const rows = ids
-    .map((id, i) => ({
-      id,
-      listing: data?.[i * 4]?.result as readonly [string, bigint, bigint, boolean] | undefined,
-      activeUntil: data?.[i * 4 + 1]?.result as bigint | undefined,
-      tenant: data?.[i * 4 + 2]?.result as string | undefined,
-      name: data?.[i * 4 + 3]?.result as string | undefined,
-    }))
-    .filter((r) => r.listing && r.listing[3] && r.activeUntil !== undefined && r.tenant !== undefined);
+  const [page, setPage] = useState(1);
+  const { rows, isLoading, isError, refetch: retry, totalPages } = useSubnameSearch(page);
 
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)] px-4 pb-20 pt-8 lg:px-8">
@@ -92,7 +64,7 @@ export default function SubnamesPage() {
           {isError && (
             <div className="flex items-center gap-3 py-8">
               <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-                Couldn&apos;t load subnames — the on-chain read failed.
+                Couldn&apos;t load subnames — the request failed.
               </p>
               <button
                 onClick={retry}
@@ -114,13 +86,12 @@ export default function SubnamesPage() {
             </p>
           )}
 
-          {rows.map(({ id, listing, activeUntil, tenant, name }) => {
-            const [, pricePerTerm] = listing!;
-            const status = statusOf(activeUntil!, tenant!);
+          {rows.map(({ canonicalId, listing, tenant, leaseActiveUntil, name }) => {
+            const status = statusOf(leaseActiveUntil, tenant);
             return (
               <Link
-                key={id.toString()}
-                href={`/subnames/${id.toString()}`}
+                key={canonicalId.toString()}
+                href={`/subnames/${canonicalId.toString()}`}
                 className="explore-row grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b pr-4 py-3.5"
                 style={{ borderColor: "var(--line)" }}
               >
@@ -128,13 +99,13 @@ export default function SubnamesPage() {
                   className="sticky left-0 z-10 flex items-center gap-3.5 self-stretch pl-4"
                   style={{ background: "var(--bg)" }}
                 >
-                  <NameCard canonicalId={id} />
+                  <NameCard canonicalId={canonicalId} />
                   <span className="font-sans text-base font-semibold" style={{ color: "var(--fg)" }}>
-                    {name ?? id.toString()}
+                    {name ?? canonicalId.toString()}
                   </span>
                 </div>
                 <div className="font-mono text-[15px]" style={{ color: "var(--fg)" }}>
-                  {formatEther(pricePerTerm)} ETH
+                  {formatEther(listing.pricePerTerm)} ETH
                 </div>
                 <div className="justify-self-start">
                   <StatusBadge variant={status.variant}>{status.label}</StatusBadge>
@@ -144,6 +115,30 @@ export default function SubnamesPage() {
           })}
         </div>
       </ScrollHint>
+
+      {!isError && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 py-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            ← Previous
+          </button>
+          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
+            style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </main>
   );
 }

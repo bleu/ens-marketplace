@@ -46,6 +46,23 @@ jobs:
   e2e:
     needs: [frontend]
     runs-on: ubuntu-latest
+    # apps/demo's /domains and /subnames pages read from apps/api, which reads from the
+    # Envio indexer (apps/indexer) — this Postgres backs apps/api's own Grails database
+    # (PrismaService.$connect() needs a reachable DB just to start, even though no Grails
+    # endpoint is exercised here). The indexer's own Postgres+Hasura are separate — Envio
+    # spins those up itself via Docker (already available on this runner) when it starts.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,16 +83,77 @@ jobs:
           anvil > /tmp/anvil.log 2>&1 &
           npx --yes wait-port 127.0.0.1:8545
           forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - name: Start the ENSv2 indexer (Envio HyperIndex)
+        working-directory: apps/indexer
+        run: |
+          pnpm dev > /tmp/indexer.log 2>&1 &
+          npx --yes wait-port 127.0.0.1:8080
+      - name: Start apps/api
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm run build
+          pnpm run start > /tmp/api.log 2>&1 &
+          npx --yes wait-port 127.0.0.1:3001
       - name: Build + run Cypress against a production build
         run: pnpm --filter demo e2e
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
+          DOMAINS_API_URL: http://localhost:3001
       - name: Upload Cypress screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots
           path: apps/demo/cypress/screenshots
+      - name: Upload indexer/api logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: |
+            /tmp/indexer.log
+            /tmp/api.log
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm --filter api run lint
+      - name: Typecheck + build
+        run: pnpm --filter api run build
+
+  indexer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Codegen
+        run: pnpm --filter indexer run codegen
+      - name: Typecheck
+        run: pnpm --filter indexer exec tsc --noEmit
+      - name: Test
+        run: pnpm --filter indexer test
 
   testnet-deploy:
     if: startsWith(github.ref, 'refs/tags/v')
