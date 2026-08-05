@@ -10,12 +10,13 @@ import { useNetworkMode } from "@/lib/network-mode";
 import { cacheListingForNavigation, useEnsV1Listings, useGrailsListings } from "@/lib/ensv1-client";
 import { openseaAssetUrl, type EnsV1Listing } from "@/lib/ensv1";
 import { useEnsV2AlphaRegisteredNames, type EnsV2AlphaName } from "@/lib/ensv2-alpha";
+import { AddressLabel } from "@/components/AddressLabel";
 import { NameCard } from "@/components/NameCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
-import { shortAddr, shortId } from "@/lib/format";
+import { shortId } from "@/lib/format";
 import type { DomainOrderRow } from "@/lib/events";
 
 const TABS: TabItem[] = [
@@ -955,12 +956,14 @@ function EnsV1Row({ listing }: { listing: EnsV1Listing }) {
       </div>
       <div>
         <span
-          className="inline-flex items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
+          className="inline-flex max-w-full items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
           style={{ background: "rgba(242,244,241,0.05)" }}
         >
-          <span className="h-5 w-5 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
-          <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-            {shortAddr(seller)}
+          <span className="h-5 w-5 shrink-0 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
+          {/* An ENS name has no length limit, unlike the 13 chars shortAddr always
+              produced — without this the pill outgrows its grid column. */}
+          <span className="min-w-0 truncate font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+            <AddressLabel address={seller} />
           </span>
         </span>
       </div>
@@ -1049,12 +1052,14 @@ function ExploreRow({ id, order, name }: { id: bigint; order: DomainOrderRow; na
       </div>
       <div>
         <span
-          className="inline-flex items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
+          className="inline-flex max-w-full items-center gap-2 rounded-full py-1 pr-2.5 pl-1"
           style={{ background: "rgba(242,244,241,0.05)" }}
         >
-          <span className="h-5 w-5 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
-          <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-            {shortAddr(seller)}
+          <span className="h-5 w-5 shrink-0 rounded-full" style={{ background: "var(--color-profundo-500)" }} />
+          {/* An ENS name has no length limit, unlike the 13 chars shortAddr always
+              produced — without this the pill outgrows its grid column. */}
+          <span className="min-w-0 truncate font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
+            <AddressLabel address={seller} />
           </span>
         </span>
       </div>

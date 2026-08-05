@@ -36,6 +36,19 @@ const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] :
 /// scan, which fires several eth_getLogs calls at once.
 const SEPOLIA_FALLBACK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 
+/// Reverse ENS lookups (components/AddressLabel) always target mainnet, whatever chain the
+/// wallet is on — a mainnet eth_call firing while connected to Anvil is deliberate, not a
+/// bug. Reverse records only exist on mainnet: most addresses in this app come from the
+/// mock ENSv2 registry on Anvil or Sepolia, so resolving against the connected chain would
+/// make the feature dead everywhere except the two ENSv1 surfaces. Those addresses simply
+/// resolve to nothing and keep showing hex.
+///
+/// Multicall batching, scoped to mainnet so Anvil and Sepolia keep their one-call-per-read
+/// behavior: the Explore grid reverse-resolves every seller at once, and on a shared public
+/// endpoint twenty separate eth_calls is how you get rate-limited. `wait` (default 0ms, i.e.
+/// same tick) is the knob if the batch window turns out too tight to collect them all.
+const MAINNET_BATCHING = { [mainnet.id]: { multicall: true } } as const;
+
 export const wagmiConfig = createConfig({
   connectors,
   chains: [foundry, sepolia, mainnet],
@@ -44,5 +57,6 @@ export const wagmiConfig = createConfig({
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
     [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
   },
+  batch: MAINNET_BATCHING,
   ssr: true,
 });
