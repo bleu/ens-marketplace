@@ -464,7 +464,7 @@ function DomainsPageInner() {
         {/* table */}
         <section className="px-4 pb-20 lg:px-8">
           {networkMode === "ensv2-alpha" ? (
-            <EnsV2AlphaTable names={alpha.names} isError={alpha.isError} retry={alpha.refetch} />
+            <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
           ) : (
             <EnsV1Table
               source={source}
@@ -497,10 +497,12 @@ const ENSV2_ALPHA_PAGE_SIZE = 20;
 /// so "next page" just moves the slice window rather than fetching anything new.
 function EnsV2AlphaTable({
   names,
+  isLoading,
   isError,
   retry,
 }: {
   names: EnsV2AlphaName[];
+  isLoading: boolean;
   isError: boolean;
   retry: () => void;
 }) {
@@ -514,7 +516,7 @@ function EnsV2AlphaTable({
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[520px]">
+      <div className="min-w-[520px] transition-opacity duration-150" style={{ opacity: isLoading && names.length > 0 ? 0.5 : 1 }}>
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_180px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
@@ -548,7 +550,15 @@ function EnsV2AlphaTable({
             </button>
           </div>
         )}
-        {!isError && names.length === 0 && (
+        {!isError && isLoading && names.length === 0 && (
+          <div className="flex items-center gap-2.5 py-8">
+            <Spinner />
+            <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+              Loading registrations…
+            </p>
+          </div>
+        )}
+        {!isError && !isLoading && names.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
             No names registered on this alpha deployment yet — be the first.
           </p>
@@ -585,18 +595,19 @@ function EnsV2AlphaTable({
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={clampedPage === 1}
+            disabled={clampedPage === 1 || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
             ← Previous
           </button>
-          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+          <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            {isLoading && <Spinner size={12} />}
             Page {clampedPage} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={clampedPage === totalPages}
+            disabled={clampedPage === totalPages || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
