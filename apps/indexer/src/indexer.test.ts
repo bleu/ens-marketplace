@@ -9,7 +9,7 @@ describe("Registry", () => {
 
     await indexer.process({
       chains: {
-        31337: {
+        11155111: {
           simulate: [
             { contract: "Registry", event: "Registered", params: { canonicalId: 1n, name: "alice.eth", owner } },
           ],
@@ -31,7 +31,7 @@ describe("Registry", () => {
 
     await indexer.process({
       chains: {
-        31337: {
+        11155111: {
           simulate: [
             { contract: "Registry", event: "Registered", params: { canonicalId: 1n, name: "alice.eth", owner } },
             {
@@ -58,7 +58,7 @@ describe("OrderManager", () => {
 
     await indexer.process({
       chains: {
-        31337: {
+        11155111: {
           simulate: [
             {
               contract: "OrderManager",
@@ -89,7 +89,7 @@ describe("OrderManager", () => {
 
     await indexer.process({
       chains: {
-        31337: {
+        11155111: {
           simulate: [
             { contract: "Registry", event: "Registered", params: { canonicalId: 1n, name: "alice.eth", owner: seller } },
             {
@@ -116,7 +116,7 @@ describe("LeaseVault", () => {
 
     await indexer.process({
       chains: {
-        31337: {
+        11155111: {
           simulate: [
             {
               contract: "LeaseVault",

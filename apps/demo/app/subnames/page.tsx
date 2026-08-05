@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatEther } from "viem";
 import { useSubnameSearch } from "@/lib/events";
+import { useContractAddresses } from "@/lib/contracts";
 import { NameCard } from "@/components/NameCard";
 import { Spinner } from "@/components/Spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ScrollHint } from "@/components/ScrollHint";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 function statusOf(activeUntil: bigint | null, tenant: string | null): { label: string; variant: "active" | "suspended" | "neutral" } {
   const now = BigInt(Math.floor(Date.now() / 1000));
@@ -21,7 +23,16 @@ function statusOf(activeUntil: bigint | null, tenant: string | null): { label: s
   return { label: "Reclaimable", variant: "suspended" };
 }
 
+/// The listing table itself reads from the indexer rather than the chain, but every action
+/// it leads to (register, announce, rent, reclaim) is a Sepolia transaction — so this gates
+/// on a deployment too rather than showing names nobody on this chain can do anything with.
 export default function SubnamesPage() {
+  const addresses = useContractAddresses();
+  if (!addresses) return <SepoliaRequired />;
+  return <SubnamesList />;
+}
+
+function SubnamesList() {
   const [page, setPage] = useState(1);
   const { rows, isLoading, isError, refetch: retry, totalPages } = useSubnameSearch(page);
 

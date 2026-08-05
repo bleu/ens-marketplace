@@ -1,10 +1,12 @@
 import { defineConfig } from "cypress";
-import { registerAnvilTasks } from "./cypress/support/anvil-tasks";
 
 export default defineConfig({
   e2e: {
     baseUrl: "http://localhost:3000",
-    supportFile: "cypress/support/e2e.ts",
+    // No support file: the only custom command was visitConnected, which existed to inject
+    // a fake wallet impersonating an unlocked Anvil dev account. Nothing left needs a
+    // connected wallet — the surviving specs are read-only and stub at /api/ensv1/*.
+    supportFile: false,
     // Cypress's default (1000px) is narrower than the top nav's `lg:` breakpoint
     // (1024px) — below that, search/nav-links/List-a-name are legitimately hidden in
     // favor of a mobile menu (see BLEUDEV-235). Use a real desktop width so tests
@@ -16,9 +18,5 @@ export default defineConfig({
     // start, as CI uses) doesn't have this latency; this generous timeout is for local
     // runs against `pnpm dev`.
     defaultCommandTimeout: 10000,
-    setupNodeEvents(on, config) {
-      registerAnvilTasks(on);
-      return config;
-    },
   },
 });

@@ -4,18 +4,26 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
+import { type ContractAddresses, Network, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { nameToCanonicalId, subnameToCanonicalId } from "@/lib/canonicalId";
 import { isZeroAddress } from "@/lib/format";
 import { gradientFor } from "@/components/NameCard";
 import { AddressLink } from "@/components/AddressLink";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 export default function RegisterSubnamePage() {
+  const addresses = useContractAddresses();
+  if (!addresses) return <SepoliaRequired />;
+  return <RegisterSubname addresses={addresses} />;
+}
+
+function RegisterSubname({ addresses }: { addresses: ContractAddresses }) {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { registry } = useContractAddresses();
-  const network = useCurrentNetwork();
+  const { registry } = addresses;
+  // Sepolia is the only chain with a deployment, so reaching this component means Sepolia.
+  const network = Network.Sepolia;
   const [parentName, setParentName] = useState("");
   const [label, setLabel] = useState("");
 
@@ -175,7 +183,7 @@ export default function RegisterSubnamePage() {
           </div>
           <div className="mt-4 flex justify-between font-mono text-xs">
             <span style={{ color: "var(--fg-dim)" }}>Settles on</span>
-            <span style={{ color: "var(--brand)" }}>Namechain (local)</span>
+            <span style={{ color: "var(--brand)" }}>Sepolia</span>
           </div>
           <div className="mt-2.5 flex justify-between font-mono text-xs">
             <span style={{ color: "var(--fg-dim)" }}>Admin role</span>

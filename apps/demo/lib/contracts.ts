@@ -2,53 +2,37 @@
 
 import { keccak256, parseAbi, toBytes } from "viem";
 import { useChainId } from "wagmi";
-import { foundry, mainnet, sepolia } from "wagmi/chains";
+import { mainnet, sepolia } from "wagmi/chains";
 
 /// Chains this marketplace's contracts are (or will be) deployed to.
 export enum Network {
-  Anvil = "anvil",
   Sepolia = "sepolia",
   Mainnet = "mainnet",
 }
 
 const CHAIN_ID_TO_NETWORK: Record<number, Network> = {
-  [foundry.id]: Network.Anvil,
   [sepolia.id]: Network.Sepolia,
   [mainnet.id]: Network.Mainnet,
 };
 
-/// Networks with contracts actually deployed today — used by ChainGuard to decide which
-/// chains a connected wallet is allowed to be on. Mainnet is a known Network (so
-/// `getContractAddresses` can name it in errors/fallbacks) but isn't deployed yet
-/// (Slice 2, see docs/roadmap.md), so it's deliberately excluded here.
-export const SUPPORTED_NETWORKS = [Network.Anvil, Network.Sepolia] as const;
-
-interface ContractAddresses {
+export interface ContractAddresses {
   registry: `0x${string}`;
   orderManager: `0x${string}`;
   leaseVault: `0x${string}`;
   /// Block these contracts were deployed at — event scans (see lib/events.ts) start here
-  /// instead of block 0. On Anvil that's a no-op (0n either way), but on a real chain like
-  /// Sepolia scanning from genesis hits `eth_getLogs`' block-range limit on public RPCs
-  /// (thirdweb's default endpoint caps it at 10,000 blocks) long before it ever reaches
-  /// blocks that could contain our events.
+  /// instead of block 0. Scanning Sepolia from genesis hits `eth_getLogs`' block-range
+  /// limit on public RPCs (thirdweb's default endpoint caps it at 10,000 blocks) long
+  /// before it ever reaches blocks that could contain our events.
   fromBlock: bigint;
 }
 
 /// Per-network deployed addresses.
-/// - Anvil: from `contracts/script/DeployLocal.s.sol` — identical on every redeploy since
-///   Anvil starts fresh and the deployer's nonce order never changes. See docs/local-demo.md.
 /// - Sepolia: from `contracts/script/DeployV2Sepolia.s.sol` (deployed + verified on
 ///   Etherscan 2026-07-28, block 11371094). This is our own MockENSv2Registry, not the
 ///   real ENSv2 registry — see docs/roadmap.md's open items for why.
-/// - Mainnet: not deployed yet (Slice 2) — intentionally absent from this map.
+/// - Mainnet: not deployed yet (Slice 2) — intentionally absent from this map. Mainnet is
+///   still a known Network because it's where the read-only ENSv1 view gets its data.
 const ADDRESSES: Partial<Record<Network, ContractAddresses>> = {
-  [Network.Anvil]: {
-    registry: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    orderManager: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    leaseVault: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    fromBlock: 0n,
-  },
   [Network.Sepolia]: {
     registry: "0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2",
     orderManager: "0xdF913A7a34A232C934A09FE7FF322926CeF14812",
@@ -57,27 +41,28 @@ const ADDRESSES: Partial<Record<Network, ContractAddresses>> = {
   },
 };
 
-/// Resolves the deployed addresses for `chainId`, falling back to Anvil for any chain
-/// without a deployment (e.g. mainnet, or a chain outside `wagmiConfig` entirely) rather
-/// than throwing — ChainGuard is what tells the user to switch chains, not a page crash.
-export function getContractAddresses(chainId: number): ContractAddresses {
+/// Resolves the deployed addresses for `chainId`, or null when that chain has no
+/// deployment (mainnet, or a chain outside `wagmiConfig` entirely). Callers must render
+/// `<SepoliaRequired />` rather than read a chain that has none of these contracts —
+/// mainnet is the wallet-less default (see lib/wagmi.ts), so null is the common case, not
+/// an edge one.
+export function getContractAddresses(chainId: number): ContractAddresses | null {
   const network = CHAIN_ID_TO_NETWORK[chainId];
-  return (network && ADDRESSES[network]) || ADDRESSES[Network.Anvil]!;
+  return (network && ADDRESSES[network]) ?? null;
 }
 
-/// Resolves the three marketplace contract addresses for whatever chain the connected
-/// wallet is on — Anvil (wagmiConfig's default chain) before a wallet connects.
-export function useContractAddresses(): ContractAddresses {
+/// The three marketplace contract addresses for whatever chain the wallet is on, or null
+/// if that chain has no deployment.
+export function useContractAddresses(): ContractAddresses | null {
   const chainId = useChainId();
   return getContractAddresses(chainId);
 }
 
-/// Which network's contracts are currently being read/written — for display copy that
-/// needs to name the actual network rather than assuming local Anvil (e.g. the registry
-/// detail row on /domains/[canonicalId] and /subnames/[canonicalId]).
-export function useCurrentNetwork(): Network {
+/// Which of our known chains the wallet is on, or null for anything else — drives the
+/// chain→mode pairing in lib/network-mode.tsx and which source options /domains offers.
+export function useCurrentNetwork(): Network | null {
   const chainId = useChainId();
-  return CHAIN_ID_TO_NETWORK[chainId] ?? Network.Anvil;
+  return CHAIN_ID_TO_NETWORK[chainId] ?? null;
 }
 
 /// Mirrors the identical `SUBNAME_ADMIN_ROLE` constant defined in both

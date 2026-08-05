@@ -80,7 +80,7 @@ export default function EnsV2AlphaRegisterPage() {
 
   // Every call below pins chainId to Sepolia explicitly — this integration is always
   // Sepolia regardless of which chain the connected wallet/wagmi client is actually on
-  // (Anvil, the app's default before any wallet connects, has none of these contracts).
+  // (mainnet, the app's default before any wallet connects, has none of these contracts).
   const { data: priceData } = useReadContract({
     address: ENSV2_ALPHA_ETH_REGISTRAR,
     abi: ethRegistrarAbi,

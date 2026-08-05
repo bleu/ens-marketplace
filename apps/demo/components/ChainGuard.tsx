@@ -1,17 +1,17 @@
 "use client";
 
-import { foundry, mainnet, sepolia } from "wagmi/chains";
+import { mainnet, sepolia } from "wagmi/chains";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { ANVIL_ENABLED } from "@/lib/wagmi";
 
-const SUPPORTED_CHAIN_IDS: readonly number[] = ANVIL_ENABLED ? [foundry.id, sepolia.id, mainnet.id] : [sepolia.id, mainnet.id];
+const SUPPORTED_CHAIN_IDS: readonly number[] = [mainnet.id, sepolia.id];
 
 /// Warns when a connected wallet is on a chain with no deployed marketplace contracts or
-/// real-data source. Supported today: local Anvil (see docs/local-demo.md), Sepolia (see
-/// contracts/script/DeployV2Sepolia.s.sol, and the real ENSv2 alpha — see
-/// lib/ensv2-alpha.ts), and Mainnet (real ENSv1 names via the Source picker on /domains —
-/// see lib/network-mode.tsx). No special-case pathname exception needed now that Mainnet
-/// is a genuinely supported chain, not just tolerated for one read-only route.
+/// real-data source. Supported today: Mainnet (real ENSv1 names, and the app's default
+/// chain — see lib/wagmi.ts) and Sepolia (our own mock marketplace, see
+/// contracts/script/DeployV2Sepolia.s.sol, plus the real ENSv2 alpha — see
+/// lib/ensv2-alpha.ts). The nudge points at mainnet because that's the one chain with
+/// something to show whatever page you landed on; the ENSv2 pages have their own
+/// `<SepoliaRequired />` panel for the narrower "switch to Sepolia" case.
 export function ChainGuard() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
@@ -25,30 +25,9 @@ export function ChainGuard() {
       style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}
     >
       <span style={{ color: "var(--accent)" }}>
-        {ANVIL_ENABLED
-          ? "Wrong network — this demo runs on local Anvil, Sepolia, or Mainnet. See docs/local-demo.md to start Anvil, or switch networks."
-          : "Wrong network — this demo runs on Sepolia or Mainnet. Switch networks to continue."}
+        Wrong network — this demo reads real ENS names on Ethereum mainnet and our own
+        ENSv2 marketplace on Sepolia.
       </span>
-      {ANVIL_ENABLED && (
-        <button
-          type="button"
-          onClick={() => switchChain({ chainId: foundry.id })}
-          disabled={isPending}
-          className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
-          style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
-        >
-          {isPending ? "Switching…" : "Switch to Anvil"}
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => switchChain({ chainId: sepolia.id })}
-        disabled={isPending}
-        className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
-        style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
-      >
-        {isPending ? "Switching…" : "Switch to Sepolia"}
-      </button>
       <button
         type="button"
         onClick={() => switchChain({ chainId: mainnet.id })}
@@ -56,7 +35,7 @@ export function ChainGuard() {
         className="shrink-0 rounded-[var(--radius-1)] px-3 py-1 font-medium disabled:opacity-50"
         style={{ background: "var(--accent)", color: "var(--brand-ink)" }}
       >
-        {isPending ? "Switching…" : "Switch to Mainnet"}
+        {isPending ? "Switching…" : "Switch to Ethereum mainnet"}
       </button>
     </div>
   );

@@ -5,7 +5,7 @@ import {IENSv2Registry} from "../v2/interfaces/IENSv2Registry.sol";
 import {IENSv2Resolver} from "../v2/interfaces/IENSv2Resolver.sol";
 import {IRegistryAdmin} from "./IRegistryAdmin.sol";
 
-/// @notice Local, mock ENSv2-shaped registry for demoing the marketplace loop on Anvil.
+/// @notice Mock ENSv2-shaped registry for demoing the marketplace loop on Sepolia.
 /// See IRegistryAdmin.sol for why the write surface here is an invented stand-in, not
 /// confirmed ENSv2 behavior. The read surface (IENSv2Registry/IENSv2Resolver) is the part
 /// plausibly reusable once real ENSv2 lands.
