@@ -456,7 +456,7 @@ function DomainsPageInner() {
         </aside>
 
         {/* table */}
-        <section className="px-4 pb-20 lg:px-8">
+        <section className="px-4 pb-20 pt-6 lg:px-8">
           {networkMode === "ensv2-alpha" ? (
             <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
           ) : (
