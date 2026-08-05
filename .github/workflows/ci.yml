@@ -48,9 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     # No chain and no backend here any more. This job used to start Anvil, deploy
     # DeployLocal.s.sol, and bring up the indexer + apps/api + a Postgres, all so the ENSv2
-    # write-flow specs could make real transactions against a local chain. Those specs are
-    # gone (GTM-484: the app no longer supports a local chain at all), and every surviving
-    # spec is read-only and stubs at the /api/ensv1/* boundary with cy.intercept.
+    # write-flow specs could make real transactions against a local chain. The app no longer
+    # supports a local chain, so those specs are gone, and every surviving spec is read-only
+    # and stubs at the /api/ensv1/* boundary with cy.intercept.
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

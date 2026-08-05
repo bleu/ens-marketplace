@@ -14,10 +14,7 @@ pre-joined queries instead.
   Hasura GraphQL API, run via Docker) — not a hand-rolled polling loop. Reorg-handling,
   chunked historical backfill, and checkpointing are exactly the kind of infrastructure
   not worth reinventing; Envio was chosen over Ponder as the out-of-the-box option here.
-  - `config.yaml` — one `Registry`/`OrderManager`/`LeaseVault` contract definition (shared
-    across networks), addresses/`start_block` supplied per chain. Both Anvil and Sepolia
-    index via plain RPC (`for: sync`, not HyperSync) — see below for why, and how to
-    switch Sepolia to HyperSync once you have a token.
+  - `config.yaml` — one `Registry`/`OrderManager`/`LeaseVault` contract definition (kept separate from the chain list so more chains can be added without touching it), addresses/`start_block` supplied per chain. Sepolia is the only chain today, and it indexes via plain RPC (`for: sync`, not HyperSync) — see below for why, and how to switch it to HyperSync once you have a token.
   - `schema.graphql` — `IndexedName`, `DomainOrder`, `SubnameListing`, `DomainActivity`
     entities.
   - `src/handlers/{Registry,OrderManager,LeaseVault}.ts` — one `indexer.onEvent(...)`
@@ -49,32 +46,25 @@ comes from a *different* event — `Registry.SubnameRegistered` — and lands on
 
 ## Running it locally
 
-```bash
-# 1. Local Anvil chain + contracts deployed (see docs/local-demo.md)
+No chain to run — the contracts this indexes are already live on Sepolia (addresses in the root `README.md`), so a first `pnpm dev` backfills from their deploy block over the public RPC and then follows the chain.
 
-# 2. The indexer (needs Docker running — spins up its own Postgres + Hasura)
+```bash
+# 1. The indexer (needs Docker running — spins up its own Postgres + Hasura)
 cd apps/indexer
 pnpm dev
 # GraphQL playground: http://localhost:8080/v1/graphql (admin secret: testing)
 
-# 3. apps/api (separate terminal)
+# 2. apps/api (separate terminal)
 cd apps/api
 pnpm run start:dev   # listens on :3001, INDEXER_GRAPHQL_URL defaults to localhost:8080
 
-# 4. apps/demo (separate terminal) — DOMAINS_API_URL defaults to localhost:3001
+# 3. apps/demo (separate terminal) — DOMAINS_API_URL defaults to localhost:3001
 cd apps/demo
 pnpm dev
 ```
 
 **Note on `ENVIO_API_TOKEN`:** HyperIndex itself is fully open-source and self-hostable —
-the token is only for **HyperSync** (Envio's accelerated historical-log service). Both
-Anvil and Sepolia are configured to index via plain RPC (`for: sync` in `config.yaml`)
-instead, so nothing here needs a token out of the box. A plain `rpc:` string alone isn't
-enough for a HyperSync-covered chain like Sepolia — it only becomes a *fallback*, and
-HyperSync (and its token requirement) stays primary; `for: sync` is what actually forces
-RPC to be used instead. Once you want HyperSync's speed edge for Sepolia, get a free token
-at https://envio.dev/app/api-tokens, set `ENVIO_API_TOKEN`, and drop the Sepolia chain's
-`rpc:` override in `config.yaml` (or change `for:` to `fallback`/`realtime`).
+the token is only for **HyperSync** (Envio's accelerated historical-log service). Sepolia is configured to index via plain RPC (`for: sync` in `config.yaml`) instead, so nothing here needs a token out of the box. A plain `rpc:` string alone isn't enough for a HyperSync-covered chain like Sepolia — it only becomes a *fallback*, and HyperSync (and its token requirement) stays primary; `for: sync` is what actually forces RPC to be used instead. Once you want HyperSync's speed edge for Sepolia, get a free token at https://envio.dev/app/api-tokens, set `ENVIO_API_TOKEN`, and drop the Sepolia chain's `rpc:` override in `config.yaml` (or change `for:` to `fallback`/`realtime`).
 
 ## Production hosting
 

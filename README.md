@@ -27,12 +27,13 @@ forkable — if Bleu ever couldn't run this, someone else could.
 
 | Component | Path | Status |
 |---|---|---|
-| ENSv2 mock marketplace — canonical-ID orders, regeneration-aware suspend/diff/accept-refill, subname leasing (announce/rent/reclaim) | `contracts/src/v2/`, `contracts/src/mock/` | **Live** — deployed + tested on local Anvil and Sepolia (see Deployed addresses) |
+| ENSv2 mock marketplace — canonical-ID orders, regeneration-aware suspend/diff/accept-refill, subname leasing (announce/rent/reclaim) | `contracts/src/v2/`, `contracts/src/mock/` | **Live** — deployed + verified on Sepolia (see Deployed addresses), 31 Foundry tests |
 | Real ENSv1 (mainnet) integration — real name/owner/resolver lookups via the ENS subgraph, real active listings from OpenSea and Grails, a real Seaport buy flow using real ETH | `apps/demo/lib/ensv1.ts`, `apps/demo/app/api/ensv1/` | **Live** — reads real mainnet data; purchases are genuine on-chain transactions |
-| Demo app — Explore/detail/list pages for both the ENSv2 mock marketplace and real ENSv1 data, Cypress e2e suite | `apps/demo` | **Live** |
-| Renewal router (swap-in-any-token, routes to the already-deployed referrer contract) | `contracts/src/v1/` | PoC — mainnet v1, interface-only so far (Slice 2, see `docs/poc-slice-2.md`) |
+| Demo app — Explore/detail/list pages for both the ENSv2 mock marketplace and real ENSv1 data, plus real ENSv2 alpha registration | `apps/demo` | **Live** |
+| Indexer for the ENSv2 marketplace (Envio HyperIndex) + the read API in front of it | `apps/indexer`, `apps/api` | **Live** — see `docs/ensv2-indexer.md` |
+| Renewal router (swap-in-any-token, routes to the already-deployed referrer contract) | `contracts/src/v1/` | PoC — mainnet v1, deploy scripts and `ISwapAdapter` are skeletons (Slice 2, see `docs/poc-slice-2.md`) |
 | v1 core market (listings/offers/registrations, Seaport-based) | `contracts/src/market/` | Stub — grant-scope |
-| Indexer | `indexer/` | Stub — grant-scope |
+| Full indexer (name + market state, search, portfolio, alerts) | `indexer/` | Stub — grant-scope, distinct from the ENSv2-only `apps/indexer` above |
 | SDKs | `sdk/` | Stub — grant-scope |
 
 See `docs/poc-slice-1.md` and `docs/poc-slice-2.md` for the two PoC demo scripts, and
@@ -50,30 +51,23 @@ cd ens-marketplace
 # Contracts
 cd contracts && forge install && forge build && forge test -vvv && cd ..
 
-# Demo app — against local Anvil (see docs/local-demo.md for the full walkthrough,
-# including seeding demo data and running the Cypress suite)
-cd apps/demo
-cp .env.example .env.local   # fill in a WalletConnect project ID + RPC URLs
-pnpm install && pnpm dev
+# Demo app
+cd apps/demo && pnpm install && pnpm dev
 ```
 
-The demo app also runs against the real Sepolia deployment below with no local chain
-needed — set `NEXT_PUBLIC_SEPOLIA_RPC_URL` and switch your wallet to Sepolia.
+The demo app needs no configuration and no wallet to be useful: mainnet is its default chain, so `/domains` opens on the read-only ENSv1 view immediately. Connect a wallet on Sepolia to reach the ENSv2 marketplace below. See `apps/demo/README.md` for the optional env vars (API keys, dedicated RPC URLs) and what you lose without each one, and `docs/ensv2-indexer.md` for running the indexer and read API locally.
 
 ## Deployed addresses
 
 ### ENSv2 mock marketplace
 
-Our own `MockENSv2Registry` (ERC-1155-style canonical IDs, mutable token IDs that
-regenerate on owner/resolver change) — not the real ENSv2 protocol, which isn't live on
-any network yet. See `docs/roadmap.md`'s open items for why. Deployed via
-`contracts/script/DeployV2Sepolia.s.sol` / `DeployLocal.s.sol` — see `docs/local-demo.md`.
+Our own `MockENSv2Registry` (ERC-1155-style canonical IDs, mutable token IDs that regenerate on owner/resolver change) — not the real ENSv2 protocol, which isn't live on any network yet. See `docs/roadmap.md`'s open items for why. Deployed and Etherscan-verified on Sepolia via `contracts/script/DeployV2Sepolia.s.sol`, which also seeds the demo data listed in `apps/demo/README.md`. Sepolia is the only deployment — there is no local-chain variant.
 
-| Contract | Sepolia | Local Anvil |
-|---|---|---|
-| `MockENSv2Registry` | [`0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2`](https://sepolia.etherscan.io/address/0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2) | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
-| `CanonicalIdOrderManager` | [`0xdF913A7a34A232C934A09FE7FF322926CeF14812`](https://sepolia.etherscan.io/address/0xdF913A7a34A232C934A09FE7FF322926CeF14812) | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
-| `SubnameLeaseVault` | [`0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f`](https://sepolia.etherscan.io/address/0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f) | `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0` |
+| Contract | Sepolia |
+|---|---|
+| `MockENSv2Registry` | [`0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2`](https://sepolia.etherscan.io/address/0xabC2fb3Ea33e0eF05146b3e5D85BE901bDDee0d2) |
+| `CanonicalIdOrderManager` | [`0xdF913A7a34A232C934A09FE7FF322926CeF14812`](https://sepolia.etherscan.io/address/0xdF913A7a34A232C934A09FE7FF322926CeF14812) |
+| `SubnameLeaseVault` | [`0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f`](https://sepolia.etherscan.io/address/0xD35ef25293e63A348CA857EcD46d350b6b0A4B2f) |
 
 ### Slice 2 (mainnet v1, not yet deployed)
 
