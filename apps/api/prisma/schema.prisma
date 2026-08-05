@@ -48,3 +48,46 @@ model GrailsListing {
   @@index([nameLength])
   @@index([name])
 }
+
+/// One listing created on Farol itself — an off-chain signed Seaport order, stored here
+/// because there is nowhere else to put it (Seaport orders only touch the chain when
+/// they're fulfilled or cancelled). Read alongside GrailsListing, so the columns that
+/// feed apps/web's EnsV1Listing shape are deliberately the same ones.
+model FarolListing {
+  id Int @id @default(autoincrement())
+
+  orderHash String @unique
+
+  name       String
+  nameLength Int
+
+  /// Which ENS contract minted the token being sold, and its id there. NameWrapper
+  /// (ERC-1155) uses namehash, BaseRegistrar (ERC-721) uses labelhash.
+  tokenContract String
+  tokenId       String
+  itemType      Int
+
+  /// Decimal(78, 0), not BigInt — same reason as GrailsListing: a real 40 ETH listing
+  /// overflowed a Postgres bigint during the first scrape run.
+  priceWei      Decimal @db.Decimal(78, 0)
+  priceCurrency String
+
+  protocolAddress String
+  protocolData    Json
+
+  sellerAddress String
+  /// Seaport's counter for this offerer at signing time. incrementCounter invalidates
+  /// every order below it, and the sweep has no other way to notice.
+  counter   String
+  startTime Int
+  endTime   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([priceWei])
+  @@index([nameLength])
+  @@index([name])
+  @@index([sellerAddress])
+  @@index([endTime])
+}

@@ -102,6 +102,9 @@ services:
       DATABASE_URL: postgresql://${API_PG_USER:-postgres}:${API_PG_PASSWORD:?error}@api-postgres:5432/${API_PG_DATABASE:-ens_marketplace_api}
       INDEXER_GRAPHQL_URL: http://graphql-engine:8080/v1/graphql
       INDEXER_HASURA_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:?error}
+      # Required here, unlike locally: the Farol order book's sweep and order-hash derivation
+      # would otherwise run against a shared public RPC.
+      MAINNET_RPC_URL: ${MAINNET_RPC_URL:?error}
       PORT: 3001
     command: sh -c "pnpm exec prisma migrate deploy && pnpm run start"
     ports:
