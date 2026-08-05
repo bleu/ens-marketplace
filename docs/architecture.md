@@ -1,6 +1,6 @@
 # Architecture
 
-This repo is the PoC + eventual production submission for Bleu's bid on the ENS DAO SPP3
+This repo is the beta + eventual production submission for Bleu's bid on the ENS DAO SPP3
 Marketplace RFP. Two design decisions distinguish this marketplace from static
 Seaport/OpenSea-style listings, and are load-bearing enough to document here rather than
 leave implicit in code comments.

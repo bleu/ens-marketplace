@@ -4,9 +4,9 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "lint": "pnpm --filter demo lint",
-    "build": "pnpm --filter demo build",
-    "test": "pnpm --filter demo test"
+    "lint": "pnpm --filter web lint",
+    "build": "pnpm --filter web build",
+    "test": "pnpm --filter web test"
   },
   "pnpm": {
     "overrides": {

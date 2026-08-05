@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in the contracts, demo app, or docs isn't working as intended
+about: Something in the contracts, web app, or docs isn't working as intended
 labels: bug
 ---
 
@@ -13,5 +13,5 @@ labels: bug
 ## Which part of the repo
 
 - [ ] `contracts/` (which contract/test)
-- [ ] `apps/demo`
+- [ ] `apps/web`
 - [ ] docs

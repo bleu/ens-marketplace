@@ -37,9 +37,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Lint
-        run: pnpm --filter demo lint
+        run: pnpm --filter web lint
       - name: Typecheck + build
-        run: pnpm --filter demo build
+        run: pnpm --filter web build
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
 
@@ -68,9 +68,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Ensure the Cypress binary is installed
-        run: pnpm --filter demo exec cypress install
+        run: pnpm --filter web exec cypress install
       - name: Build + run Cypress against a production build
-        run: pnpm --filter demo e2e
+        run: pnpm --filter web e2e
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ci-placeholder
       - name: Upload Cypress screenshots on failure
@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots
-          path: apps/demo/cypress/screenshots
+          path: apps/web/cypress/screenshots
 
   api:
     runs-on: ubuntu-latest
@@ -139,7 +139,7 @@ jobs:
           # since running it again would deploy a fresh instance and immediately
           # invalidate those README addresses; re-enable deliberately, together with a
           # README update, once auto-redeploy-per-tag is actually the intended workflow.
-          # DeployV1Sepolia.s.sol (RenewalRouter) is still a skeleton — see docs/poc-slice-2.md.
+          # DeployV1Sepolia.s.sol (RenewalRouter) is still a skeleton — see docs/slice-2.md.
           echo "No auto-deploy wired up yet — see comments in this step for why."
           # forge script script/DeployV2Sepolia.s.sol --rpc-url sepolia --broadcast --verify
           # forge script script/DeployV1Sepolia.s.sol --rpc-url sepolia --broadcast --verify

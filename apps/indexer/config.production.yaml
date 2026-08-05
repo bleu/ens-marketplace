@@ -33,7 +33,7 @@ contracts:
 chains:
   # HyperSync is primary (real ENVIO_API_TOKEN configured in production); the bare `rpc:`
   # string (no `for:` override) becomes a fallback automatically for HyperSync-covered
-  # chains — same publicnode endpoint apps/demo's wagmi.ts already falls back to.
+  # chains — same publicnode endpoint apps/web's wagmi.ts already falls back to.
   - id: 11155111
     start_block: 11371094
     rpc: https://ethereum-sepolia-rpc.publicnode.com

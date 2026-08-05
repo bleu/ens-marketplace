@@ -55,7 +55,7 @@ contract MockENSv2Registry is IENSv2Registry, IENSv2Resolver, IRegistryAdmin {
         return _roles[canonicalId][role][account];
     }
 
-    /// @notice Simplified for the PoC: no real forward-resolution, just the record owner.
+    /// @notice Simplified for the beta: no real forward-resolution, just the record owner.
     function addr(uint256 canonicalId) external view returns (address) {
         return _records[canonicalId].owner;
     }

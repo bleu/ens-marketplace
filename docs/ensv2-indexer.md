@@ -1,7 +1,7 @@
 # Indexing our own ENSv2 marketplace with Envio HyperIndex
 
-The ENSv2 mock marketplace had no indexer at PoC stage (a deliberate, documented choice) —
-`apps/demo/lib/events.ts`'s hooks did live, unbounded `eth_getLogs` scans on every page
+The ENSv2 mock marketplace originally had no indexer (a deliberate, documented choice) —
+`apps/web/lib/events.ts`'s hooks did live, unbounded `eth_getLogs` scans on every page
 load, plus a full-dataset `orders()`/`nameOf()` multicall on a 3-second poll regardless of
 which page was visible. That already produced real RPC rate-limit failures at today's tiny
 scale; at "thousands of domains listed" it gets categorically worse. This doc records the
@@ -26,10 +26,10 @@ pre-joined queries instead.
   reshaping results into REST (`GET /domains/search`, `/domains/:id/activity`,
   `/domains/:id/last-sale`, `/domains/owned`, `/subnames/search`, `/subnames/count`).
   apps/api never owns this data's schema — Envio does.
-- **`apps/demo`** gets new Next.js proxy routes under `app/api/domains/*` and
+- **`apps/web`** gets new Next.js proxy routes under `app/api/domains/*` and
   `app/api/subnames/*` (same "Next.js always fronts backend calls" pattern as the Grails
   migration), forwarding to apps/api via `DOMAINS_API_URL`.
-- `apps/demo/lib/events.ts`'s hooks now fetch from these proxy routes instead of scanning
+- `apps/web/lib/events.ts`'s hooks now fetch from these proxy routes instead of scanning
   events client-side: `useDomainSearch`/`useSubnameSearch` (new, paginated, replacing
   `useKnownDomainIds`/`useKnownSubnameIds` + the old multicall) and `useLastSale`/
   `useNameActivity`/`useSubnameCount`/`useOwnedNames` (same signatures as before, now
@@ -58,8 +58,8 @@ pnpm dev
 cd apps/api
 pnpm run start:dev   # listens on :3001, INDEXER_GRAPHQL_URL defaults to localhost:8080
 
-# 3. apps/demo (separate terminal) — DOMAINS_API_URL defaults to localhost:3001
-cd apps/demo
+# 3. apps/web (separate terminal) — DOMAINS_API_URL defaults to localhost:3001
+cd apps/web
 pnpm dev
 ```
 

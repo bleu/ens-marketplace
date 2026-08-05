@@ -1,6 +1,6 @@
-/// Mirrors apps/demo/lib/ensv1.ts's EnsV1Listing/OpenSeaListing exactly — this service's
-/// whole job is producing data apps/demo can drop in with zero shape changes on its side.
-/// Duplicated here rather than imported across the workspace since apps/api and apps/demo
+/// Mirrors apps/web/lib/ensv1.ts's EnsV1Listing/OpenSeaListing exactly — this service's
+/// whole job is producing data apps/web can drop in with zero shape changes on its side.
+/// Duplicated here rather than imported across the workspace since apps/api and apps/web
 /// are genuinely separate deployables with no shared package between them.
 
 export interface OpenSeaOfferItem {
@@ -23,7 +23,7 @@ export interface EnsV1Listing {
   source: "opensea" | "grails";
 }
 
-/// Same Seaport 1.6 mainnet deployment address apps/demo/lib/ensv1.ts uses — shared by
+/// Same Seaport 1.6 mainnet deployment address apps/web/lib/ensv1.ts uses — shared by
 /// every marketplace built on the protocol (OpenSea, Grails, ...).
 export const SEAPORT_CONTRACT_ADDRESS = "0x0000000000000068F116a894984e2DB1123eB395" as const;
 const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";

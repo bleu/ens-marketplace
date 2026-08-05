@@ -1,0 +1,259 @@
+/* ── Farol design system tokens — ported from the "ENS Market" Claude Design
+   project (colors_and_type.css), then retinted so the UI leads with the mark's
+   salmao flare over a deep profundo/ink ground rather than the original aqua.
+   Dark-only; this app has no light theme. ──
+   Font @import lines must precede @import "tailwindcss" — CSS requires all
+   @import rules to come first, and Tailwind's own import expands into
+   non-import rules that would otherwise push these out of order. */
+@import url("https://api.fontshare.com/v2/css?f[]=erode@200,300,400,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@300;400;500;600&family=Inter:wght@500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  /* Color - ink (near-black) */
+  --color-ink-900: #0f1321;
+  --color-ink-950: #0a0d18;
+  --color-ink-1000: #020308;
+
+  /* Color - papel */
+  --color-papel-0: #ffffff;
+  --color-papel-50: #f8f6ef;
+  --color-papel-100: #f2f4f1;
+  --color-papel-200: #cfd1cc;
+
+  /* Color - salmao (the mark's flare, and the primary brand color) */
+  --color-salmao-300: #ffa88f;
+  --color-salmao-500: #ff8668;
+  --color-salmao-700: #ce695e;
+  --color-lima-300: #b3fd8b;
+  --color-lima-500: #78ea96;
+
+  /* Color - brasa. Error states need their own hue now that salmao is the brand —
+     sharing it would make every error read as a highlight. */
+  --color-brasa-500: #f4474d;
+  --color-brasa-700: #b8333a;
+  --danger-rgb: 244, 71, 77;
+
+  /* Color - profundo neutrals */
+  --color-profundo-300: #4c7d92;
+  --color-profundo-500: #4c6f92;
+  --color-profundo-700: #2a3a4c;
+
+  /* Color - sinal */
+  --color-sinal-success: var(--color-lima-500);
+  --color-sinal-warn: var(--color-salmao-500);
+  --color-sinal-danger: var(--color-brasa-500);
+
+  /* Semantic (dark) */
+  --bg: var(--color-ink-900);
+  --bg-deep: var(--color-ink-950);
+  --bg-raised: #11192a;
+  --fg: var(--color-papel-100);
+  --fg-muted: rgba(242, 244, 241, 0.72);
+  --fg-dim: rgba(242, 244, 241, 0.48);
+  --line: rgba(242, 244, 241, 0.1);
+  --line-strong: rgba(242, 244, 241, 0.22);
+  /* Small-caps section labels ("SOURCE", "PREVIEW"). Muted brick rather than the bright
+     brand coral, so a page's section labels sit below its in-card eyebrows. */
+  --fg-kicker: var(--color-salmao-700);
+
+  --brand: var(--color-salmao-500);
+  --brand-hover: var(--color-salmao-300);
+  --brand-cta: var(--color-salmao-500);
+  --brand-ink: var(--color-ink-900);
+  /* Bare channel triple so inline `rgba(var(--brand-rgb), 0.08)` tints track the brand
+     instead of hardcoding it at every call site, which is how the old aqua got stuck. */
+  --brand-rgb: 255, 134, 104;
+  --accent: var(--color-brasa-500);
+  --highlight: var(--color-lima-300);
+
+  /* Type families */
+  --font-display: "Erode", "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --font-display-italic: "Instrument Serif", "Erode", Georgia, serif;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  --font-kicker: "Geist Mono", "Unbounded", sans-serif;
+
+  /* Letter spacing */
+  --tracking-tight: -0.06em;
+  --tracking-snug: -0.03em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.1em;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 144px;
+
+  /* Radii */
+  --radius-0: 0px;
+  --radius-1: 2px;
+  --radius-2: 6.5px;
+  --radius-3: 12px;
+  --radius-pill: 999px;
+
+  /* Halos & shadows */
+  --halo-soft: 0 0 60px 0 rgba(76, 111, 146, 0.45);
+  --halo-bright: 0 0 100px 0 rgba(255, 134, 104, 0.55);
+  --halo-warm: 0 0 100px 0 rgba(255, 134, 104, 0.45);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(2, 4, 12, 0.45);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-tight);
+}
+* {
+  box-sizing: border-box;
+}
+::selection {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--brand-hover);
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(242, 244, 241, 0.14);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Used where a scrollable strip already has its own overflow affordance
+   (e.g. the tab strip's fade+chevron from ScrollHint, with the active tab's
+   salmao underline directly above the track) so the plain gray native
+   scrollbar doesn't sit stacked right under it and read as a second,
+   broken-looking underline/progress bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Hover feedback for primary interactive controls ──
+   These elements set their resting color/border/background via inline
+   `style` (so per-instance state like "active tab" or "selected row" can be
+   computed in JS). An inline `style` declaration beats a normal-weight rule
+   from an external stylesheet regardless of selector specificity, so a
+   plain `.foo:hover { color: ... }` here would silently never apply to an
+   element that also has `style={{ color: ... }}`. Rather than reach for
+   `!important`, the components below now source their resting color/border
+   from these classes instead of inline `style`, so the :hover rules are the
+   only rule that needs to win. */
+.nav-link {
+  color: var(--fg-muted);
+  border-color: transparent;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.nav-link:hover {
+  color: var(--brand-hover);
+}
+.nav-link-active {
+  color: var(--fg);
+  border-color: var(--brand);
+}
+
+.btn-outline {
+  border-color: var(--line-strong);
+  color: var(--fg);
+  background: transparent;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.btn-outline:hover {
+  background: rgba(242, 244, 241, 0.06);
+  border-color: var(--brand);
+}
+
+.btn-cta {
+  transition:
+    filter var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+.btn-cta:hover {
+  filter: brightness(1.12);
+}
+
+.explore-row {
+  transition: background var(--dur-1) var(--ease-out);
+}
+.explore-row:hover {
+  background: rgba(242, 244, 241, 0.035);
+}
+.select-pill {
+  border-color: var(--line-strong);
+  color: var(--fg);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+.explore-row:hover .select-pill {
+  border-color: var(--brand);
+  color: var(--brand-hover);
+}
+
+/* ── Focus feedback for plain text inputs ──
+   These inputs set their resting/error border-color via inline `style`
+   (so the per-instance validation state can be computed in JS), which beats
+   a plain `.input-field:focus { border-color: ... }` rule regardless of
+   specificity. Rather than fight that with `!important`, focus is signaled
+   with a box-shadow ring instead — additive, so it shows up next to any
+   resting or error border color and needs no JS changes. */
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.25);
+}
+.search-form {
+  border-color: var(--line);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.search-form:focus-within {
+  border-color: var(--brand);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -15,7 +15,7 @@ interface ActivityRow {
   txHash: string;
 }
 
-/// Mirrors apps/demo/lib/events.ts's formatActivity exactly (same event names, colors,
+/// Mirrors apps/web/lib/events.ts's formatActivity exactly (same event names, colors,
 /// and ETH-formatted detail strings) — the indexer stores raw event params (argsJson),
 /// display formatting stays a frontend/API-layer concern rather than baked into the index.
 export function formatActivity(row: ActivityRow): ActivityItem {

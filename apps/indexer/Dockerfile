@@ -24,7 +24,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # pnpm needs every workspace member's package.json present to resolve the lockfile
 # consistently, even though --filter only installs indexer's own dependencies.
 COPY apps/api/package.json apps/api/package.json
-COPY apps/demo/package.json apps/demo/package.json
+COPY apps/web/package.json apps/web/package.json
 COPY apps/indexer/package.json apps/indexer/package.json
 RUN pnpm install --frozen-lockfile --filter indexer
 

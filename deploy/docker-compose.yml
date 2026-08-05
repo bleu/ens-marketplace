@@ -1,5 +1,5 @@
 # Production deployment for apps/api + apps/indexer (the ENSv2 marketplace backend).
-# apps/demo (the Next.js frontend) is deployed separately, to Vercel — see
+# apps/web (the Next.js frontend) is deployed separately, to Vercel — see
 # docs/ensv2-indexer.md. Run from the repo root:
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 #

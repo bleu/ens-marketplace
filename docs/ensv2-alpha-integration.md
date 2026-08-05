@@ -58,7 +58,7 @@ The real `ETHRegistry` has a `TokenRegenerated(uint256 oldTokenId, uint256 newTo
 event and `getState()`/`getStatus()` — a resolver/owner mutation that requires regeneration
 retires the old token ID entirely rather than leaving it silently valid. This is exactly the
 mechanic our own `CanonicalIdOrderManager`'s suspend-on-mutation design
-(`docs/poc-slice-1.md`'s "regeneration-aware, not regeneration-surviving") was built around
+(`docs/slice-1.md`'s "regeneration-aware, not regeneration-surviving") was built around
 speculatively, before this real contract was found. It isn't identical (our own scheme pins
 an order to a state hash and flags it Suspended; the real registry regenerates the token ID
 itself), but the underlying thesis — that ENSv2 mutation must be actively detected, not
@@ -66,10 +66,10 @@ silently survived — matches what ENS actually shipped.
 
 ## What this integration does and doesn't do
 
-- **Does**: a real commit-reveal registration flow (`apps/demo/app/domains/ensv2-alpha/register`)
-  and a real name detail/activity view (`apps/demo/app/domains/ensv2-alpha/[label]`) against
+- **Does**: a real commit-reveal registration flow (`apps/web/app/domains/ensv2-alpha/register`)
+  and a real name detail/activity view (`apps/web/app/domains/ensv2-alpha/[label]`) against
   the live contracts above, reachable via a third "Real ENSv2 (Sepolia Alpha)" mode on
-  `/domains` (see `apps/demo/lib/network-mode.tsx`, `apps/demo/lib/ensv2-alpha.ts`).
+  `/domains` (see `apps/web/lib/network-mode.tsx`, `apps/web/lib/ensv2-alpha.ts`).
 - **Does not** wire our own `CanonicalIdOrderManager`/buy-sell marketplace against the real
   `ETHRegistry` — that would mean deploying our own contracts against a third party's live,
   unaudited, unstable alpha registry, which isn't warranted yet. Tracked as future work under

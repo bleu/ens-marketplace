@@ -88,7 +88,7 @@ importers:
         specifier: ^8.66.0
         version: 8.66.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3)
 
-  apps/demo:
+  apps/web:
     dependencies:
       '@adraffy/ens-normalize':
         specifier: ^1.11.1

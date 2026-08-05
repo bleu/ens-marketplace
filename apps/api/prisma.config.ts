@@ -6,7 +6,7 @@ import { defineConfig } from "prisma/config";
 // connection, but it also broke `prisma generate` (which doesn't need one, just the
 // schema file) running as apps/api's postinstall during a plain monorepo-wide
 // `pnpm install` in CI jobs/contexts that don't set DATABASE_URL at all (e.g. this
-// repo's existing `frontend` CI job, which only cares about apps/demo). A placeholder
+// repo's existing `frontend` CI job, which only cares about apps/web). A placeholder
 // fallback keeps `generate`'s config loading from hard-failing in those contexts,
 // without masking a real missing-DATABASE_URL problem for `migrate`/the scraper, which
 // fail with an actual connection error instead — a clearer signal than a thrown config error.
