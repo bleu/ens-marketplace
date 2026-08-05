@@ -1,6 +1,6 @@
 import { createConfig, http } from "wagmi";
 import { injected, safe, walletConnect } from "wagmi/connectors";
-import { foundry, mainnet, sepolia } from "wagmi/chains";
+import { mainnet, sepolia } from "wagmi/chains";
 
 const rawProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
 // A real WalletConnect Cloud/Reown project id is a 32-char hex string. Checking for
@@ -21,26 +21,27 @@ const projectId = /^[0-9a-f]{32}$/i.test(rawProjectId) ? rawProjectId : "";
 // anyway.
 const connectors = [injected(), ...(projectId ? [walletConnect({ projectId })] : []), safe()];
 
-/// `foundry` (chainId 31337, local Anvil) is listed first — it's the default demo chain,
-/// since /domains defaults to the ENSv2 mock-marketplace view against it (see
-/// docs/local-demo.md). The ENSv2 mock marketplace is also deployed to Sepolia (README
-/// "Deployed addresses"); real ENSv2 mainnet doesn't exist yet.
+/// `mainnet` is listed first, which makes it the chain wagmi reports before any wallet
+/// connects. That's deliberate: mainnet is the one chain with data a wallet-less visitor
+/// can actually see (the read-only ENSv1 view — see lib/network-mode.tsx), so the landing
+/// view renders real listings instead of reading a chain nobody is on. Sepolia is where
+/// our own ENSv2 mock marketplace lives (see lib/contracts.ts); real ENSv2 mainnet doesn't
+/// exist yet.
 ///
 /// http()'s URL arg is optional and falls back to the chain's public default RPC when
-/// unset — fine for local dev, but exactly the kind of shared/rate-limited endpoint a
-/// public demo shouldn't depend on, so these read from the dedicated RPC env vars
-/// (documented in .env.example) when configured, and otherwise fall back to a more
-/// reliable public archive node rather than trusting the chain default silently — that
-/// default (thirdweb's public Sepolia endpoint) fails outright under real load ("HttpRequestError:
-/// ... Details: Failed to fetch"), confirmed live via the ENSv2 alpha detail page's activity
-/// scan, which fires several eth_getLogs calls at once.
+/// unset — exactly the kind of shared/rate-limited endpoint a public demo shouldn't depend
+/// on, so these read from the dedicated RPC env vars (see apps/demo/README.md) when
+/// configured, and otherwise fall back to a more reliable public archive node rather than
+/// trusting the chain default silently — that default (thirdweb's public Sepolia endpoint)
+/// fails outright under real load ("HttpRequestError: ... Details: Failed to fetch"),
+/// confirmed live via the ENSv2 alpha detail page's activity scan, which fires several
+/// eth_getLogs calls at once.
 const SEPOLIA_FALLBACK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 
 export const wagmiConfig = createConfig({
   connectors,
-  chains: [foundry, sepolia, mainnet],
+  chains: [mainnet, sepolia],
   transports: {
-    [foundry.id]: http(),
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
     [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || undefined),
   },

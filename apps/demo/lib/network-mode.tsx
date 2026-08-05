@@ -4,8 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Network, useCurrentNetwork } from "./contracts";
 
 /// Which name universe the Domains section is currently browsing/searching:
-/// - "ensv2": our own local mock marketplace (MockENSv2Registry + CanonicalIdOrderManager
-///   on Anvil) — full read/write feature set (list/buy/relist/cancel).
+/// - "ensv2": our own mock marketplace (MockENSv2Registry + CanonicalIdOrderManager on
+///   Sepolia) — full read/write feature set (list/buy/relist/cancel).
 /// - "ensv1": real mainnet ENS names, read-only ownership (via the ENS subgraph) plus
 ///   real OpenSea listings, with a real Seaport buy flow. Scoped to the Domains section
 ///   only — Subnames is an ENSv2-only differentiator with no ENSv1 equivalent.
@@ -18,31 +18,37 @@ export type NetworkMode = "ensv2" | "ensv1" | "ensv2-alpha";
 
 const NetworkModeContext = createContext<[NetworkMode, (mode: NetworkMode) => void] | null>(null);
 
-/// Each chain has exactly one mode that actually works against it (see the Source picker
-/// on /domains, which only ever shows the one option matching the connected chain) —
-/// keeps this map as the single source of truth for that pairing.
+/// Which mode a chain lands on when the current one doesn't apply to it. Sepolia carries
+/// two genuinely different ENSv2 deployments (our mock and ENS Labs' alpha), so it's the
+/// one chain where this is a pick rather than the only option — the alpha stays its
+/// default, as before.
 const DEFAULT_MODE_FOR_NETWORK: Record<Network, NetworkMode> = {
-  [Network.Anvil]: "ensv2",
   [Network.Sepolia]: "ensv2-alpha",
   [Network.Mainnet]: "ensv1",
 };
 
+const MODES_FOR_NETWORK: Record<Network, readonly NetworkMode[]> = {
+  [Network.Sepolia]: ["ensv2", "ensv2-alpha"],
+  [Network.Mainnet]: ["ensv1"],
+};
+
 export function NetworkModeProvider({ children }: { children: React.ReactNode }) {
-  const state = useState<NetworkMode>("ensv2");
+  // "ensv1" matches mainnet, the chain wagmi reports before a wallet connects (see
+  // lib/wagmi.ts) — so the landing view shows real mainnet listings rather than an empty
+  // ENSv2 grid for a chain the visitor isn't on.
+  const state = useState<NetworkMode>("ensv1");
   const [mode, setMode] = state;
   const currentNetwork = useCurrentNetwork();
 
   // Keeps `mode` following whichever chain is actually connected — on mount, and on any
-  // later wallet-initiated chain switch — rather than defaulting to (and getting stuck on)
-  // "ensv2" regardless of chain. Only resets when the current mode no longer belongs to
-  // this chain at all, not just when it isn't that chain's default, so switching between
-  // ENSv1/Grails/OpenSea while staying on Mainnet is left alone.
+  // later wallet-initiated chain switch. Only resets when the current mode no longer
+  // belongs to this chain at all, not just when it isn't that chain's default, so
+  // switching between ENSv1/Grails/OpenSea while staying on Mainnet (or between our mock
+  // and the alpha on Sepolia) is left alone. An unrecognised chain is left alone too —
+  // ChainGuard is what tells the user about that.
   useEffect(() => {
-    const belongsToCurrentChain =
-      (currentNetwork === Network.Anvil && mode === "ensv2") ||
-      (currentNetwork === Network.Sepolia && mode === "ensv2-alpha") ||
-      (currentNetwork === Network.Mainnet && mode === "ensv1");
-    if (!belongsToCurrentChain) setMode(DEFAULT_MODE_FOR_NETWORK[currentNetwork]);
+    if (currentNetwork === null) return;
+    if (!MODES_FOR_NETWORK[currentNetwork].includes(mode)) setMode(DEFAULT_MODE_FOR_NETWORK[currentNetwork]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNetwork]);
 

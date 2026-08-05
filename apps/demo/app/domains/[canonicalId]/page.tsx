@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses, useCurrentNetwork } from "@/lib/contracts";
+import { type ContractAddresses, Network, OrderStatus, orderManagerAbi, registryAbi, useContractAddresses } from "@/lib/contracts";
 import { parseCanonicalId } from "@/lib/canonicalId";
 import { computeStateHash } from "@/lib/statehash";
 import { isPositiveNumber, shortId } from "@/lib/format";
@@ -15,6 +15,7 @@ import { AddressLink } from "@/components/AddressLink";
 import { gradientFor } from "@/components/NameCard";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoonPanel } from "@/components/ComingSoon";
+import { SepoliaRequired } from "@/components/SepoliaRequired";
 
 const DETAIL_TABS: TabItem[] = [
   { id: "market", label: "Market" },
@@ -24,6 +25,16 @@ const DETAIL_TABS: TabItem[] = [
 ];
 
 export default function DomainDetailPage() {
+  const addresses = useContractAddresses();
+  // Everything below this page reads and writes lives on one chain, so there's nothing
+  // partial to render without a deployment — the whole page is the gate. Splitting it in
+  // two also keeps the inner component's hooks unconditional (rules of hooks) and resets
+  // its form state on a chain switch, which is what you want anyway.
+  if (!addresses) return <SepoliaRequired />;
+  return <DomainDetail addresses={addresses} />;
+}
+
+function DomainDetail({ addresses }: { addresses: ContractAddresses }) {
   const params = useParams<{ canonicalId: string }>();
   const parsedCanonicalId = parseCanonicalId(params.canonicalId);
   // Hooks below must run unconditionally (rules of hooks), so an invalid id falls back
@@ -33,8 +44,9 @@ export default function DomainDetailPage() {
   const canonicalId = parsedCanonicalId ?? 0n;
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { registry, orderManager } = useContractAddresses();
-  const network = useCurrentNetwork();
+  const { registry, orderManager } = addresses;
+  // Sepolia is the only chain with a deployment, so reaching this component means Sepolia.
+  const network = Network.Sepolia;
   const [relistPrice, setRelistPrice] = useState("");
   const [tab, setTab] = useState("market");
 
@@ -406,13 +418,7 @@ export default function DomainDetailPage() {
             <div className="flex-1 overflow-hidden rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
               {[
                 { k: "Token standard", v: "ERC-721-style" },
-                {
-                  k: "Registry",
-                  v:
-                    network === Network.Sepolia
-                      ? "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)"
-                      : "Mock ENSv2 registry (local Anvil)",
-                },
+                { k: "Registry", v: "Mock ENSv2 registry (Sepolia testnet — not the real ENSv2 registry)" },
                 { k: "Canonical ID", v: shortId(canonicalId.toString()), full: canonicalId.toString() },
                 { k: "Resolver", v: resolver ? <AddressLink address={resolver as `0x${string}`} network={network} /> : "—" },
                 { k: "Subnames", v: `${subnameCount} issued` },

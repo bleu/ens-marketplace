@@ -7,26 +7,26 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const SOURCES = [
   {
-    chain: "Anvil (local)",
-    label: "Local",
-    description: "Our own mock ENSv2 registry + order manager — full read/write, list/buy/relist/cancel.",
-  },
-  {
-    chain: "Sepolia",
-    label: "ENSv2",
-    description: "ENS Labs' own real ENSv2 alpha contracts — real commit-reveal registration, paid in a real ERC-20.",
-  },
-  {
     chain: "Mainnet",
     label: "ENSv1 · Grails · OpenSea",
     description: "Real ENS names on Ethereum mainnet — read-only ownership, real active listings, a real Seaport buy flow.",
   },
+  {
+    chain: "Sepolia",
+    label: "ENSv2 mock",
+    description: "Our own mock ENSv2 registry + order manager — full read/write, list/buy/relist/cancel.",
+  },
+  {
+    chain: "Sepolia",
+    label: "ENSv2 alpha",
+    description: "ENS Labs' own real ENSv2 alpha contracts — real commit-reveal registration, paid in a real ERC-20.",
+  },
 ] as const;
 
-/// Which of the three sources is even reachable depends entirely on which chain a wallet
-/// is connected to (see lib/network-mode.tsx's chain→mode pairing) — so there's nothing
-/// meaningful to show before a wallet is connected. Once one is, /domains picks the right
-/// source automatically; this page's only job is getting from "no wallet" to that point.
+/// Which of the three sources is reachable depends on which chain a wallet is connected to
+/// (see lib/network-mode.tsx's chain→mode pairing). Mainnet's read-only ENSv1 view needs no
+/// wallet at all, so /domains is worth landing on either way — this page's only job is
+/// getting from "no wallet" to a connected one for the two Sepolia sources.
 export default function Home() {
   const router = useRouter();
   const { isConnected } = useAccount();
