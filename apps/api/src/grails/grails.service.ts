@@ -43,9 +43,9 @@ function toEnsV1Listing(row: GrailsListing): EnsV1Listing {
   };
 }
 
-/// Query semantics deliberately match apps/demo's current live-Grails-API route exactly
+/// Query semantics deliberately match apps/web's current live-Grails-API route exactly
 /// (same filter params, same page size, same response shape) — the whole point of this
-/// service is that apps/demo's frontend code needs zero changes when its API route
+/// service is that apps/web's frontend code needs zero changes when its API route
 /// switches from calling Grails directly to calling this service instead.
 @Injectable()
 export class GrailsService {

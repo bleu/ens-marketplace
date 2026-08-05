@@ -1,8 +1,10 @@
-# indexer — grant-scope, not PoC
+# indexer — grant-scope, not in the beta
 
-The PoC reads chain state directly ("no indexer, no search, no polish" per the product
-definition). A full indexer (name state, market state, search, portfolio, alerts) is
-grant-scope work, sequenced after the PoC — see `../docs/roadmap.md`.
+The beta indexes only its own ENSv2 marketplace contracts, via `apps/indexer` (Envio
+HyperIndex) read through `apps/api` — see `../docs/ensv2-indexer.md`. The full indexer this
+folder marks is a wider job: all ENS name state, market state across marketplaces, search,
+portfolio, and alerts. That's grant-scope work, sequenced after the beta — see
+`../docs/roadmap.md`.
 
 Reference architecture worth studying when this is built: a Fastify API + Viem-based
 blockchain indexer + Postgres (WAL-based CDC) + Redis + Elasticsearch microservice split,

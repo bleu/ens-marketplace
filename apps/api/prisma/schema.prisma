@@ -10,7 +10,7 @@ datasource db {
 
 /// A snapshot of one real Grails (grails.app) listing — Grails' API is being
 /// discontinued, so this is scraped periodically (see src/scraper) instead of read live.
-/// Fields mirror exactly what's needed to reconstruct apps/demo's EnsV1Listing shape
+/// Fields mirror exactly what's needed to reconstruct apps/web's EnsV1Listing shape
 /// without any reshaping at read time.
 model GrailsListing {
   id Int @id @default(autoincrement())
@@ -34,7 +34,7 @@ model GrailsListing {
 
   protocolAddress String
   /// The full Seaport order ({ parameters, signature }) — stored as-is rather than
-  /// modeled relationally, since apps/demo only ever needs to pass it through untouched
+  /// modeled relationally, since apps/web only ever needs to pass it through untouched
   /// to a real Seaport fulfillment call, never to query into its internals.
   protocolData Json
 

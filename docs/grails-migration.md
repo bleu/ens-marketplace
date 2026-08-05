@@ -7,7 +7,7 @@ how to run the pieces.
 
 ## Why this exists
 
-`apps/demo/app/api/ensv1/grails-listings/route.ts` used to call
+`apps/web/app/api/ensv1/grails-listings/route.ts` used to call
 `https://api.grails.app/api/v1/search` directly on every page load. Once Grails' API goes
 away, that call fails outright — every visitor to the Grails source view would see a
 broken feed. `apps/api` (a separate NestJS + Prisma service, added to this monorepo) scrapes
@@ -17,7 +17,7 @@ route now proxies to `apps/api` instead of calling Grails.
 **The frontend didn't change at all.** `apps/api`'s `/grails/search` and `/grails/by-name`
 endpoints return the exact same shape the route always has
 (`{listings, unresolvedCount, next, total, totalPages}` / `{listing}}`) — `useGrailsListings`
-(`apps/demo/lib/ensv1-client.ts`) and `apps/demo/app/domains/page.tsx` needed zero changes.
+(`apps/web/lib/ensv1-client.ts`) and `apps/web/app/domains/page.tsx` needed zero changes.
 
 ## The real limitation: this is a snapshot, not a live feed
 
@@ -83,7 +83,7 @@ pnpm run scrape:grails
 Needs a `DATABASE_URL` repo secret pointing at a real, network-reachable Postgres instance.
 
 **Serving it to the Next.js app:** start `apps/api` (`pnpm --filter api run start:dev`,
-listens on port 3001 by default) and point `apps/demo/.env.local`'s `GRAILS_API_URL` at it
+listens on port 3001 by default) and point `apps/web/.env.local`'s `GRAILS_API_URL` at it
 (defaults to `http://localhost:3001` if unset).
 
 ## Database and hosting

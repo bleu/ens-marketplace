@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 /// Grails' own public search API — no API key required for reads (see
-/// apps/demo/app/api/ensv1/grails-listings/route.ts, which documents the same finding).
+/// apps/web/app/api/ensv1/grails-listings/route.ts, which documents the same finding).
 /// This is exactly what's being scraped ahead of its reported discontinuation — see
 /// docs/grails-migration.md.
 const GRAILS_SEARCH_URL = "https://api.grails.app/api/v1/search";
@@ -17,7 +17,7 @@ interface GrailsListingItem {
   seller_address: string;
   // Loosely typed and validated at runtime (isFulfillable below), not trusted — Grails-
   // native and OpenSea-mirrored results disagree on everything except protocol_data
-  // (same finding already documented in apps/demo's route).
+  // (same finding already documented in apps/web's route).
   order_data: Record<string, unknown>;
 }
 
@@ -35,7 +35,7 @@ interface GrailsSearchResponse {
   };
 }
 
-/// Ported verbatim from apps/demo/app/api/ensv1/grails-listings/route.ts's isFulfillable —
+/// Ported verbatim from apps/web/app/api/ensv1/grails-listings/route.ts's isFulfillable —
 /// deliberately identical logic, not reimplemented, so the two paths can't silently drift
 /// on what counts as a real, fulfillable listing during the migration.
 function isFulfillable(orderData: Record<string, unknown>): orderData is {

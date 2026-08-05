@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: ensv2-marketplace-indexer
-description: Indexes ENSv2 marketplace registry/order/lease events for the demo app
+description: Indexes ENSv2 marketplace registry/order/lease events for the web app
 # transaction.hash isn't selected by default — DomainActivity's id/txHash need it on every event.
 field_selection:
   transaction_fields:
@@ -42,7 +42,7 @@ chains:
   # Sepolia: `for: sync` forces RPC to be the primary data-source for both historical
   # and real-time indexing (a plain `rpc: <url>` string alone only becomes a *fallback*
   # for chains HyperSync natively covers — HyperSync itself would still be tried first
-  # and would still require a real ENVIO_API_TOKEN). Same publicnode endpoint apps/demo's
+  # and would still require a real ENVIO_API_TOKEN). Same publicnode endpoint apps/web's
   # wagmi.ts already falls back to (see lib/wagmi.ts's SEPOLIA_FALLBACK_RPC_URL). Worth
   # switching to HyperSync later for its speed edge (free token at
   # https://envio.dev/app/api-tokens, then set ENVIO_API_TOKEN and drop this override).

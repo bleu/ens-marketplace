@@ -6,7 +6,7 @@ export class GrailsController {
   constructor(private readonly grails: GrailsService) {}
 
   /// GET /grails/search?page=&minPrice=&maxPrice=&minLength=&maxLength=&startsWith=&endsWith=
-  /// Same param names/semantics as Grails' own live API and apps/demo's current proxy route.
+  /// Same param names/semantics as Grails' own live API and apps/web's current proxy route.
   @Get("search")
   async search(
     @Query("page") page?: string,
@@ -31,7 +31,7 @@ export class GrailsController {
   }
 
   /// GET /grails/by-name?name=alice.eth — replaces Grails' fuzzy q= search with an exact,
-  /// case-insensitive match (apps/demo's current route already re-filters q= results down
+  /// case-insensitive match (apps/web's current route already re-filters q= results down
   /// to an exact match itself, so this is a straight port of that same intent).
   @Get("by-name")
   async byName(@Query("name") name: string) {

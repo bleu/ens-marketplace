@@ -11,10 +11,10 @@ forge build
 forge test -vvv
 ```
 
-**Demo app** (Next.js, pnpm workspace):
+**Web app** (Next.js, pnpm workspace):
 
 ```bash
-cd apps/demo
+cd apps/web
 cp .env.example .env.local   # fill in a WalletConnect project ID + RPC URLs
 pnpm install
 pnpm dev
@@ -30,7 +30,7 @@ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, …) so history stays 
 ## Before opening a PR
 
 - `forge fmt --check` and `forge test` pass in `contracts/`.
-- `pnpm lint` and `pnpm build` pass in `apps/demo`.
+- `pnpm lint` and `pnpm build` pass in `apps/web`.
 - New contracts touching fund or permission safety (anything under `contracts/src/v2` or
   `contracts/src/v1`) should reference the relevant section of `docs/architecture.md` in
   the PR description, and add tests for the specific invariant being changed.

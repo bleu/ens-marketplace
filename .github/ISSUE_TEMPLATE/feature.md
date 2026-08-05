@@ -10,5 +10,5 @@ labels: enhancement
 
 ## Where this fits
 
-- [ ] PoC (Slice 1 / Slice 2 — see `docs/poc-slice-1.md` / `docs/poc-slice-2.md`)
+- [ ] Beta (Slice 1 / Slice 2 — see `docs/slice-1.md` / `docs/slice-2.md`)
 - [ ] Grant scope (see `docs/roadmap.md`)

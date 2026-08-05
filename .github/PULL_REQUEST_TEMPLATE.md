@@ -5,7 +5,7 @@
 ## Testing
 
 - [ ] `forge test` passes (if `contracts/` changed)
-- [ ] `pnpm lint && pnpm build` passes (if `apps/demo` changed)
+- [ ] `pnpm lint && pnpm build` passes (if `apps/web` changed)
 
 ## For contracts touching fund/permission safety
 

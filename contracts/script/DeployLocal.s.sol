@@ -9,7 +9,7 @@ import {SubnameLeaseVault} from "../src/v2/SubnameLeaseVault.sol";
 
 /// @notice Deploys the mock registry + both marketplace contracts to a local Anvil chain
 /// and seeds demo data, so there's real data to click through immediately after deploy.
-/// See docs/local-demo.md for the run recipe.
+/// See docs/local-dev.md for the run recipe.
 ///
 /// LOCAL-ONLY: the private keys below are Anvil's well-known default test keys (derived
 /// from the standard "test test test test test test test test test test test junk"

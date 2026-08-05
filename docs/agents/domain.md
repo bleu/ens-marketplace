@@ -35,4 +35,4 @@ If the concept you need isn't in the glossary yet, that's a signal — either yo
 
 ## Edit ADRs on conflict
 
-This is a fast-moving PoC, so decisions are fragile by design. If your output contradicts an existing ADR, don't just flag the contradiction — edit the ADR directly to record the new decision: update its status (superseded/amended), state what changed and why, and keep the old reasoning in place for the record. Then mention in your output which ADR you changed, so a human can review the edit rather than discover it later.
+This is a fast-moving beta, so decisions are fragile by design. If your output contradicts an existing ADR, don't just flag the contradiction — edit the ADR directly to record the new decision: update its status (superseded/amended), state what changed and why, and keep the old reasoning in place for the record. Then mention in your output which ADR you changed, so a human can review the edit rather than discover it later.
