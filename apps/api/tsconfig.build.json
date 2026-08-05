@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  // What `nest build` compiles: the server, without its tests. They stay in tsconfig.json
+  // so eslint's type-aware rules and `tsc --noEmit` still see them.
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test-doubles.ts"]
+}

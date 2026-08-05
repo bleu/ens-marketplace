@@ -8,7 +8,9 @@
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2022",
-    "lib": ["ES2022"],
+    // viem's dependency graph (ox) references DOM globals like `window` in its own .ts
+    // sources, which skipLibCheck does not cover — this app never touches the DOM itself.
+    "lib": ["ES2022", "DOM"],
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
