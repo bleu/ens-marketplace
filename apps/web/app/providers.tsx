@@ -10,7 +10,7 @@ import { NetworkModeProvider } from "@/lib/network-mode";
 const queryClient = new QueryClient();
 
 // Override RainbowKit's default light-only modal so it matches the app's
-// dark aqua/mono design system (see app/globals.css — "Dark-only; this app
+// dark salmao/mono design system (see app/globals.css — "Dark-only; this app
 // has no light theme"). Built on top of `darkTheme` and re-pointed at our
 // own tokens rather than inventing new colors.
 //
@@ -23,7 +23,7 @@ const queryClient = new QueryClient();
 // there's no intermediate object state for server and client evaluation to
 // disagree about.
 const rainbowKitBase = darkTheme({
-  accentColor: "#20c5d9" /* --color-aqua-500 / --brand */,
+  accentColor: "#ff8668" /* --color-salmao-500 / --brand */,
   accentColorForeground: "#0f1321" /* --color-ink-900 / --brand-ink */,
   borderRadius: "small",
   fontStack: "system",
@@ -46,7 +46,7 @@ const rainbowKitTheme = {
     connectButtonBackground: "#11192a" /* --bg-raised */,
     connectButtonInnerBackground: "#11192a" /* --bg-raised */,
     menuItemBackground: "#11192a" /* --bg-raised */,
-    selectedOptionBorder: "#20c5d9" /* --brand */,
+    selectedOptionBorder: "#ff8668" /* --brand */,
   },
   fonts: {
     ...rainbowKitBase.fonts,

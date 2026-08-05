@@ -52,7 +52,7 @@ export function ComingSoonPanel({
     >
       <div
         className="mb-2 font-mono text-[10px] uppercase tracking-[var(--tracking-wide)]"
-        style={{ color: "var(--color-profundo-300)" }}
+        style={{ color: "var(--fg-kicker)" }}
       >
         Coming soon
       </div>

@@ -176,7 +176,7 @@ export default function EnsV2AlphaDetailPage() {
         <BackLink />
         <div className="rounded-[var(--radius-3)] border p-10 text-center" style={{ borderColor: "var(--line)" }}>
           <p className="font-[var(--font-display)] text-2xl font-light" style={{ color: "var(--fg)" }}>
-            Couldn&apos;t read this name from the real ENSv2 alpha registry.
+            Couldn&apos;t load this name.
           </p>
         </div>
       </main>
@@ -256,12 +256,12 @@ export default function EnsV2AlphaDetailPage() {
           )}
 
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
-            Activity — real on-chain events
+            Activity
           </div>
           <div className="rounded-[var(--radius-3)] border" style={{ borderColor: "var(--line)" }}>
             {activityError && (
               <p className="p-6 font-mono text-sm" style={{ color: "var(--accent)" }}>
-                Couldn&apos;t load activity — the event scan failed.
+                Couldn&apos;t load activity.
               </p>
             )}
             {!activityError && activity.length === 0 && (
@@ -285,11 +285,6 @@ export default function EnsV2AlphaDetailPage() {
                 </div>
               ))}
           </div>
-          <p className="mt-3 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-            &quot;Token regenerated&quot; is the real ENSv2 mechanic our own marketplace&apos;s
-            suspend-on-mutation design anticipated — a resolver/owner change that requires
-            regeneration retires the old token ID entirely rather than silently keeping it valid.
-          </p>
         </div>
       </div>
     </main>

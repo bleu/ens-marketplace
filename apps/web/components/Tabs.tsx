@@ -24,7 +24,7 @@ export function Tabs({
     // past, which otherwise left no visible active-state cue at all.
     // `no-scrollbar` hides the native scrollbar track/thumb here specifically —
     // with the chevron already signaling overflow, a plain gray scrollbar sitting
-    // directly beneath the short aqua active-tab underline read as a second,
+    // directly beneath the short salmao active-tab underline read as a second,
     // duplicated (and broken-looking) underline. Scrolling still works via
     // touch/trackpad/arrow keys, just without the visible track.
     <ScrollHint outerClassName="mb-6 min-w-0 flex-1" className="no-scrollbar border-b border-[var(--line)]">

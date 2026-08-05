@@ -97,8 +97,7 @@ export default function EnsV1DomainDetailPage() {
             Couldn&apos;t load this name.
           </p>
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            The subgraph lookup failed — this is usually a transient rate limit on the
-            shared free endpoint. Try again in a moment.
+            This is usually temporary. Try again in a moment.
           </p>
           <button
             onClick={refetchDomain}
@@ -144,10 +143,13 @@ export default function EnsV1DomainDetailPage() {
 
           <div
             className="mt-4 rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
-            style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)", color: "var(--accent)" }}
+            style={{
+              borderColor: "rgba(var(--brand-rgb),0.4)",
+              background: "rgba(var(--brand-rgb),0.08)",
+              color: "var(--color-sinal-warn)",
+            }}
           >
-            Real mainnet ENS name — read-only. A purchase below is a genuine on-chain
-            transaction using real ETH.
+            Buying this name spends real ETH on Ethereum mainnet.
           </div>
 
           {!notConfigured && listing && (
@@ -346,7 +348,7 @@ function BuyBox({
     return (
       <div
         className="rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
-        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(206,105,94,0.08)", color: "var(--color-sinal-danger)" }}
+        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(var(--danger-rgb),0.08)", color: "var(--color-sinal-danger)" }}
       >
         Not enough ETH to buy this name. This listing costs {price} {listing.price.currency}
         {ethBalance !== undefined && <> — your wallet has {formatUnits(ethBalance, 18)} ETH</>}. You&apos;ll also need
@@ -393,7 +395,7 @@ function BuyBox({
     return (
       <div
         className="rounded-[var(--radius-3)] border p-[18px] font-mono text-xs"
-        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(206,105,94,0.08)", color: "var(--color-sinal-danger)" }}
+        style={{ borderColor: "var(--color-sinal-danger)", background: "rgba(var(--danger-rgb),0.08)", color: "var(--color-sinal-danger)" }}
       >
         Not enough ETH to buy this name — the transaction was rejected before submitting,
         so no gas was spent. This listing costs {price} {listing.price.currency} plus gas.

@@ -260,7 +260,7 @@ function DomainsPageInner() {
 
           <div
             className="mb-6 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
-            style={{ color: "var(--color-profundo-300)" }}
+            style={{ color: "var(--fg-kicker)" }}
           >
             Source
           </div>
@@ -272,14 +272,14 @@ function DomainsPageInner() {
                 className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
                 style={
                   networkMode === "ensv2"
-                    ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                    ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
                     : { borderColor: "var(--line)" }
                 }
               >
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2 w-2 rounded-full"
-                    style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                    style={{ background: networkMode === "ensv2" ? "var(--brand)" : "var(--fg-dim)" }}
                   />
                   <span
                     className="font-sans text-[13px] font-medium"
@@ -301,14 +301,14 @@ function DomainsPageInner() {
                   className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
                   style={
                     networkMode === "ensv2-alpha"
-                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
                       : { borderColor: "var(--line)" }
                   }
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className="h-2 w-2 rounded-full"
-                      style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                      style={{ background: networkMode === "ensv2-alpha" ? "var(--brand)" : "var(--fg-dim)" }}
                     />
                     <span
                       className="font-sans text-[13px] font-medium"
@@ -323,9 +323,8 @@ function DomainsPageInner() {
                 </button>
                 {networkMode === "ensv2-alpha" && (
                   <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--color-sinal-danger)" }}>
-                    Connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not
-                    our mock. Pre-audit, unofficial, unpublished addresses that can change
-                    without notice. Registration spends real (test) Sepolia ETH/USDC.
+                    Pre-audit alpha contracts that can change without notice. Registering
+                    spends Sepolia test ETH and USDC.
                   </p>
                 )}
               </>
@@ -338,14 +337,14 @@ function DomainsPageInner() {
                   className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
                   style={
                     networkMode === "ensv1"
-                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
                       : { borderColor: "var(--line)" }
                   }
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className="h-2 w-2 rounded-full"
-                      style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--color-profundo-300)" }}
+                      style={{ background: networkMode === "ensv1" ? "var(--brand)" : "var(--fg-dim)" }}
                     />
                     <span
                       className="font-sans text-[13px] font-medium"
@@ -355,12 +354,6 @@ function DomainsPageInner() {
                     </span>
                   </div>
                 </button>
-                {networkMode === "ensv1" && (
-                  <p className="mt-1 font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                    Real ENS names on Ethereum mainnet, read-only. Listings below are real
-                    active OpenSea orders — buying executes a real on-chain purchase.
-                  </p>
-                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -371,7 +364,7 @@ function DomainsPageInner() {
                   className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
                   style={
                     networkMode === "ensv1" && source === "grails"
-                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
                       : { borderColor: "var(--line)" }
                   }
                 >
@@ -379,7 +372,7 @@ function DomainsPageInner() {
                     <span
                       className="h-2 w-2 rounded-full"
                       style={{
-                        background: networkMode === "ensv1" && source === "grails" ? "var(--brand)" : "var(--color-profundo-300)",
+                        background: networkMode === "ensv1" && source === "grails" ? "var(--brand)" : "var(--fg-dim)",
                       }}
                     />
                     <span
@@ -400,7 +393,7 @@ function DomainsPageInner() {
                   className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-left"
                   style={
                     networkMode === "ensv1" && source === "opensea"
-                      ? { borderColor: "var(--brand)", background: "rgba(32,197,217,0.08)" }
+                      ? { borderColor: "var(--brand)", background: "rgba(var(--brand-rgb),0.08)" }
                       : { borderColor: "var(--line)" }
                   }
                 >
@@ -408,7 +401,7 @@ function DomainsPageInner() {
                     <span
                       className="h-2 w-2 rounded-full"
                       style={{
-                        background: networkMode === "ensv1" && source === "opensea" ? "var(--brand)" : "var(--color-profundo-300)",
+                        background: networkMode === "ensv1" && source === "opensea" ? "var(--brand)" : "var(--fg-dim)",
                       }}
                     />
                     <span
@@ -425,13 +418,13 @@ function DomainsPageInner() {
 
           <div
             className="mb-3 mt-6 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase"
-            style={{ color: "var(--color-profundo-300)" }}
+            style={{ color: "var(--fg-kicker)" }}
           >
             Refine
           </div>
           {networkMode === "ensv2-alpha" ? (
             <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-              No filters yet — this reads real on-chain registrations directly, no indexer.
+              No filters yet.
             </p>
           ) : networkMode === "ensv1" ? (
             <div className="flex flex-col gap-4">
@@ -515,11 +508,6 @@ function DomainsPageInner() {
                 />
               </div>
 
-              <p className="font-mono text-[10px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                Price/length/pattern filters query Grails&apos; real API directly. OpenSea
-                has no filter API, so those filters only narrow whichever OpenSea listings
-                are already loaded on this page.
-              </p>
             </div>
           ) : (
             <ComingSoon>
@@ -567,7 +555,7 @@ function DomainsPageInner() {
           <ComingSoon className="my-6">
             <div
               className="flex items-center gap-5 rounded-[var(--radius-3)] border p-5"
-              style={{ borderColor: "var(--line)", background: "linear-gradient(90deg,rgba(32,197,217,0.09),rgba(17,25,42,0.4))" }}
+              style={{ borderColor: "var(--line)", background: "linear-gradient(90deg,rgba(var(--brand-rgb),0.09),rgba(17,25,42,0.4))" }}
             >
               <div className="flex-1">
                 <div
@@ -625,7 +613,7 @@ function DomainsPageInner() {
               {isError && (
                 <div className="flex items-center gap-3 py-8">
                   <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-                    Couldn&apos;t load names — the request failed.
+                    Couldn&apos;t load names.
                   </p>
                   <button
                     onClick={retry}
@@ -735,7 +723,7 @@ function EnsV2AlphaTable({
         {isError && (
           <div className="flex items-center gap-3 py-8">
             <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-              Couldn&apos;t load real registrations — the on-chain read failed.
+              Couldn&apos;t load registrations.
             </p>
             <button
               onClick={retry}
@@ -866,7 +854,7 @@ function EnsV1Table({
         {!notConfigured && isError && (
           <div className="flex items-center gap-3 py-8">
             <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-              Couldn&apos;t load {sourceLabel} listings — the request failed.
+              Couldn&apos;t load {sourceLabel} listings.
             </p>
             <button
               onClick={retry}

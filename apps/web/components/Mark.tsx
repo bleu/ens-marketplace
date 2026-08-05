@@ -1,7 +1,7 @@
 /// The Farol mark: the nautical chart symbol for a light — a filled dot with a tapered
-/// flare. Charts print light beacons in magenta, which is why the flare is salmao rather
-/// than the app's aqua brand color. The tile is deep and the flare is bright (not the
-/// other way round) so the glyph reads as a light source and the glow belongs to it.
+/// flare. Charts print light beacons in magenta, which is where salmao (now the app's
+/// brand color) comes from. The tile is deep and the flare is bright (not the other way
+/// round) so the glyph reads as a light source and the glow belongs to it.
 /// The flare's base chord is deliberately much narrower than the dot's diameter, so the
 /// round bulb stays a visible silhouette instead of the two merging into one leaf shape.
 const FLARE = "M6.3 15.3C11.5 10.5 16 6.5 21 3.5C17 9.5 13 13.8 8.7 17.7Z";

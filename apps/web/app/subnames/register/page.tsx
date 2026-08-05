@@ -80,7 +80,7 @@ export default function RegisterSubnamePage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
-      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
         Announce a subname
       </div>
       <h1 className="mb-10 font-[var(--font-display)] text-[56px] font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
@@ -127,7 +127,7 @@ export default function RegisterSubnamePage() {
           {parentId !== undefined && parentOwner !== undefined && (
             <div
               className="rounded-[var(--radius-3)] border p-5 font-mono text-sm"
-              style={{ borderColor: isBlocked ? "rgba(206,105,94,0.4)" : "var(--line)" }}
+              style={{ borderColor: isBlocked ? "rgba(var(--danger-rgb),0.4)" : "var(--line)" }}
             >
               {isZeroAddress(parentOwner as `0x${string}`) && (
                 <p style={{ color: "var(--fg-dim)" }}>Parent name isn&apos;t registered yet.</p>
@@ -159,7 +159,7 @@ export default function RegisterSubnamePage() {
         {/* preview — mirrors /domains/list's create-flow layout so this
             sibling "create" page doesn't read as unfinished next to it. */}
         <div className="rounded-[var(--radius-3)] border p-6 lg:sticky lg:top-[108px]" style={{ borderColor: "var(--line)" }}>
-          <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+          <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
             Preview
           </div>
           <div
@@ -196,7 +196,7 @@ export default function RegisterSubnamePage() {
             {busy ? "Registering…" : "Register subname"}
           </button>
           <div className="mt-3 text-center font-mono text-[11px] leading-[1.5]" style={{ color: "var(--fg-dim)" }}>
-            Signed with your wallet. No expiry tracking in this beta.
+            Signed with your wallet. Listings don&apos;t expire.
           </div>
         </div>
       </div>

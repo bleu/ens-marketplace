@@ -227,7 +227,7 @@ export default function EnsV2AlphaRegisterPage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
-      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
         Real ENSv2 · Sepolia Alpha
       </div>
       <h1 className="mb-6 font-[var(--font-display)] text-[56px] font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
@@ -236,13 +236,12 @@ export default function EnsV2AlphaRegisterPage() {
 
       <div
         className="mb-9 rounded-[var(--radius-3)] border p-5 font-mono text-[12px] leading-relaxed"
-        style={{ borderColor: "rgba(206,105,94,0.4)", background: "rgba(206,105,94,0.06)", color: "var(--color-sinal-danger)" }}
+        style={{ borderColor: "rgba(var(--danger-rgb),0.4)", background: "rgba(var(--danger-rgb),0.06)", color: "var(--color-sinal-danger)" }}
       >
-        This connects to ENS Labs&apos; own real ENSv2 alpha contracts on Sepolia — not our
-        mock marketplace. These addresses are unofficial (not published by ENS Labs) and
-        pre-audit; they have already changed once during this alpha and may change again
-        without notice. This registration spends real Sepolia testnet ETH (gas) and a
-        Sepolia test USDC-style token — no real value, but a real on-chain transaction.
+        These are ENS Labs&apos; pre-audit ENSv2 alpha contracts on Sepolia. They are
+        unpublished, have already changed once during this alpha, and may change again
+        without notice. Registering spends Sepolia test ETH for gas plus a test USDC token
+        — no real-world value, but a real transaction.
       </div>
 
       <div className="flex flex-1 items-center">
@@ -351,7 +350,7 @@ export default function EnsV2AlphaRegisterPage() {
           </div>
 
           <div className="rounded-[var(--radius-3)] border p-6 lg:sticky lg:top-[108px]" style={{ borderColor: "var(--line)" }}>
-            <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+            <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
               Preview
             </div>
             <div
@@ -388,7 +387,7 @@ export default function EnsV2AlphaRegisterPage() {
             )}
 
             <div className="mt-3 text-center font-mono text-[11px] leading-[1.5]" style={{ color: "var(--fg-dim)" }}>
-              Commit-reveal: commit now, wait {MIN_COMMITMENT_AGE_SECONDS}s, then register. Real gas + USDC required.
+              Two steps: commit now, wait {MIN_COMMITMENT_AGE_SECONDS}s, then register.
             </div>
             {writeError && (
               <p className="mt-3 text-center font-mono text-[11px]" style={{ color: "var(--accent)" }}>

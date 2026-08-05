@@ -111,7 +111,7 @@ export default function ListDomainPage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1120px] flex-col animate-[fadeIn_0.2s_var(--ease-out)] p-4 pt-12 lg:p-8 lg:pt-12">
-      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+      <div className="mb-3 font-mono text-[11px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
         Announce a name
       </div>
       <h1 className="mb-10 font-[var(--font-display)] text-[56px] font-light tracking-[var(--tracking-snug)]" style={{ color: "var(--fg)" }}>
@@ -146,7 +146,7 @@ export default function ListDomainPage() {
                 className="input-field flex w-full cursor-pointer items-center gap-3 rounded-[10px] border p-3 text-left"
                 style={{
                   borderColor: selectedId === w.canonicalId ? "var(--brand)" : "var(--line)",
-                  background: selectedId === w.canonicalId ? "rgba(32,197,217,0.08)" : "rgba(242,244,241,0.02)",
+                  background: selectedId === w.canonicalId ? "rgba(var(--brand-rgb),0.08)" : "rgba(242,244,241,0.02)",
                 }}
               >
                 <NameCard canonicalId={w.canonicalId} size={40} />
@@ -163,11 +163,11 @@ export default function ListDomainPage() {
           </div>
 
           <div className="mb-3 font-mono text-[11px] tracking-[0.04em] uppercase" style={{ color: "var(--fg-dim)" }}>
-            Or register a new name (beta helper)
+            Or register a new name
           </div>
           <div
             className="mb-9 rounded-[10px] border p-4"
-            style={{ borderColor: isNameUnavailable ? "rgba(206,105,94,0.4)" : "var(--line)" }}
+            style={{ borderColor: isNameUnavailable ? "rgba(var(--danger-rgb),0.4)" : "var(--line)" }}
           >
             <input
               value={registerName}
@@ -281,7 +281,7 @@ export default function ListDomainPage() {
                   className="flex h-[52px] items-center justify-between rounded-[8px] border px-4 font-mono text-[15px]"
                   style={{ borderColor: "var(--line)", background: "rgba(242,244,241,0.04)", color: "var(--fg-muted)" }}
                 >
-                  No expiry (beta)
+                  No expiry
                 </div>
               </ComingSoon>
             </div>
@@ -290,7 +290,7 @@ export default function ListDomainPage() {
 
         {/* preview */}
         <div className="rounded-[var(--radius-3)] border p-6 lg:sticky lg:top-[108px]" style={{ borderColor: "var(--line)" }}>
-          <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--color-profundo-300)" }}>
+          <div className="mb-4 font-mono text-[10px] tracking-[var(--tracking-wide)] uppercase" style={{ color: "var(--fg-kicker)" }}>
             Preview
           </div>
           <div
@@ -313,18 +313,18 @@ export default function ListDomainPage() {
           <button
             onClick={listForSale}
             disabled={busy || !canonicalId || !isPositiveNumber(price) || (isConnected && !isOwnedByMe)}
-            // opacity-40 faded both the aqua background and the dark label text
-            // toward the page's own near-black background at the same rate, so
+            // opacity-40 faded both the brand-colored background and the dark label
+            // text toward the page's own near-black background at the same rate, so
             // the two nearly disappeared into each other — the disabled label
-            // was close to illegible. opacity-70 keeps enough of the aqua fill
-            // that the dark text still reads clearly against it.
+            // was close to illegible. opacity-70 keeps enough of the fill that the
+            // dark text still reads clearly against it.
             className="btn-cta mt-6 h-[52px] w-full rounded-[var(--radius-2)] font-sans text-[15px] font-semibold disabled:opacity-70"
             style={{ background: "var(--brand-cta)", color: "var(--brand-ink)" }}
           >
             {step === "approving" ? "Approving…" : step === "listing" ? "Listing…" : "List name"}
           </button>
           <div className="mt-3 text-center font-mono text-[11px] leading-[1.5]" style={{ color: "var(--fg-dim)" }}>
-            Signed with your wallet. No expiry tracking in this beta.
+            Signed with your wallet. Listings don&apos;t expire.
           </div>
           {writeError && (
             <p className="mt-3 text-center font-mono text-[11px]" style={{ color: "var(--accent)" }}>

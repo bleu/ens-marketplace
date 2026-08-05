@@ -1,12 +1,13 @@
 /// Deterministic gradient avatar for a name, keyed off its canonicalId so the same
 /// name always renders the same tile (not random) without needing any real artwork.
 /// All stops reference design tokens from globals.css so the marketplace grid never
-/// shows a hue outside the aqua/salmao/lima/profundo brand system.
+/// shows a hue outside the salmao/lima/profundo brand system. Weighted warm, since these
+/// tiles fill the whole grid and are what sets the page's overall temperature.
 const GRADIENTS = [
-  "linear-gradient(135deg,var(--color-aqua-300),var(--color-aqua-600))",
-  "linear-gradient(135deg,var(--color-aqua-500),var(--color-aqua-700))",
-  "linear-gradient(135deg,var(--color-lima-500),var(--color-aqua-600))",
-  "linear-gradient(135deg,var(--color-salmao-500),var(--color-salmao-700))",
+  "linear-gradient(135deg,var(--color-salmao-300),var(--color-salmao-700))",
+  "linear-gradient(135deg,var(--color-salmao-500),var(--color-profundo-700))",
+  "linear-gradient(135deg,var(--color-lima-500),var(--color-salmao-500))",
+  "linear-gradient(135deg,var(--color-salmao-700),var(--color-ink-950))",
   "linear-gradient(135deg,var(--color-lima-300),var(--color-lima-500))",
   "linear-gradient(135deg,var(--color-profundo-300),var(--color-profundo-700))",
 ];

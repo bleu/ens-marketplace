@@ -1,5 +1,7 @@
-/* ── Bleu design system tokens — ported from the "ENS Market" Claude Design
-   project (colors_and_type.css). Dark-only; this app has no light theme. ──
+/* ── Farol design system tokens — ported from the "ENS Market" Claude Design
+   project (colors_and_type.css), then retinted so the UI leads with the mark's
+   salmao flare over a deep profundo/ink ground rather than the original aqua.
+   Dark-only; this app has no light theme. ──
    Font @import lines must precede @import "tailwindcss" — CSS requires all
    @import rules to come first, and Tailwind's own import expands into
    non-import rules that would otherwise push these out of order. */
@@ -8,15 +10,6 @@
 @import "tailwindcss";
 
 :root {
-  /* Color - primary aqua */
-  --color-aqua-50: #e6fafd;
-  --color-aqua-100: #b8f0f6;
-  --color-aqua-300: #7adfeb;
-  --color-aqua-500: #20c5d9;
-  --color-aqua-600: #20a7d9;
-  --color-aqua-700: #1d87af;
-  --color-aqua-900: #0e202e;
-
   /* Color - ink (near-black) */
   --color-ink-900: #0f1321;
   --color-ink-950: #0a0d18;
@@ -28,11 +21,18 @@
   --color-papel-100: #f2f4f1;
   --color-papel-200: #cfd1cc;
 
-  /* Color - accents */
+  /* Color - salmao (the mark's flare, and the primary brand color) */
+  --color-salmao-300: #ffa88f;
   --color-salmao-500: #ff8668;
   --color-salmao-700: #ce695e;
   --color-lima-300: #b3fd8b;
   --color-lima-500: #78ea96;
+
+  /* Color - brasa. Error states need their own hue now that salmao is the brand —
+     sharing it would make every error read as a highlight. */
+  --color-brasa-500: #f4474d;
+  --color-brasa-700: #b8333a;
+  --danger-rgb: 244, 71, 77;
 
   /* Color - profundo neutrals */
   --color-profundo-300: #4c7d92;
@@ -42,7 +42,7 @@
   /* Color - sinal */
   --color-sinal-success: var(--color-lima-500);
   --color-sinal-warn: var(--color-salmao-500);
-  --color-sinal-danger: var(--color-salmao-700);
+  --color-sinal-danger: var(--color-brasa-500);
 
   /* Semantic (dark) */
   --bg: var(--color-ink-900);
@@ -53,12 +53,18 @@
   --fg-dim: rgba(242, 244, 241, 0.48);
   --line: rgba(242, 244, 241, 0.1);
   --line-strong: rgba(242, 244, 241, 0.22);
+  /* Small-caps section labels ("SOURCE", "PREVIEW"). Muted brick rather than the bright
+     brand coral, so a page's section labels sit below its in-card eyebrows. */
+  --fg-kicker: var(--color-salmao-700);
 
-  --brand: var(--color-aqua-500);
-  --brand-hover: var(--color-aqua-300);
-  --brand-cta: var(--color-aqua-600);
+  --brand: var(--color-salmao-500);
+  --brand-hover: var(--color-salmao-300);
+  --brand-cta: var(--color-salmao-500);
   --brand-ink: var(--color-ink-900);
-  --accent: var(--color-salmao-500);
+  /* Bare channel triple so inline `rgba(var(--brand-rgb), 0.08)` tints track the brand
+     instead of hardcoding it at every call site, which is how the old aqua got stuck. */
+  --brand-rgb: 255, 134, 104;
+  --accent: var(--color-brasa-500);
   --highlight: var(--color-lima-300);
 
   /* Type families */
@@ -95,7 +101,7 @@
 
   /* Halos & shadows */
   --halo-soft: 0 0 60px 0 rgba(76, 111, 146, 0.45);
-  --halo-bright: 0 0 100px 0 rgba(32, 197, 217, 0.55);
+  --halo-bright: 0 0 100px 0 rgba(255, 134, 104, 0.55);
   --halo-warm: 0 0 100px 0 rgba(255, 134, 104, 0.45);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(2, 4, 12, 0.45);
 
@@ -142,7 +148,7 @@ a:hover {
 
 /* Used where a scrollable strip already has its own overflow affordance
    (e.g. the tab strip's fade+chevron from ScrollHint, with the active tab's
-   aqua underline directly above the track) so the plain gray native
+   salmao underline directly above the track) so the plain gray native
    scrollbar doesn't sit stacked right under it and read as a second,
    broken-looking underline/progress bar. */
 .no-scrollbar {
@@ -223,7 +229,7 @@ a:hover {
    with a box-shadow ring instead — additive, so it shows up next to any
    resting or error border color and needs no JS changes. */
 .input-field:focus {
-  box-shadow: 0 0 0 3px rgba(32, 197, 217, 0.25);
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.25);
 }
 .search-form {
   border-color: var(--line);

@@ -24,8 +24,7 @@ export function ChainGuard() {
       style={{ borderColor: "rgba(255,134,104,0.4)", background: "rgba(255,134,104,0.08)" }}
     >
       <span style={{ color: "var(--accent)" }}>
-        Wrong network — Farol runs on local Anvil, Sepolia, or Mainnet. See
-        docs/local-dev.md to start Anvil, or switch networks.
+        Wrong network — Farol runs on Mainnet, Sepolia, or a local Anvil chain.
       </span>
       <button
         type="button"

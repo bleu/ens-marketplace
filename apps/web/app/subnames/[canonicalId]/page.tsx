@@ -97,7 +97,7 @@ export default function SubnameDetailPage() {
             Couldn&apos;t load this subname.
           </p>
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            The on-chain read failed — check your connection and try again.
+            Check your connection and try again.
           </p>
           <button
             onClick={() => refetch()}
@@ -255,7 +255,7 @@ export default function SubnameDetailPage() {
           )}
 
           {isLeased && (
-            <div className="rounded-[var(--radius-3)] border p-5" style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}>
+            <div className="rounded-[var(--radius-3)] border p-5" style={{ borderColor: "rgba(var(--brand-rgb),0.3)", background: "rgba(var(--brand-rgb),0.05)" }}>
               <p className="font-mono text-sm" style={{ color: "var(--brand)" }}>
                 Currently leased to <AddressLink address={tenant as `0x${string}`} network={network} /> until{" "}
                 {new Date(Number(activeUntil) * 1000).toLocaleString()}

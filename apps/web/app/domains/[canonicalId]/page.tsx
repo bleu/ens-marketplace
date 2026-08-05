@@ -88,7 +88,7 @@ export default function DomainDetailPage() {
             Couldn&apos;t load this name.
           </p>
           <p className="mt-2 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            The on-chain read failed — check your connection and try again.
+            Check your connection and try again.
           </p>
           <button
             onClick={() => refetch()}
@@ -254,7 +254,7 @@ export default function DomainDetailPage() {
 
           <div
             className="mt-5 rounded-[var(--radius-3)] border p-[18px]"
-            style={{ borderColor: "rgba(32,197,217,0.3)", background: "rgba(32,197,217,0.05)" }}
+            style={{ borderColor: "rgba(var(--brand-rgb),0.3)", background: "rgba(var(--brand-rgb),0.05)" }}
           >
             <div className="flex items-center justify-between">
               <span className="font-[var(--font-display)] text-[22px] font-light tracking-[var(--tracking-snug)]">
@@ -262,7 +262,7 @@ export default function DomainDetailPage() {
               </span>
               <span
                 className="rounded-[5px] border px-2 py-[3px] font-mono text-[10px] tracking-[0.04em] uppercase"
-                style={{ color: "var(--brand)", borderColor: "rgba(32,197,217,0.4)" }}
+                style={{ color: "var(--brand)", borderColor: "rgba(var(--brand-rgb),0.4)" }}
               >
                 ENSv2 · real
               </span>
@@ -397,7 +397,7 @@ export default function DomainDetailPage() {
           {tab === "valuation" && (
             <ComingSoonPanel
               title="Estimated value"
-              description="Valuation modeling from comparable sales isn't live yet — no real pricing data source exists for this beta."
+              description="Valuation modeling from comparable sales isn't live yet."
               grow
             />
           )}

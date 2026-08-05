@@ -64,7 +64,7 @@ export default function SubnamesPage() {
           {isError && (
             <div className="flex items-center gap-3 py-8">
               <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>
-                Couldn&apos;t load subnames — the request failed.
+                Couldn&apos;t load subnames.
               </p>
               <button
                 onClick={retry}
