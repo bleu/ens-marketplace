@@ -15,6 +15,10 @@ import type { EnsV1Domain, EnsV1Listing } from "./ensv1";
 /// together needs OpenSea's listings scraped into the same database — see
 /// docs/explore-filters.md.
 
+/// Counts per length chip, keyed by the chip's own label. Null until the first successful
+/// fetch resolves.
+export type GrailsLengthCounts = Record<"3" | "4" | "5" | "6+", number>;
+
 export interface GrailsListingsResult {
   listings: EnsV1Listing[];
   isLoading: boolean;
@@ -27,10 +31,24 @@ export interface GrailsListingsResult {
    * page. Null until the first successful fetch resolves. */
   total: number | null;
   totalPages: number | null;
+  /** What each length chip would match given the other active filters — so a chip can show
+   * its count and read as empty before it's clicked. */
+  lengthCounts: GrailsLengthCounts | null;
   refetch: () => void;
 }
 
+export type GrailsSortKey = "price-asc" | "price-desc" | "length-asc" | "name-asc" | "recent";
+
 export interface GrailsFilters {
+  /** Fuzzy, typo-tolerant name search — the sidebar's single search box. */
+  query?: string;
+  /** Selected length chips, OR'd against each other server-side. */
+  lengths?: number[];
+  /** The open-ended "6+" chip, OR'd into the same group as `lengths`. */
+  lengthAtLeast?: number;
+  sort?: GrailsSortKey;
+  /** Switches off the price sanity band, which is otherwise on. */
+  includeOutliers?: boolean;
   minPrice?: string;
   maxPrice?: string;
   minLength?: string;
@@ -45,6 +63,11 @@ export interface GrailsFilters {
 /// blank, so an untouched input can't look like an active filter server-side.
 export function grailsSearchParams(filters: GrailsFilters, page: number): string {
   const params = new URLSearchParams();
+  if (filters.query) params.set("q", filters.query);
+  if (filters.lengths?.length) params.set("lengths", filters.lengths.join(","));
+  if (filters.lengthAtLeast !== undefined) params.set("lengthAtLeast", String(filters.lengthAtLeast));
+  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.includeOutliers) params.set("includeOutliers", "true");
   if (filters.minPrice) params.set("minPrice", filters.minPrice);
   if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
   if (filters.minLength) params.set("minLength", filters.minLength);
@@ -57,8 +80,8 @@ export function grailsSearchParams(filters: GrailsFilters, page: number): string
 
 /// The Explore feed. Listings come from our own Postgres via app/api/ensv1/grails-listings
 /// (scraped from Grails ahead of their API's discontinuation — see docs/grails-migration.md),
-/// and every filter, the count and the pagination are applied server-side there, so what the
-/// header claims and what the user can page through are the same set.
+/// and every filter, the sort, the counts and the pagination are applied server-side there, so
+/// what the header claims and what the user can page through are the same set.
 ///
 /// `filters` is depended on by its serialized form rather than field-by-field — the object is
 /// rebuilt on every render by the caller, so a dependency on the object itself would refetch
@@ -71,6 +94,7 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1): Grails
   const [hasNext, setHasNext] = useState(false);
   const [total, setTotal] = useState<number | null>(null);
   const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [lengthCounts, setLengthCounts] = useState<GrailsLengthCounts | null>(null);
   const search = grailsSearchParams(filters, page);
 
   const refresh = useCallback(async () => {
@@ -85,6 +109,7 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1): Grails
       setHasNext(!!json.next);
       setTotal(typeof json.total === "number" ? json.total : null);
       setTotalPages(typeof json.totalPages === "number" ? json.totalPages : null);
+      setLengthCounts(json.lengthCounts ?? null);
     } catch (err) {
       console.error("useGrailsListings: failed to fetch listings", err);
       setIsError(true);
@@ -97,7 +122,7 @@ export function useGrailsListings(filters: GrailsFilters = {}, page = 1): Grails
     refresh();
   }, [refresh]);
 
-  return { listings, isLoading, isError, unresolvedCount, hasNext, total, totalPages, refetch: refresh };
+  return { listings, isLoading, isError, unresolvedCount, hasNext, total, totalPages, lengthCounts, refetch: refresh };
 }
 
 const SESSION_CACHE_PREFIX = "ensv1-listing:";

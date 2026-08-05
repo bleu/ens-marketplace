@@ -3,37 +3,43 @@ import { describe, expect, it } from "vitest";
 import { grailsSearchParams } from "./ensv1-client";
 
 /// The hook around this is thin (fetch, setState) and covered end-to-end by
-/// cypress/e2e/ensv1-explore.cy.ts. What's worth testing in isolation is the translation from
-/// sidebar state to query string, because that's the contract with apps/api's GrailsController
-/// and the place a filter goes silently missing.
+/// cypress/e2e/ensv1-explore.cy.ts. What's worth testing in isolation is the translation
+/// from sidebar state to query string, because that's the contract with apps/api's
+/// GrailsController and the place a filter goes silently missing.
 
 describe("grailsSearchParams", () => {
   it("asks for page 1 and nothing else when no filter is set", () => {
     expect(grailsSearchParams({}, 1)).toBe("page=1");
   });
 
-  it("carries every filter the feed supports", () => {
-    const params = new URLSearchParams(
-      grailsSearchParams(
-        { minPrice: "0.5", maxPrice: "10", minLength: "3", maxLength: "8", startsWith: "sun", endsWith: "dao" },
-        2,
-      ),
-    );
+  it("sends the length chips as one comma-separated list", () => {
+    expect(grailsSearchParams({ lengths: [3, 4] }, 1)).toBe("lengths=3%2C4&page=1");
+  });
 
-    expect(params.get("minPrice")).toBe("0.5");
-    expect(params.get("maxPrice")).toBe("10");
-    expect(params.get("minLength")).toBe("3");
-    expect(params.get("maxLength")).toBe("8");
-    expect(params.get("startsWith")).toBe("sun");
-    expect(params.get("endsWith")).toBe("dao");
+  it("sends the open-ended chip separately from the exact lengths", () => {
+    const params = new URLSearchParams(grailsSearchParams({ lengths: [3], lengthAtLeast: 6 }, 1));
+    expect(params.get("lengths")).toBe("3");
+    expect(params.get("lengthAtLeast")).toBe("6");
+  });
+
+  it("carries the sort key and the text query", () => {
+    const params = new URLSearchParams(grailsSearchParams({ sort: "price-desc", query: "vitalikk" }, 2));
+    expect(params.get("sort")).toBe("price-desc");
+    expect(params.get("q")).toBe("vitalikk");
     expect(params.get("page")).toBe("2");
   });
 
-  // An empty input is an input the user hasn't touched, not a filter for the empty string.
-  it("omits empty strings rather than sending blank params", () => {
-    const params = new URLSearchParams(grailsSearchParams({ minPrice: "", startsWith: "" }, 1));
+  // The band is on by default, so the param only appears when the user turns it off —
+  // and apps/api reads it as a literal "true" (see GrailsController).
+  it("only sends includeOutliers when the sanity band is switched off", () => {
+    expect(new URLSearchParams(grailsSearchParams({}, 1)).has("includeOutliers")).toBe(false);
+    expect(new URLSearchParams(grailsSearchParams({ includeOutliers: true }, 1)).get("includeOutliers")).toBe("true");
+  });
 
+  it("omits empty strings and empty chip lists rather than sending blank params", () => {
+    const params = new URLSearchParams(grailsSearchParams({ query: "", minPrice: "", lengths: [] }, 1));
+    expect(params.has("q")).toBe(false);
     expect(params.has("minPrice")).toBe(false);
-    expect(params.has("startsWith")).toBe(false);
+    expect(params.has("lengths")).toBe(false);
   });
 });

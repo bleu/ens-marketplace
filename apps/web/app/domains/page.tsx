@@ -29,8 +29,15 @@ import { shortId } from "@/lib/format";
 /// at all; OpenSea now stays on the detail page, where per-name lookups work fine. See
 /// docs/explore-filters.md.
 
-/// How long a keystroke waits before it becomes a query.
-const FILTER_DEBOUNCE_MS = 400;
+/// How long a keystroke waits before it becomes a query. Chips, sort and the outlier toggle
+/// skip this — see the debounce effect below for why they don't feel laggy.
+const TEXT_DEBOUNCE_MS = 400;
+
+/// The subset of the sidebar that's typed rather than clicked. Only a change in one of these is
+/// worth waiting on.
+function typedFields(state: ExploreFilterState): string {
+  return [state.query, state.priceMin, state.priceMax, state.lengthMin, state.lengthMax, state.startsWith, state.endsWith].join(" ");
+}
 
 /// useSearchParams() requires an ancestor Suspense boundary (Next.js App Router build
 /// requirement, not just a dev-mode nicety) — the default export below provides it so
@@ -62,20 +69,26 @@ function DomainsPageInner() {
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Debounced so a query doesn't fire per keystroke. Skipped on the first run: appliedFilters
-  // is already seeded from the same URL, and resetting page here would stomp a shared `?page=3`.
+  // Typing waits; clicking doesn't. A chip or sort change goes through on the next tick, while
+  // a search box or price field waits out the debounce — otherwise every keystroke is a query,
+  // and a 400ms lag on a chip click feels broken. Skipped on the first run: appliedFilters is
+  // already seeded from the same URL, and resetting page here would stomp a shared `?page=3`.
   const isFirstFilterSync = useRef(true);
   useEffect(() => {
     if (isFirstFilterSync.current) {
       isFirstFilterSync.current = false;
       return;
     }
+    const delay = typedFields(filters) === typedFields(appliedFilters) ? 0 : TEXT_DEBOUNCE_MS;
     const timer = setTimeout(() => {
       setAppliedFilters(filters);
       // Page 2 of a filter set that no longer applies means nothing.
       setPage(1);
-    }, FILTER_DEBOUNCE_MS);
+    }, delay);
     return () => clearTimeout(timer);
+    // appliedFilters is read to decide the delay, not to trigger a re-run — including it would
+    // re-arm the timer on its own update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const syncUrl = useCallback(() => {
@@ -156,7 +169,7 @@ function DomainsPageInner() {
                 No filters yet.
               </p>
             ) : (
-              <ExploreFilters state={filters} onChange={setFilters} />
+              <ExploreFilters state={filters} onChange={setFilters} lengthCounts={grails.lengthCounts} />
             )}
           </div>
         </aside>
