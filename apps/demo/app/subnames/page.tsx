@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatEther } from "viem";
 import { useSubnameSearch } from "@/lib/events";
 import { NameCard } from "@/components/NameCard";
+import { Spinner } from "@/components/Spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ScrollHint } from "@/components/ScrollHint";
 
@@ -44,7 +45,10 @@ export default function SubnamesPage() {
           to this table via its own scroll wrapper (same pattern as the
           /domains listing table) instead of letting it blow out the page. */}
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-        <div className="min-w-[620px]">
+        <div
+          className="min-w-[620px] transition-opacity duration-150"
+          style={{ opacity: isLoading && rows.length > 0 ? 0.5 : 1 }}
+        >
           <div className="grid grid-cols-[minmax(260px,2.2fr)_220px_140px] items-center border-b pr-4 pb-3.5" style={{ borderColor: "var(--line-strong)" }}>
             {["Name", "Price / term", "Status"].map((h, i) => (
               <span
@@ -76,9 +80,12 @@ export default function SubnamesPage() {
             </div>
           )}
           {!isError && isLoading && rows.length === 0 && (
-            <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-              Loading…
-            </p>
+            <div className="flex items-center gap-2.5 py-8">
+              <Spinner />
+              <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+                Loading…
+              </p>
+            </div>
           )}
           {!isError && !isLoading && rows.length === 0 && (
             <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
@@ -120,18 +127,19 @@ export default function SubnamesPage() {
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
             ← Previous
           </button>
-          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+          <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            {isLoading && <Spinner size={12} />}
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
+            disabled={page >= totalPages || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >

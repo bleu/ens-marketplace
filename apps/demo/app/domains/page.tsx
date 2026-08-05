@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { ComingSoon } from "@/components/ComingSoon";
 import { ScrollHint } from "@/components/ScrollHint";
+import { Spinner } from "@/components/Spinner";
 import { shortId } from "@/lib/format";
 import type { DomainOrderRow } from "@/lib/events";
 
@@ -552,7 +553,7 @@ function DomainsPageInner() {
             <EnsV1Table
               source={source}
               listings={ensv1Listings}
-              isLoading={ensv1Listings.length === 0 && active.isLoading}
+              isLoading={active.isLoading}
               isError={active.isError}
               notConfigured={source === "opensea" ? opensea.notConfigured : false}
               unresolvedCount={active.unresolvedCount}
@@ -603,7 +604,10 @@ function DomainsPageInner() {
               top nav off-screen too), the horizontal scroll is contained to
               just this table via its own overflow-x-auto wrapper. */}
           <ScrollHint className="no-scrollbar" arrowAlign="top">
-            <div className="min-w-[1058px]">
+            <div
+              className="min-w-[1058px] transition-opacity duration-150"
+              style={{ opacity: isLoading && rows.length > 0 ? 0.5 : 1 }}
+            >
               <div
                 className="grid grid-cols-[minmax(260px,2.2fr)_168px_220px_150px_150px_110px] items-center border-b pr-4 pb-3.5"
                 style={{ borderColor: "var(--line-strong)" }}
@@ -638,9 +642,12 @@ function DomainsPageInner() {
                 </div>
               )}
               {!isError && isLoading && rows.length === 0 && (
-                <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-                  Loading…
-                </p>
+                <div className="flex items-center gap-2.5 py-8">
+                  <Spinner />
+                  <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+                    Loading…
+                  </p>
+                </div>
               )}
               {!isError && !isLoading && rows.length === 0 && (
                 <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
@@ -658,18 +665,19 @@ function DomainsPageInner() {
             <div className="flex items-center justify-center gap-4 py-6">
               <button
                 onClick={() => setEnsv2Page((p) => Math.max(1, p - 1))}
-                disabled={ensv2Page === 1}
+                disabled={ensv2Page === 1 || isLoading}
                 className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
                 style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
               >
                 ← Previous
               </button>
-              <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+              <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+                {isLoading && <Spinner size={12} />}
                 Page {ensv2Page} of {totalPages}
               </span>
               <button
                 onClick={() => setEnsv2Page((p) => Math.min(totalPages, p + 1))}
-                disabled={ensv2Page >= totalPages}
+                disabled={ensv2Page >= totalPages || isLoading}
                 className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
                 style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
               >
@@ -838,7 +846,7 @@ function EnsV1Table({
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-      <div className="min-w-[780px]">
+      <div className="min-w-[780px] transition-opacity duration-150" style={{ opacity: isLoading && listings.length > 0 ? 0.5 : 1 }}>
         <div
           className="grid grid-cols-[minmax(260px,2.2fr)_170px_220px_110px] items-center border-b pr-4 pb-3.5"
           style={{ borderColor: "var(--line-strong)" }}
@@ -878,10 +886,13 @@ function EnsV1Table({
             </button>
           </div>
         )}
-        {!notConfigured && !isError && isLoading && (
-          <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
-            Loading real listings from {sourceLabel}…
-          </p>
+        {!notConfigured && !isError && isLoading && listings.length === 0 && (
+          <div className="flex items-center gap-2.5 py-8">
+            <Spinner />
+            <p className="font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
+              Loading real listings from {sourceLabel}…
+            </p>
+          </div>
         )}
         {!notConfigured && !isError && !isLoading && listings.length === 0 && (
           <p className="py-8 font-mono text-sm" style={{ color: "var(--fg-dim)" }}>
@@ -905,19 +916,20 @@ function EnsV1Table({
         <div className="flex items-center justify-center gap-4 py-6">
           <button
             onClick={onPrev}
-            disabled={page === 1}
+            disabled={page === 1 || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
             ← Previous
           </button>
-          <span className="font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+          <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--fg-dim)" }}>
+            {isLoading && <Spinner size={12} />}
             Page {page}
             {grailsTotalPages !== null && <> of ~{grailsTotalPages.toLocaleString()} (Grails)</>}
           </span>
           <button
             onClick={onNext}
-            disabled={!hasNext}
+            disabled={!hasNext || isLoading}
             className="h-9 rounded-[var(--radius-2)] border px-4 font-mono text-xs disabled:opacity-40"
             style={{ borderColor: "var(--line-strong)", color: "var(--fg)" }}
           >
