@@ -30,13 +30,8 @@ describe("mobile viewport (375px)", () => {
     });
   });
 
-  it("List-a-name page: no horizontal overflow", () => {
-    cy.visit("/domains/list");
-    cy.document().then((doc) => {
-      // +2px tolerance for sub-pixel layout rounding, not a real overflow allowance.
-      expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth + 2);
-    });
-  });
+  // The List-a-name form was covered here too; it's disabled for now, so /domains/list
+  // renders a short notice with nothing left to overflow.
 
   it("Subnames page: no horizontal overflow", () => {
     cy.visit("/subnames");

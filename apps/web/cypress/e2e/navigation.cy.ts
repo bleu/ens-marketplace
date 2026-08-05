@@ -8,7 +8,6 @@ describe("top-level navigation", () => {
     cy.visit("/domains");
     cy.contains("a", "Explore").should("have.attr", "href", "/domains");
     cy.contains("a", "Subnames").should("have.attr", "href", "/subnames");
-    cy.contains("a", "List a name").should("have.attr", "href", "/domains/list");
     // One placeholder for every mode — the search box used to relabel itself per mode,
     // which only ever restated what the Source picker already said.
     cy.get('input[placeholder="Search names…"]').should("be.visible");
@@ -26,9 +25,10 @@ describe("top-level navigation", () => {
     cy.location("pathname").should("eq", "/subnames");
   });
 
-  it("navigates to List a name via the top nav", () => {
+  it("offers no way into the listing flow while it's disabled", () => {
     cy.visit("/domains");
-    cy.contains("a", "List a name").click();
-    cy.location("pathname").should("eq", "/domains/list");
+    cy.contains("List a name").should("not.exist");
+    cy.visit("/domains/list");
+    cy.contains("Listing a name is turned off").should("be.visible");
   });
 });

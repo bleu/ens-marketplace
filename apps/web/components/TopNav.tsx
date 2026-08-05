@@ -24,7 +24,7 @@ export function TopNav() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isExplore = pathname.startsWith("/domains") && !pathname.endsWith("/list");
+  const isExplore = pathname.startsWith("/domains");
   const isSubnames = pathname.startsWith("/subnames");
 
   async function onSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -253,15 +253,8 @@ export function TopNav() {
 
         <nav className="hidden items-center gap-6 font-sans text-sm font-medium lg:flex">{navLinks}</nav>
 
-        <div className="ml-auto hidden items-center gap-4 lg:flex">
-          <Link
-            href="/domains/list"
-            className="btn-outline flex h-[42px] items-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
-          >
-            List a name
-          </Link>
-          {connectButton}
-        </div>
+        {/* The "List a name" CTA sat here until the listing flow is fixed — see app/domains/list. */}
+        <div className="ml-auto hidden items-center gap-4 lg:flex">{connectButton}</div>
 
         <button
           type="button"
@@ -289,16 +282,7 @@ export function TopNav() {
         <div className="flex flex-col gap-5 border-t pb-5 pt-4 lg:hidden" style={{ borderColor: "var(--line)" }}>
           {searchForm}
           <nav className="flex flex-col items-start gap-4 font-sans text-sm font-medium">{navLinks}</nav>
-          <div className="flex flex-col items-stretch gap-3">
-            <Link
-              href="/domains/list"
-              onClick={() => setMobileOpen(false)}
-              className="btn-outline flex h-[42px] items-center justify-center rounded-[var(--radius-2)] border px-4 font-sans text-sm font-medium"
-            >
-              List a name
-            </Link>
-            {connectButton}
-          </div>
+          <div className="flex flex-col items-stretch gap-3">{connectButton}</div>
         </div>
       )}
     </header>

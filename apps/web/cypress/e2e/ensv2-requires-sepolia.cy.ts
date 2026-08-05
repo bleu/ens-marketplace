@@ -17,9 +17,9 @@ describe("ENSv2 surfaces without a Sepolia deployment", () => {
     cy.contains("Sepolia required").should("be.visible");
   });
 
-  it("gates /domains/list and the ENSv2 detail pages", () => {
-    cy.visit("/domains/list");
-    cy.contains("Sepolia required").should("be.visible");
+  // /domains/list isn't here: the listing flow is disabled, so that route says so
+  // instead of gating on a chain (see navigation.cy.ts).
+  it("gates the ENSv2 detail pages", () => {
     cy.visit("/domains/1");
     cy.contains("Sepolia required").should("be.visible");
     cy.visit("/subnames/1");
