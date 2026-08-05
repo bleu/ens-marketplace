@@ -153,43 +153,46 @@ function DomainsPageInner() {
       </div>
 
       <div className="grid grid-cols-1 items-start lg:grid-cols-[280px_minmax(0,1fr)]">
-        {/* filters — on a narrow viewport these collapse into a drawer, so a tall filter
-            column doesn't push the table below the fold. Left padding matches the header
-            above and the table's first column, so the three labels share an edge. */}
-        <aside
-          className="border-b px-4 py-5 lg:sticky lg:top-[136px] lg:border-b-0 lg:border-r lg:py-6 lg:pr-6 lg:pl-8"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <div className={`flex items-center gap-2 ${drawerOpen ? "mb-5" : "mb-0 lg:mb-5"}`}>
-            <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-              Filters
-            </span>
-            {networkMode === "ensv1" && activeFilterCount > 0 && (
-              <span
-                className="rounded-full px-2 py-[2px] font-mono text-[10px] tabular-nums"
-                style={{ background: "rgba(var(--brand-rgb),0.14)", color: "var(--brand)" }}
-              >
-                {activeFilterCount}
+        {/* filters — a raised card rather than an open column, so the controls read as one
+            group instead of floating loose beside the table. On a narrow viewport the card's
+            body collapses into a drawer, so a tall filter column doesn't push the table below
+            the fold. The card's top edge lines up with the table's column labels. */}
+        <aside className="px-4 py-5 lg:sticky lg:top-[136px] lg:py-6 lg:pr-6 lg:pl-8">
+          <div
+            className="rounded-[var(--radius-3)] border p-4 lg:p-5"
+            style={{ borderColor: "var(--line)", background: "var(--bg-raised)" }}
+          >
+            <div className={`flex items-center gap-2 ${drawerOpen ? "mb-5" : "mb-0 lg:mb-5"}`}>
+              <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
+                Filters
               </span>
-            )}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen((open) => !open)}
-              aria-expanded={drawerOpen}
-              className="btn-outline ml-auto h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs lg:hidden"
-            >
-              {drawerOpen ? "Hide" : "Show"}
-            </button>
-          </div>
+              {networkMode === "ensv1" && activeFilterCount > 0 && (
+                <span
+                  className="rounded-full px-2 py-[2px] font-mono text-[10px] tabular-nums"
+                  style={{ background: "rgba(var(--brand-rgb),0.14)", color: "var(--brand)" }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setDrawerOpen((open) => !open)}
+                aria-expanded={drawerOpen}
+                className="btn-outline ml-auto h-8 rounded-[var(--radius-2)] border px-3 font-mono text-xs lg:hidden"
+              >
+                {drawerOpen ? "Hide" : "Show"}
+              </button>
+            </div>
 
-          <div className={drawerOpen ? "block" : "hidden lg:block"}>
-            {networkMode === "ensv2-alpha" ? (
-              <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                No filters yet.
-              </p>
-            ) : (
-              <ExploreFilters state={filters} onChange={setFilters} />
-            )}
+            <div className={drawerOpen ? "block" : "hidden lg:block"}>
+              {networkMode === "ensv2-alpha" ? (
+                <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
+                  No filters yet.
+                </p>
+              ) : (
+                <ExploreFilters state={filters} onChange={setFilters} />
+              )}
+            </div>
           </div>
         </aside>
 
@@ -314,7 +317,9 @@ function Pager({
   );
 }
 
-const ENSV2_ALPHA_PAGE_SIZE = 20;
+/// Matches the ENSv1 feed's page size, which apps/api fixes at 50 server-side
+/// (GrailsService's PAGE_SIZE) — so a page means the same thing in both tables.
+const ENSV2_ALPHA_PAGE_SIZE = 50;
 
 /// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
 /// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table:
