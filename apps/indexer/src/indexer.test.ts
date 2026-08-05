@@ -81,6 +81,31 @@ describe("OrderManager", () => {
     const activity = await indexer.DomainActivity.getAll();
     t.expect(activity.map((a: { eventName: string }) => a.eventName).sort()).toEqual(["Filled", "Listed"]);
   });
+
+  it("Listed denormalizes the name from IndexedName, and later events carry it forward", async (t) => {
+    const indexer = createTestIndexer();
+    const seller = Addresses.mockAddresses[0]!;
+    const pinnedHash = "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+    await indexer.process({
+      chains: {
+        31337: {
+          simulate: [
+            { contract: "Registry", event: "Registered", params: { canonicalId: 1n, name: "alice.eth", owner: seller } },
+            {
+              contract: "OrderManager",
+              event: "Listed",
+              params: { canonicalId: 1n, seller, price: 1_000_000_000_000_000_000n, pinnedHash },
+            },
+            { contract: "OrderManager", event: "Relisted", params: { canonicalId: 1n, newPrice: 2_000_000_000_000_000_000n, pinnedHash } },
+          ],
+        },
+      },
+    });
+
+    const order = await indexer.DomainOrder.getOrThrow("1");
+    t.expect(order.name, "name should carry forward through Relisted, not just Listed").toBe("alice.eth");
+  });
 });
 
 describe("LeaseVault", () => {

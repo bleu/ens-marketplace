@@ -17,6 +17,10 @@ type DomainOrder {
   pinnedHash: String!
   # matches CanonicalIdOrderManager.Status: 0 None, 1 Active, 2 Suspended, 3 Filled, 4 Cancelled
   status: Int!
+  # Denormalized from IndexedName at index time (see handlers/OrderManager.ts) — Envio
+  # entities aren't natively joinable across types, so this lets Hasura sort/paginate
+  # DomainOrder by name directly (order_by: {name: asc}) without an unbounded fetch-all.
+  name: String
   updatedAt: BigInt!
 }
 

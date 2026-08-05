@@ -43,6 +43,7 @@ interface DomainOrderGqlRow {
   price: string;
   pinnedHash: string;
   status: number;
+  name: string | null;
 }
 
 @Injectable()
@@ -51,7 +52,11 @@ export class DomainsService {
 
   /// Replaces useKnownDomainIds (Listed-event history) + the per-visit orders()/nameOf()
   /// multicall — every DomainOrder row already implies "has been Listed at least once",
-  /// same set of names domains/page.tsx has ever shown.
+  /// same set of names domains/page.tsx has ever shown. Sorted alphabetically by name —
+  /// `name` is denormalized onto DomainOrder at index time (see
+  /// apps/indexer/src/handlers/OrderManager.ts) specifically so Hasura can order/paginate
+  /// this directly, rather than joining+sorting the full result set in application code
+  /// (which wouldn't scale past a small number of listings).
   async search(tab: "names" | "listings", page: number): Promise<DomainSearchResult> {
     const where = tab === "listings" ? { status: { _in: LISTABLE_STATUSES } } : {};
 
@@ -60,8 +65,8 @@ export class DomainsService {
       DomainOrder_aggregate: { aggregate: { count: number } };
     }>(
       `query DomainSearch($where: DomainOrder_bool_exp, $limit: Int!, $offset: Int!) {
-        DomainOrder(where: $where, order_by: { updatedAt: desc }, limit: $limit, offset: $offset) {
-          id seller price pinnedHash status
+        DomainOrder(where: $where, order_by: { name: asc }, limit: $limit, offset: $offset) {
+          id seller price pinnedHash status name
         }
         DomainOrder_aggregate(where: $where) {
           aggregate { count }
@@ -70,29 +75,16 @@ export class DomainsService {
       { where, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
     );
 
-    const ids = data.DomainOrder.map((o) => o.id);
-    const names = ids.length > 0 ? await this.namesByIds(ids) : new Map<string, string>();
-
     const total = data.DomainOrder_aggregate.aggregate.count;
     return {
       rows: data.DomainOrder.map((o) => ({
         canonicalId: o.id,
         order: { seller: o.seller, price: o.price, pinnedHash: o.pinnedHash, status: o.status },
-        name: names.get(o.id) ?? null,
+        name: o.name,
       })),
       total,
       totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
     };
-  }
-
-  private async namesByIds(ids: string[]): Promise<Map<string, string>> {
-    const data = await this.indexer.request<{ IndexedName: { id: string; name: string }[] }>(
-      `query NamesByIds($ids: [String!]) {
-        IndexedName(where: { id: { _in: $ids } }) { id name }
-      }`,
-      { ids },
-    );
-    return new Map(data.IndexedName.map((n) => [n.id, n.name]));
   }
 
   /// Replaces useNameActivity's per-item live event scan.

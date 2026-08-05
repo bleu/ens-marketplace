@@ -5,12 +5,16 @@ import { activityRecord } from "./shared";
 const Status = { None: 0, Active: 1, Suspended: 2, Filled: 3, Cancelled: 4 } as const;
 
 indexer.onEvent({ contract: "OrderManager", event: "Listed" }, async ({ event, context }) => {
+  // Denormalized at creation time — every later handler (Relisted/Filled/etc.) just
+  // carries it forward via `...existing`, so only Listed needs this lookup.
+  const indexedName = await context.IndexedName.get(event.params.canonicalId.toString());
   const order: DomainOrder = {
     id: event.params.canonicalId.toString(),
     seller: event.params.seller,
     price: event.params.price,
     pinnedHash: event.params.pinnedHash,
     status: Status.Active,
+    name: indexedName?.name,
     updatedAt: BigInt(event.block.timestamp),
   };
   context.DomainOrder.set(order);
