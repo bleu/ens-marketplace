@@ -59,9 +59,18 @@ const MAINNET_FALLBACK_RPC_URL = "https://ethereum-rpc.publicnode.com";
 /// tick) is the knob if the batch window turns out too tight to collect them all.
 const MAINNET_BATCHING = { [mainnet.id]: { multicall: true } } as const;
 
+/// RainbowKit maps both mainnet and Sepolia to the same stock Ethereum icon, so its chain
+/// picker showed two identical rows that differed only in text. These are the same diamond
+/// in two colors (papel for mainnet, salmao for the testnet) — same family, telling apart at
+/// a glance. The generic `T` keeps each chain's literal `id`, which the `transports` keys and
+/// `MAINNET_BATCHING` below are typed against.
+function withIcon<T extends typeof mainnet | typeof sepolia>(chain: T, iconUrl: string) {
+  return { ...chain, iconUrl, iconBackground: "transparent" };
+}
+
 export const wagmiConfig = createConfig({
   connectors,
-  chains: [mainnet, sepolia],
+  chains: [withIcon(mainnet, "/chains/ethereum.svg"), withIcon(sepolia, "/chains/sepolia.svg")],
   transports: {
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || SEPOLIA_FALLBACK_RPC_URL),
     [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || MAINNET_FALLBACK_RPC_URL),

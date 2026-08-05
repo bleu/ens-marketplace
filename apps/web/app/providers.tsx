@@ -47,6 +47,10 @@ const rainbowKitTheme = {
     connectButtonInnerBackground: "#11192a" /* --bg-raised */,
     menuItemBackground: "#11192a" /* --bg-raised */,
     selectedOptionBorder: "#ff8668" /* --brand */,
+    /* The chain picker's "Connected" dot and its mid-switch pending dot. Stock darkTheme
+       uses #30E000 / #FFD641, both loud next to the lima/salmao palette. */
+    connectionIndicator: "#78ea96" /* --color-sinal-success */,
+    standby: "#ff8668" /* --color-sinal-warn */,
   },
   fonts: {
     ...rainbowKitBase.fonts,
