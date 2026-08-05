@@ -14,6 +14,16 @@ type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
 /// against a real chain's block height.
 const MAX_BLOCK_RANGE = 900n;
 
+/// Windows are fetched through a bounded worker pool rather than one unbounded
+/// `Promise.all` — the window count grows every day since callers scan from a fixed
+/// deploy block to the ever-advancing chain tip (see lib/ensv2-alpha.ts), and firing all
+/// of them at once eventually outpaces whatever the configured RPC can sustain
+/// concurrently. Confirmed live against the production Sepolia RPC: 20 concurrent
+/// `eth_getLogs` calls all succeed, but a ~49-window burst (this integration's real
+/// window count as of writing) never completes at all — one stalled/failed window fails
+/// the whole `Promise.all`, which is exactly what produced "Couldn't load registrations."
+const MAX_CONCURRENT_REQUESTS = 8;
+
 export async function getContractEventsChunked<const abi extends Abi | readonly unknown[], eventName extends ContractEventName<abi>>(
   client: PublicClient,
   params: GetContractEventsParameters<abi, eventName> & { fromBlock: bigint },
@@ -27,8 +37,16 @@ export async function getContractEventsChunked<const abi extends Abi | readonly 
     windows.push([start, end]);
   }
 
-  const results = await Promise.all(
-    windows.map(([fromBlock, toBlock]) => client.getContractEvents({ ...params, fromBlock, toBlock })),
-  );
+  const results: GetContractEventsReturnType<abi, eventName>[] = new Array(windows.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= windows.length) return;
+      const [fromBlock, toBlock] = windows[i]!;
+      results[i] = await client.getContractEvents({ ...params, fromBlock, toBlock });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_REQUESTS, windows.length) }, worker));
   return results.flat() as GetContractEventsReturnType<abi, eventName>;
 }
