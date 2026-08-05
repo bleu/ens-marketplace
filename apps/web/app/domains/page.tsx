@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatUnits } from "viem";
@@ -12,6 +12,9 @@ import {
   ExploreFilters,
   exploreFiltersFromQuery,
   exploreFiltersToQuery,
+  FilterLabel,
+  FilterSummary,
+  FILTER_INPUT_CLASS,
   toGrailsFilters,
   type ExploreFilterState,
 } from "@/components/ExploreFilters";
@@ -71,6 +74,11 @@ function DomainsPageInner() {
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Alpha has no price/order data (registration only), so length + pattern are the only
+  // filters that apply — no server to push them to, so this filters the already-loaded
+  // `alpha.names` client-side (see EnsV2AlphaTable).
+  const [alphaFilters, setAlphaFilters] = useState<AlphaFilterState>(EMPTY_ALPHA_FILTERS);
+
   // Debounced so a query doesn't fire per keystroke. Skipped on the first run: appliedFilters
   // is already seeded from the same URL, and resetting page here would stomp a shared `?page=3`.
   const isFirstFilterSync = useRef(true);
@@ -105,7 +113,10 @@ function DomainsPageInner() {
   }, [syncUrl]);
 
   const grails = useGrailsListings(toGrailsFilters(appliedFilters), page);
-  const activeFilterCount = activeFilterSummary(appliedFilters).length;
+  // Whichever sidebar is on screen, so the heading's badge and the empty state's way out
+  // don't have to care which chain is connected.
+  const activeFilterCount =
+    networkMode === "ensv2-alpha" ? alphaFilterSummary(alphaFilters).length : activeFilterSummary(appliedFilters).length;
 
   return (
     <main className="animate-[fadeIn_0.2s_var(--ease-out)]">
@@ -166,7 +177,7 @@ function DomainsPageInner() {
               <span className="font-sans text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
                 Filters
               </span>
-              {networkMode === "ensv1" && activeFilterCount > 0 && (
+              {activeFilterCount > 0 && (
                 <span
                   className="rounded-full px-2 py-[2px] font-mono text-[10px] tabular-nums"
                   style={{ background: "rgba(var(--brand-rgb),0.14)", color: "var(--brand)" }}
@@ -186,9 +197,7 @@ function DomainsPageInner() {
 
             <div className={drawerOpen ? "block" : "hidden lg:block"}>
               {networkMode === "ensv2-alpha" ? (
-                <p className="font-mono text-[11px] leading-relaxed" style={{ color: "var(--fg-dim)" }}>
-                  No filters yet.
-                </p>
+                <AlphaFilters state={alphaFilters} onChange={setAlphaFilters} />
               ) : (
                 <ExploreFilters state={filters} onChange={setFilters} />
               )}
@@ -198,10 +207,18 @@ function DomainsPageInner() {
 
         {/* table — full-bleed, so row separators line up with the header's border above
             instead of stopping short of it, and a hovered row tints edge to edge. The
-            gutters live on the row grids themselves (GUTTER_LEFT/GUTTER_RIGHT below). */}
+            gutters live on the row grids themselves (GUTTER_LEFT/GUTTER_RIGHT below), and
+            the top padding main added on this section now lives on TableHeader. */}
         <section className="min-w-0 pb-20">
           {networkMode === "ensv2-alpha" ? (
-            <EnsV2AlphaTable names={alpha.names} isLoading={alpha.isLoading} isError={alpha.isError} retry={alpha.refetch} />
+            <EnsV2AlphaTable
+              names={alpha.names}
+              isLoading={alpha.isLoading}
+              isError={alpha.isError}
+              retry={alpha.refetch}
+              filters={alphaFilters}
+              onClearFilters={() => setAlphaFilters(EMPTY_ALPHA_FILTERS)}
+            />
           ) : (
             <EnsV1Table
               listings={grails.listings}
@@ -321,10 +338,100 @@ function Pager({
 /// (GrailsService's PAGE_SIZE) — so a page means the same thing in both tables.
 const ENSV2_ALPHA_PAGE_SIZE = 50;
 
-/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment — no filters yet
-/// (see the sidebar note above this table). Deliberately simple compared to EnsV1Table:
-/// this alpha has no price/seller/order concept, just a registered label + tokenId.
-/// Pagination here is a client-side slice, not a paginated API call like Grails/OpenSea —
+/// Alpha has no price/order data (registration only), so length + pattern are the only
+/// filters that apply to it — see the sidebar note in EnsV2AlphaTable.
+interface AlphaFilterState {
+  lengthMin: string;
+  lengthMax: string;
+  startsWith: string;
+  endsWith: string;
+}
+
+const EMPTY_ALPHA_FILTERS: AlphaFilterState = { lengthMin: "", lengthMax: "", startsWith: "", endsWith: "" };
+
+function matchesAlphaFilters(name: EnsV2AlphaName, f: AlphaFilterState): boolean {
+  const len = name.label.length;
+  if (f.lengthMin && len < Number(f.lengthMin)) return false;
+  if (f.lengthMax && len > Number(f.lengthMax)) return false;
+  if (f.startsWith && !name.label.toLowerCase().startsWith(f.startsWith.toLowerCase())) return false;
+  if (f.endsWith && !name.label.toLowerCase().endsWith(f.endsWith.toLowerCase())) return false;
+  return true;
+}
+
+/// Mirrors activeFilterSummary for the ENSv1 sidebar — same phrasing for the filters the two
+/// have in common, so the chips don't read differently depending on which chain you're on.
+function alphaFilterSummary(state: AlphaFilterState): string[] {
+  const parts: string[] = [];
+  if (state.lengthMin) parts.push(`${state.lengthMin}+ chars`);
+  if (state.lengthMax) parts.push(`${state.lengthMax} chars or fewer`);
+  if (state.startsWith) parts.push(`starts “${state.startsWith}”`);
+  if (state.endsWith) parts.push(`ends “${state.endsWith}”`);
+  return parts;
+}
+
+/// Dressed from the same pieces as ExploreFilters (FilterLabel, FILTER_INPUT_CLASS,
+/// FilterSummary) rather than its own copies — the two swap in and out of the same sidebar
+/// slot, so any styling drift shows up as the panel changing shape when the chain changes.
+function AlphaFilters({ state, onChange }: { state: AlphaFilterState; onChange: (next: AlphaFilterState) => void }) {
+  const set = <K extends keyof AlphaFilterState>(key: K, value: AlphaFilterState[K]) => onChange({ ...state, [key]: value });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <FilterLabel>Length (chars)</FilterLabel>
+        <div className="flex gap-2">
+          <input
+            value={state.lengthMin}
+            onChange={(e) => set("lengthMin", e.target.value)}
+            placeholder="Min"
+            aria-label="Minimum name length"
+            inputMode="numeric"
+            className={FILTER_INPUT_CLASS}
+          />
+          <input
+            value={state.lengthMax}
+            onChange={(e) => set("lengthMax", e.target.value)}
+            placeholder="Max"
+            aria-label="Maximum name length"
+            inputMode="numeric"
+            className={FILTER_INPUT_CLASS}
+          />
+        </div>
+      </div>
+
+      <div>
+        <FilterLabel>Starts with</FilterLabel>
+        <input
+          value={state.startsWith}
+          onChange={(e) => set("startsWith", e.target.value)}
+          placeholder="e.g. sun"
+          aria-label="Name starts with"
+          className={FILTER_INPUT_CLASS}
+        />
+      </div>
+
+      <div>
+        <FilterLabel>Ends with</FilterLabel>
+        <input
+          value={state.endsWith}
+          onChange={(e) => set("endsWith", e.target.value)}
+          placeholder="e.g. dao"
+          aria-label="Name ends with"
+          className={FILTER_INPUT_CLASS}
+        />
+      </div>
+
+      <FilterSummary chips={alphaFilterSummary(state)} onClear={() => onChange(EMPTY_ALPHA_FILTERS)} />
+    </div>
+  );
+}
+
+/// Real registered names on ENS Labs' own ENSv2 alpha Sepolia deployment. Deliberately
+/// simple compared to EnsV1Table: this alpha has no price/seller/order concept, just a
+/// registered label + tokenId, so length/pattern (AlphaFilterState) are the only filters
+/// that apply — filtered client-side since the full list is already in hand from the event
+/// scan, not paginated server-side like Grails.
+/// Pagination here is a client-side slice, not a paginated API call like Grails —
 /// the full list is already in hand from the event scan (useEnsV2AlphaRegisteredNames),
 /// so "next page" just moves the slice window rather than fetching anything new.
 function EnsV2AlphaTable({
@@ -332,23 +439,35 @@ function EnsV2AlphaTable({
   isLoading,
   isError,
   retry,
+  filters,
+  onClearFilters,
 }: {
   names: EnsV2AlphaName[];
   isLoading: boolean;
   isError: boolean;
   retry: () => void;
+  filters: AlphaFilterState;
+  onClearFilters: () => void;
 }) {
+  const filteredNames = useMemo(() => names.filter((n) => matchesAlphaFilters(n, filters)), [names, filters]);
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(names.length / ENSV2_ALPHA_PAGE_SIZE));
+  // Page 2 of a filter set that no longer applies means nothing.
+  useEffect(() => {
+    setPage(1);
+  }, [filters.lengthMin, filters.lengthMax, filters.startsWith, filters.endsWith]);
+  const totalPages = Math.max(1, Math.ceil(filteredNames.length / ENSV2_ALPHA_PAGE_SIZE));
   // Clamps down if the list shrinks (a page reload with fewer results) rather than
   // stranding the view on a now-nonexistent page with nothing to show.
   const clampedPage = Math.min(page, totalPages);
-  const pageNames = names.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
+  const pageNames = filteredNames.slice((clampedPage - 1) * ENSV2_ALPHA_PAGE_SIZE, clampedPage * ENSV2_ALPHA_PAGE_SIZE);
 
   return (
     <>
       <ScrollHint className="no-scrollbar" arrowAlign="top">
-        <div className="min-w-[480px] transition-opacity duration-150" style={{ opacity: isLoading && names.length > 0 ? 0.5 : 1 }}>
+        <div
+          className="min-w-[480px] transition-opacity duration-150"
+          style={{ opacity: isLoading && filteredNames.length > 0 ? 0.5 : 1 }}
+        >
           <TableHeader columns={ENSV2_ALPHA_COLUMNS} labels={["Name", ""]} />
 
           {pageNames.map(({ tokenId, label }) => (
@@ -399,8 +518,18 @@ function EnsV2AlphaTable({
           <p style={{ color: "var(--fg-dim)" }}>No names registered on this alpha deployment yet — be the first.</p>
         </TableMessage>
       )}
+      {/* Nothing registered at all and nothing matching the filters are different problems,
+          so they read differently — and only the second one has a way out. */}
+      {!isError && !isLoading && names.length > 0 && filteredNames.length === 0 && (
+        <TableMessage>
+          <p style={{ color: "var(--fg-dim)" }}>No names match these filters.</p>
+          <button onClick={onClearFilters} className={PAGER_BUTTON}>
+            Clear filters
+          </button>
+        </TableMessage>
+      )}
 
-      {!isError && names.length > ENSV2_ALPHA_PAGE_SIZE && (
+      {!isError && filteredNames.length > ENSV2_ALPHA_PAGE_SIZE && (
         <Pager
           page={clampedPage}
           totalPages={totalPages}
